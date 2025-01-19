@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                       String              @id @default(uuid())
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  email                    String              @unique
+  lastName                 String
+  role                     UserRole?
+  firstName                String
+  profileImage             String?
+  dob                      DateTime?
+  phoneNumber              String?
+  stripeCustomerId         String?
+  stripeSubscriptionId     String?
+  currentLocation          Json?
+  serviceArea              Json?
+  stripeSubscriptionPlan   SubscriptionPlan?
+  stripeSubscriptionStatus SubscriptionStatus?
+  documentsUrl             String[]
+  ChatUser                 ChatUser[]
+  mechanic                 Mechanic?
+  Message                  Message[]
+  chatMessages             Message[]           @relation("UserMessages")
+  reviews                  Review[]
+  serviceRequests          ServiceRequest[]
+  Vehicle                  Vehicle[]
+}
+
+model Mechanic {
+  id                  String           @id @default(uuid())
+  userId              String           @unique
+  bio                 String?
+  servicesOffered     String[]
+  availabilityStatus  Boolean          @default(false)
+  rating              Float?
+  bannerImage         String?
+  driversLicenseId    String?
+  merchantDocumentUrl String?
+  earnings            Earning[]
+  user                User             @relation(fields: [userId], references: [id])
+  serviceRequests     ServiceRequest[]
+}
+
+model Vehicle {
+  id           String  @id @default(uuid())
+  make         String
+  model        String
+  year         Int
+  licensePlate String?
+  userId       String
+  User         User    @relation(fields: [userId], references: [id])
+}
+
+model ServiceRequest {
+  id             String        @id
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  clientId       String?
+  mechanicId     String?
+  serviceType    String
+  status         ServiceStatus
+  location       Json
+  description    String?
+  paymentHoldId  String?
+  completionCode String?
+  review         Review?
+  client         User?         @relation(fields: [clientId], references: [id])
+  mechanic       Mechanic?     @relation(fields: [mechanicId], references: [id])
+}
+
+model Review {
+  id               String         @id @default(uuid())
+  serviceRequestId String         @unique
+  clientId         String
+  rating           Int
+  comment          String?
+  createdAt        DateTime       @default(now())
+  client           User           @relation(fields: [clientId], references: [id])
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id])
+}
+
+model Earning {
+  id               String   @id @default(uuid())
+  mechanicId       String
+  amount           Float
+  serviceRequestId String
+  createdAt        DateTime @default(now())
+  mechanic         Mechanic @relation(fields: [mechanicId], references: [id])
+}
+
+model Chat {
+  id         Int        @id @default(autoincrement())
+  chatUserId String
+  messageId  Int
+  users      ChatUser[]
+  messages   Message[]
+}
+
+model ChatUser {
+  id     String @id @default(uuid())
+  chatId Int
+  userId String
+  chat   Chat   @relation(fields: [chatId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([chatId, userId])
+}
+
+model Message {
+  id       Int    @id @default(autoincrement())
+  chatId   Int
+  authorId String
+  content  String
+  userId   String
+  author   User   @relation(fields: [authorId], references: [id])
+  chat     Chat   @relation(fields: [chatId], references: [id])
+  user     User   @relation("UserMessages", fields: [userId], references: [id])
+}
+
+model Lead {
+  id          String    @id @default(uuid())
+  name        String?
+  email       String
+  phone       String?
+  message     String?
+  createdAt   DateTime  @default(now())
+  responded   Boolean   @default(false)
+  respondedAt DateTime?
+}
+
+enum UserRole {
+  Customer
+  Mechanic
+}
+
+enum ServiceStatus {
+  REQUESTED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}

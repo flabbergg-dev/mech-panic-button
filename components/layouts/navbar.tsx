@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-// import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@clerk/nextjs"
 
 import { AnimatePresence, motion } from "framer-motion"
 import Logo from "../icons/logo"
@@ -18,8 +18,7 @@ import { MenuIcon } from "../icons/menu-icon"
 
 
 export const Navbar = () => {
-  // const { userId } = useAuth()
-  const userId = null
+  const { userId } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   // on router change close the mobile menu

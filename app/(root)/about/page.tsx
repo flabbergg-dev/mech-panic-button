@@ -11,21 +11,21 @@ export default function AboutUs() {
   const sections = [
     {
       id: 1,
-      path: "/assets/icons/mission.lottie",
+      path: "/lottie/mission.lottie",
       title: "Our Mission",
       content:
         "To revolutionize the automotive repair industry by providing instant, reliable connections between drivers in need and skilled mechanics, ensuring safety and peace of mind on the road.",
     },
     {
       id: 2,
-      path: "/assets/icons/vision.lottie",
+      path: "/lottie/vision.lottie",
       title: "Our Vision",
       content:
         "To create a world where vehicle breakdowns are no longer a source of stress, but an opportunity for swift, trustworthy assistance, empowering both drivers and mechanics in a seamless digital ecosystem.",
     },
     {
       id: 3,
-      path: "/assets/icons/purpose.lottie",
+      path: "/lottie/purpose.lottie",
       title: "Our Purpose",
       content:
         "To transform roadside emergencies into manageable situations, fostering a community of support that elevates the mechanic profession and provides drivers with unparalleled peace of mind.",
