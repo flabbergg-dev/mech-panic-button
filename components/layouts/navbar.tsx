@@ -42,7 +42,7 @@ export const Navbar = () => {
     <nav
       className={`${pathname.includes("dashboard") ? "sticky" : "fixed"}
        
-        w-full top-0 z-50 transition-all duration-300 ${isScrolled || isOpen ? "bg-background/80 backdrop-blur-md shadow-sm" : "bg-transparent"} $`}
+        w-full top-0 z-50 transition-all duration-300 ${isScrolled || isOpen ? "bg-background/80 backdrop-blur-md shadow-sm " : "bg-transparent "} $`}
     >
       <div
         className={` mx-auto px-4 sm:px-6 lg:px-8 ${pathname.includes("dashboard") ? "bg-background/90" : ""}`}

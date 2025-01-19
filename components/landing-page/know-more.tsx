@@ -58,7 +58,7 @@ export default function KnowMore() {
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
-              src="/images/mechanic-at-work.webp"
+              src="/mechanic-at-work.webp"
               alt="Expert mechanic at work"
               className="rounded-lg shadow-2xl"
             />

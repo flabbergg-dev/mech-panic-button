@@ -85,7 +85,7 @@ export default function CompleteExperience() {
           <div className="relative h-[600px]">
             {/* TODO - Add the correct image path */}
             <img
-              src="/images/maps.png"
+              src="/maps.png"
               alt="Service Area Map"
               className="w-full h-full object-cover"
             />

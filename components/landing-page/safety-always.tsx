@@ -87,7 +87,7 @@ export default function SafetyAlways() {
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="w-full lg:w-1/2 lg:pl-6 sm:lg:pl-10"
+            className="w-full lg:w-1/2 lg:pl-6 sm:lg:pl-10 overflow-hidden"
           >
             <div className="relative w-full h-[300px] sm:h-[500px] rounded-xl shadow-2xl overflow-hidden">
               <img

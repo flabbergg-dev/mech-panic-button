@@ -93,7 +93,7 @@ export default function SecondKnowMore() {
           >
             <div className="relative w-full h-[300px] sm:h-[500px] bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
               <img
-                src="/images/mechanic-working.webp"
+                src="/mechanic-working.webp"
                 alt="Mechanic working on a car"
                 className="w-full h-full object-cover"
               />

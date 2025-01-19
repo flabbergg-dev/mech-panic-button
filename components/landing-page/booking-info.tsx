@@ -21,7 +21,7 @@ const FeatureItem = ({ icon: Icon, text }: FeatureCardProps) => (
 
 export default function BookingInfo() {
       return (
-    <section className="py-12 md:py-20 bg-gradient-to-br from-background to-primary-foreground overflow-hidden">
+    <section className="py-12 md:py-20 bg-gradient-to-br from-background to-primary-foreground overflow-hidden w-full">
       <div className="container mx-auto px-4 max-w-full md:max-w-7xl">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
           <motion.div
@@ -59,7 +59,7 @@ export default function BookingInfo() {
           >
             <div className="relative w-full h-[300px] md:h-[400px]">
               <img
-                src="/images/maps.png"
+                src="/maps.png"
                 alt="Service area map"
                 className="rounded-xl shadow-2xl w-full h-full object-cover"
               />

@@ -55,7 +55,7 @@ export const Footer = () => {
   return (
     <footer className="bg-gradient-to-b from-[#DEDCEA] to-[#F0EFF7] pt-16 pb-8">
       <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-4 gap-8 mb-12">
+        <div className="grid md:grid-cols-5 gap-8 mb-12">
           <FooterSection
             title="Mech-Panic Button"
             links={[
@@ -87,7 +87,7 @@ export const Footer = () => {
               "Twitter",
             ]}
           />
-          <div>
+          <div className="md:col-span-2">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">
               Stay Updated
             </h3>
@@ -132,7 +132,7 @@ export const Footer = () => {
 
         <div className="flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-gray-500 mb-4 md:mb-0 md:w-2/3">
-            © 2024 Mech-Panic-Button. All appointments are facilitated through
+            © {new Date().getFullYear()} Mech-Panic-Button. All appointments are facilitated through
             mechanics. We serve as a booking intermediary. Terms and conditions
             apply.
           </p>
