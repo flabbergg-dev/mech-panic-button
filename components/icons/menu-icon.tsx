@@ -1,76 +1,83 @@
 "use client"
 
-import { motion, useAnimation, Variants } from "framer-motion"
+import { motion, Variants } from "framer-motion"
 import { useEffect } from "react"
 
 
-const lineVariants: Variants = {
-  normal: {
+const topVariants: Variants = {
+  closed: {
     rotate: 0,
-    y: 0,
-    opacity: 1,
-    originX: "center",
+    translateY: 0
   },
-  animate: (custom: number) => ({
-    rotate: custom === 1 ? 45 : custom === 3 ? -45 : 0,
-    y: custom === 1 ? 8 : custom === 3 ? -4 : 0,
-    opacity: custom === 2 ? 0 : 1,
-    originX: "center",
-    transition: {
-      type: "spring",
-      stiffness: 400,
-      damping: 25,
-    },
-  }),
+  open: {
+    rotate: 45,
+    translateY: 6
+  }
+}
+
+const centerVariants: Variants = {
+  closed: {
+    opacity: 1
+  },
+  open: {
+    opacity: 0
+  }
+}
+
+const bottomVariants: Variants = {
+  closed: {
+    rotate: 0,
+    translateY: 0
+  },
+  open: {
+    rotate: -45,
+    translateY: -6
+  }
 }
 
 const MenuIcon = ({ isOpen }: { isOpen: boolean }) => {
-  const controls = useAnimation()
-
-  // Trigger animation when isOpen changes
-  useEffect(() => {
-    controls.start(isOpen ? "animate" : "normal")
-  }, [isOpen, controls])
-
   return (
-    <div className="cursor-pointer select-none p-2 rounded-md transition-colors duration-200 flex items-center justify-center">
+    <div className="cursor-pointer select-none p-2 rounded-md hover:bg-foreground/10 transition-colors duration-200 flex items-center justify-center">
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="48"
-        height="48"
         viewBox="0 0 24 24"
-        fill="none"
+        width="24"
+        height="24"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       >
         <motion.line
           x1="4"
           y1="6"
           x2="20"
           y2="6"
-          variants={lineVariants}
-          animate={controls}
-          custom={1}
+          initial="closed"
+          animate={isOpen ? "open" : "closed"}
+          variants={topVariants}
+          transition={{ duration: 0.2 }}
         />
         <motion.line
           x1="4"
           y1="12"
           x2="20"
           y2="12"
-          variants={lineVariants}
-          animate={controls}
-          custom={2}
+          initial="closed"
+          animate={isOpen ? "open" : "closed"}
+          variants={centerVariants}
+          transition={{ duration: 0.2 }}
         />
         <motion.line
           x1="4"
           y1="18"
           x2="20"
           y2="18"
-          variants={lineVariants}
-          animate={controls}
-          custom={3}
+          initial="closed"
+          animate={isOpen ? "open" : "closed"}
+          variants={bottomVariants}
+          transition={{ duration: 0.2 }}
         />
       </svg>
     </div>
