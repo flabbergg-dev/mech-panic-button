@@ -6,10 +6,6 @@ export const metadata: Metadata = {
   description: "Manage service requests and your availability",
 }
 
-interface Props {
-  params: { userId: string }
-}
-
-export default function Page({ params }: Props) {
+export default function Page() {
   return <MechanicDashboard />
 }
