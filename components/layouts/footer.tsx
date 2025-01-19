@@ -146,12 +146,12 @@ export const Footer = () => {
 
         <div className="mt-8 text-center">
           <a
-            href="#"
+            href="/privacy-policy"
             className="text-sm text-gray-600 hover:text-gray-900 mr-4"
           >
             Privacy Policy
           </a>
-          <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
+          <a href="/terms-of-use" className="text-sm text-gray-600 hover:text-gray-900">
             Terms of Use
           </a>
         </div>
