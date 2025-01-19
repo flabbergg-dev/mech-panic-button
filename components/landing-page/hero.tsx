@@ -13,7 +13,7 @@ export default function Header() {
   }, [])
 
   return (
-    <section className="relative flex flex-col items-center justify-center min-h-screen bg-[url('/hero.webp')] bg-cover bg-no-repeat bg-center w-full">
+    <section className="relative flex flex-col items-center justify-center min-h-screen bg-[url('/hero.webp')] bg-cover bg-no-repeat bg-center w-full pt-12 md:pt-0">
       <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px]"></div>
       <motion.div
         initial={{ opacity: 0, y: 50 }}

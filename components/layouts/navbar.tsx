@@ -51,7 +51,7 @@ export const Navbar = () => {
           {/* Logo Section */}
           <Link href="/" className="flex items-center space-x-2">
             <Logo />
-            <span className="hidden md:block font-michroma-sans text-xl font-medium">
+            <span className="text-text font-semibold text-xl font-michroma-sans">
               Mech-Panic Button
             </span>
           </Link>
