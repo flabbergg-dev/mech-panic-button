@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   description: "Manage your service requests and view your history",
 }
 
-export default function Page() {
+interface Props {
+  params: { userId: string }
+}
+
+export default function Page({ params }: Props) {
   return <CustomerDashboard />
 }
