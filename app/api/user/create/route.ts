@@ -9,16 +9,20 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { role } = await req.json()
+    const { role, email, firstName, lastName } = await req.json()
     
+    if (!role || !email || !firstName || !lastName) {
+      return new NextResponse("Missing required fields", { status: 400 })
+    }
+
     // Create user in database
     const user = await prisma.user.create({
       data: {
         id: userId,
         role,
-        email: "", // This will be updated with Clerk webhook
-        firstName: "",
-        lastName: "",
+        email,
+        firstName,
+        lastName,
       },
     })
 

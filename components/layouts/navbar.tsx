@@ -14,7 +14,19 @@ import { MenuIcon } from "../icons/menu-icon"
 
 // import { getUserAction } from "app/actions/userActions"
 
-// import { SignOutButton } from "../Buttons/SignOutButton"
+import { SignOutButton as SignOut  } from "@clerk/nextjs"
+import { ArrowLeftFromLineIcon } from "lucide-react"
+
+const SignOutButton = () => (
+
+    <SignOut
+    >
+    <Button variant="destructive" size="sm">
+       <ArrowLeftFromLineIcon className="h-4 w-4" />
+      </Button>
+    </SignOut>
+    
+)
 
 
 export const Navbar = () => {
@@ -71,7 +83,7 @@ export const Navbar = () => {
                   <Button variant="outline" asChild>
                     <Link href={`/dashboard`}>Dashboard</Link>
                   </Button>
-                  {/* <SignOutButton /> */}
+                  <SignOutButton />
                 </>
               )}
               <ThemeSwitcher />
@@ -119,7 +131,7 @@ export const Navbar = () => {
                     <Button asChild className="w-full flex-1 bg-blue-800">
                       <Link href={`/dashboard`}>Dashboard</Link>
                     </Button>
-                    {/* <SignOutButton /> */}
+                    <SignOutButton />
                   </div>
                 )}
                 <>
