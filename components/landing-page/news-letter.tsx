@@ -29,7 +29,7 @@ const result = await {
   }
 
   return (
-    <section className="py-20 bg-gradient-to-r from-secondary to-secondary/20 ">
+    <section className="py-20 bg-gradient-to-r from-secondary to-secondary/20 w-full">
       <div className="container mx-auto px-4">
         <div className="flex flex-col lg:flex-row items-center justify-between">
           <motion.div

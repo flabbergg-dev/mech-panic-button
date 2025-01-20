@@ -29,7 +29,7 @@ const ContactMethod = ({
 
 export default function Online() {
   return (
-    <section className="py-20 bg-gradient-to-r from-[#F4D48A] to-[#F6E6B5]">
+    <section className="py-20 bg-gradient-to-r from-[#F4D48A] to-[#F6E6B5] w-full">
       <div className="container mx-auto px-4">
         <div className="flex flex-col lg:flex-row items-center justify-between">
           <motion.div

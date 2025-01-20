@@ -13,7 +13,7 @@ interface FeatureCardProps {
 
 export default function KnowMore() {
   return (
-    <section className="py-20 bg-gradient-to-b from-[#001529] to-[#003366]">
+    <section className="py-20 bg-gradient-to-b from-[#001529] to-[#003366] w-full">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <motion.h2

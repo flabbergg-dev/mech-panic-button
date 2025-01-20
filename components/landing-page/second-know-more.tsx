@@ -34,7 +34,7 @@ const FeatureItem = ({ icon: Icon, title, description }: FeatureCardProps) => (
 
 export default function SecondKnowMore() {
   return (
-    <section className="relative py-10 sm:py-20 bg-gradient-to-b from-[#001529] to-[#002a4e] overflow-x-hidden">
+    <section className="relative py-10 sm:py-20 bg-gradient-to-b from-[#001529] to-[#002a4e] overflow-x-hidden w-full">
       <div className="container mx-auto px-4">
         <div className="flex flex-col lg:flex-row items-center justify-between">
           <motion.div

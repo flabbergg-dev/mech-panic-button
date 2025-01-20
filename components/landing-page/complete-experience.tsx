@@ -37,7 +37,7 @@ const FeatureItem = ({
 
 export default function CompleteExperience() {
   return (
-    <section className="py-20 bg-gradient-to-br from-[#DEDCEA] to-[#F0EFF7]">
+    <section className="py-20 bg-gradient-to-br from-[#DEDCEA] to-[#F0EFF7] w-full">
       <div className="container mx-auto px-4">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}

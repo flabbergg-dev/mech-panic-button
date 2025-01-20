@@ -3,7 +3,7 @@ import Link from "next/link"
 export default function Terms() {
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background">
-      <header className="px-4 py-6 bg-primary text-primary-foreground md:px-8">
+      <header className="px-4 py-6 bg-primary text-primary-foreground md:px-8 rounded-b-2xl">
         <div className="container max-w-5xl mx-auto">
           <h1 className="text-3xl font-bold">Terms of Use</h1>
           <p className="mt-2 text-lg text-primary-foreground/80">
@@ -185,9 +185,9 @@ export default function Terms() {
           </section>
         </div>
       </main>
-      <footer className="px-4 py-6 bg-muted text-muted-foreground md:px-8">
+      <footer className="px-4 py-6 bg-muted text-muted-foreground md:px-8 rounded-t-2xl">
         <div className="container max-w-5xl mx-auto text-sm text-center">
-          &copy; 2024 Flabbergasting Games LLC. All rights reserved.
+          &copy; {new Date().getFullYear()} Flabbergasting Games LLC. All rights reserved.
         </div>
       </footer>
     </div>

@@ -4,6 +4,7 @@ import React from "react"
 import { Button } from "../ui/button"
 import { ArrowBigRight, LucideIcon, MapPin, Shield, Star } from "lucide-react"
 import { motion } from "framer-motion"
+import Image from "next/image"
 
 type SafetyFeatureProps = {
   icon: LucideIcon
@@ -32,8 +33,8 @@ const SafetyFeature = ({
 
 export default function SafetyAlways() {
   return (
-    <section className="py-12 sm:py-20 bg-gradient-to-b from-[#001529] to-[#002a4e] ">
-      <div className="container mx-auto px-4 overflow-x-hidden">
+    <section className="py-12 sm:py-20 bg-gradient-to-b from-[#001529] to-[#002a4e] w-full overflow-x-hidden">
+      <div className="container mx-auto px-4 ">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -84,16 +85,18 @@ export default function SafetyAlways() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ margin: "-100px" }}
             transition={{ duration: 0.6 }}
-            className="w-full lg:w-1/2 lg:pl-6 sm:lg:pl-10 overflow-hidden"
+            className="w-full lg:w-1/2 lg:pl-6 sm:lg:pl-10 "
           >
             <div className="relative w-full h-[300px] sm:h-[500px] rounded-xl shadow-2xl overflow-hidden">
               <img
                 src="https://www.investopedia.com/thmb/ebMYfMg-5jCEaACcn269MXVhy5w=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/GettyImages-12188964601-e7f4258f37c946b8af0b6c625b95202d.jpg"
                 alt="Mechanic working safely"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover " 
+      
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-center pb-4 sm:pb-8">
                 <p className="text-white text-xl sm:text-2xl font-semibold px-4 text-center">
