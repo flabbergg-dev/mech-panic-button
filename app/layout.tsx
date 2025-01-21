@@ -2,6 +2,8 @@ import { ThemeProvider } from "next-themes";
 import localFont from "next/font/local"
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import { PwaInstall } from "@/components/PwaInstall";
+import { PushNotificationButton } from "@/components/PushNotificationButton";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -11,12 +13,18 @@ export const metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Mech-Panic Button",
   description: "Request assistance from a mechanic with the push of a button.",
-
-    openGraph: {
-      title: 'Mech-Panic Button',
-      description: 'The Mech-Panic Button is a simple tool to request on-demand and scheduled support from the best mechanics  in your area.',
-      images: ['/og-image.jpg'],
-    },
+  manifest: '/manifest.json',
+  themeColor: '#8E0801',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Mech-Panic',
+  },
+  openGraph: {
+    title: 'Mech-Panic Button',
+    description: 'The Mech-Panic Button is a simple tool to request on-demand and scheduled support from the best mechanics  in your area.',
+    images: ['/og-image.jpg'],
+  },
 };
 
 const robotoRegular = localFont({
@@ -34,7 +42,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${robotoRegular.variable} ${michromaSans.variable} font-roboto-regular overflow-x-hidden`}suppressHydrationWarning>
+    <html lang="en" className={`${robotoRegular.variable} ${michromaSans.variable} font-roboto-regular overflow-x-hidden`} suppressHydrationWarning>
+      <head>
+        <meta name="application-name" content="Mech-Panic" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Mech-Panic" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#8E0801" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+      </head>
       <ClerkProvider
         appearance={{
           variables: { colorPrimary: "#8E0801" },
@@ -55,18 +73,20 @@ export default function RootLayout({
           },
         }}
       >
-      <body className="bg-background text-foreground overflow-x-hidden">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <main className="min-h-screen w-full flex flex-col items-center">
-           {children}
-          </main>
-        </ThemeProvider>
-      </body>
+        <body className="bg-background text-foreground overflow-x-hidden">
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <main className="min-h-screen w-full flex flex-col items-center">
+              {children}
+              <PwaInstall />
+              <PushNotificationButton />
+            </main>
+          </ThemeProvider>
+        </body>
       </ClerkProvider>
     </html>
   );

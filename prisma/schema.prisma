@@ -33,6 +33,7 @@ model User {
   reviews                  Review[]
   serviceRequests          ServiceRequest[]
   Vehicle                  Vehicle[]
+  pushSubscriptions        PushSubscription[]
 }
 
 model Mechanic {
@@ -135,6 +136,16 @@ model Lead {
   createdAt   DateTime  @default(now())
   responded   Boolean   @default(false)
   respondedAt DateTime?
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 enum UserRole {
