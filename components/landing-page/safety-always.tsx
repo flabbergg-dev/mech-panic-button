@@ -5,6 +5,7 @@ import { Button } from "../ui/button"
 import { ArrowBigRight, LucideIcon, MapPin, Shield, Star } from "lucide-react"
 import { motion } from "framer-motion"
 import Image from "next/image"
+import { PwaInstall } from "../PwaInstall"
 
 type SafetyFeatureProps = {
   icon: LucideIcon
@@ -70,18 +71,17 @@ export default function SafetyAlways() {
                 description="Service where and when you need it"
               />
             </div>
-            <Button
-              size="lg"
+            <PwaInstall
+              title="Request Assistance"
               className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 bg-primary text-white flex items-center justify-center space-x-2"
             >
-              <span>Request Assistance</span>
               <motion.div
                 animate={{ x: [0, 5, 0] }}
                 transition={{ repeat: Infinity, duration: 1 }}
               >
                 <ArrowBigRight />
               </motion.div>
-            </Button>
+            </PwaInstall>
           </motion.div>
 
           <motion.div

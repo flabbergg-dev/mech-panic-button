@@ -4,6 +4,7 @@ import React from "react"
 import { ArrowRight, Calendar, LucideIcon, MapPin, Wrench } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "../ui/button"
+import { PwaInstall } from "../PwaInstall"
 
 interface FeatureCardProps {
   icon: LucideIcon
@@ -43,11 +44,13 @@ export default function BookingInfo() {
               <FeatureItem icon={Wrench} text="Pick service" />
             </div>
             <Button
-              size="lg"
-              className="w-full md:w-auto text-base md:text-lg px-6 py-3 rounded-full shadow-lg"
-            >
-              <span>Request Mechanic</span>
+              variant="ghost"
+              asChild
+            ><div className="flex items-center">
+              <PwaInstall title="Request Mechanic" >
               <ArrowRight className="w-4 h-4 ml-2" />
+              </PwaInstall>
+            </div>
             </Button>
           </motion.div>
 

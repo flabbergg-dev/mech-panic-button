@@ -1,4 +1,5 @@
-// import { DashboardLayout } from "components/layouts/DashboardLayout"
+
+import { DashboardLayout } from "@/components/layouts/dashboard.layout"
 
 export default async function Layout({
   children,
@@ -7,9 +8,9 @@ export default async function Layout({
 }) {
   return (
     <div>
-      {/* <DashboardLayout> */}
+      <DashboardLayout>
         {children}
-        {/* </DashboardLayout> */}
+        </DashboardLayout>
     </div>
   )
 }

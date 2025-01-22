@@ -2,28 +2,37 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { usePathname } from 'next/navigation';
 
 let deferredPrompt: any;
 
-export function PwaInstall() {
+interface PwaInstallProps {
+  title: string;
+  className?: string;
+  children?: React.ReactNode;
+}
+
+export function PwaInstall(props: PwaInstallProps) {
   const [installable, setInstallable] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
-      // Stash the event so it can be triggered later
       deferredPrompt = e;
-      // Show the install button
       setInstallable(true);
     });
 
     window.addEventListener('appinstalled', () => {
-      // Clear the deferredPrompt so it can be garbage collected
       deferredPrompt = null;
-      // Hide the install button
       setInstallable(false);
-      console.log('PWA was installed');
+      toast({
+        title: 'Successfully installed',
+        description: 'You can use this app offline',
+        className: 'bg-green-500 text-white',
+      });
     });
   }, []);
 
@@ -31,28 +40,46 @@ export function PwaInstall() {
     if (!deferredPrompt) {
       return;
     }
-    // Show the install prompt
     deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
-    // Optionally, send analytics event with outcome of user choice
     console.log(`User response to the install prompt: ${outcome}`);
-    // We've used the prompt, and can't use it again, discard it
     deferredPrompt = null;
-    // Hide the install button
     setInstallable(false);
   };
 
   if (!installable) {
-    return null;
+    return (
+      <Button
+        onClick={() => {
+          if (!installable) {
+          toast({
+            title: 'Installation not available',
+            description: 'To install this app, you must use a supported browser like Safari, Edge, or Chrome.',
+            variant: 'destructive',
+          })
+            
+            return;
+          } else {
+            handleInstallClick();
+          }
+        }}
+        className={cn("z-50", props.className)}
+      >
+        {props.title}
+        {props.children ? props.children : null}
+      </Button>
+    )
   }
+
+
 
   return (
     <Button
       onClick={handleInstallClick}
-      className="fixed bottom-4 right-4 z-50"
+      className={cn("z-50", props.className)}
     >
-      Install App
+      {props.title}
+      {props.children ? props.children : null}
     </Button>
   );
 }

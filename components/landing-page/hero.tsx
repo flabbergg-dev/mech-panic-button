@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "../ui/button"
+import { PwaInstall } from "../PwaInstall"
 
 export default function Header() {
   const [isVisible, setIsVisible] = useState(false)
@@ -39,12 +40,11 @@ export default function Header() {
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto text-lg px-8 py-6 rounded-full bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-              >
-                Get Started - It's Free
-              </Button>
+           
+              <PwaInstall title="Get Started - It's Free" className="w-full sm:w-auto text-lg px-8 py-6 rounded-full bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 "/>
+
+                
+              
               <Button
                 variant="outline"
                 size="lg"

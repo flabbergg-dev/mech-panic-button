@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '@/utils/pushNotifications';
 import { useUser } from '@clerk/nextjs';
+import { Bell, BellOff } from 'lucide-react';
 
 export function PushNotificationButton() {
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -49,10 +50,10 @@ export function PushNotificationButton() {
   return (
     <Button
       onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
-      variant="outline"
-      className="fixed bottom-4 right-4 z-50"
+      variant="ghost"
+      className="fixed top-4 right-4 z-50 rounded-full p-2 shadow group hover:bg-card/10"
     >
-      {isSubscribed ? 'Disable Notifications' : 'Enable Notifications'}
+      {isSubscribed ? <BellOff className="h-4 w-4 group-hover:text-red-500 group-hover:animate-bounce ease-in-out" /> : <Bell className="h-4 w-4 group-hover:text-green-500 group-hover:animate-bounce ease-in-out " />}
     </Button>
   );
 }

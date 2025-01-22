@@ -7,7 +7,7 @@ import { useAuth } from "@clerk/nextjs"
 
 import { AnimatePresence, motion } from "framer-motion"
 import Logo from "../icons/logo"
-import { NavLinks } from "./navlinks"
+import { NavLinks } from "../navigation/navlinks"
 import { Button } from "../ui/button"
 import { ThemeSwitcher } from "../theme-switcher"
 import { MenuIcon } from "../icons/menu-icon"

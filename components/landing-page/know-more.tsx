@@ -4,6 +4,7 @@ import React from "react"
 import { Car, Clock, LucideIcon, Shield, Wrench } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "../ui/button"
+import { PwaInstall } from "../PwaInstall"
 
 interface FeatureCardProps {
   icon: LucideIcon
@@ -77,12 +78,8 @@ export default function KnowMore() {
                 24/7 availability for emergencies
               </li>
             </ul>
-            <Button
-              size="lg"
-              className="text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-            >
-              Book Your Mechanic Now
-            </Button>
+          <PwaInstall title="Book Your Mechanic Now" className="text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105
+" />
           </div>
         </div>
       </div>

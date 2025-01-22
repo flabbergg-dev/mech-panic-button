@@ -2,8 +2,7 @@ import { ThemeProvider } from "next-themes";
 import localFont from "next/font/local"
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import { PwaInstall } from "@/components/PwaInstall";
-import { PushNotificationButton } from "@/components/PushNotificationButton";
+import { Toaster } from "@/components/ui/toaster";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -80,12 +79,13 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <Toaster />
             <main className="min-h-screen w-full flex flex-col items-center">
               {children}
-              <PwaInstall />
-              <PushNotificationButton />
             </main>
+          
           </ThemeProvider>
+          
         </body>
       </ClerkProvider>
     </html>

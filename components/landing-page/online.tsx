@@ -4,6 +4,7 @@ import React from "react"
 import { Clock, LucideIcon, MessageCircle } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "../ui/button"
+import { PwaInstall } from "../PwaInstall"
 
 interface FeatureCardProps {
   icon: LucideIcon
@@ -58,12 +59,10 @@ export default function Online() {
                 description="Get quick responses through our in-app chat feature."
               />
             </div>
-            <Button
-              size="lg"
+            <PwaInstall
+            title="Download Mech-Panic Button"
               className="text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 bg-[#001529] text-white"
-            >
-              Download Mech-Panic Button
-            </Button>
+            />
           </motion.div>
 
           <motion.div
