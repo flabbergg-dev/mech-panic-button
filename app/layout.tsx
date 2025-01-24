@@ -72,7 +72,8 @@ export default function RootLayout({
             membersPageInviteButton:
               "bg-black border border-black border-solid hover:bg-white hover:text-black",
             card: "bg-background ",
-            logoImage: "size-[184px] object-contain pb-8"
+            logoImage: "size-[184px] object-contain pb-8",
+            otpCodeFieldInput: "bg-foreground text-text",
 
           },
         }}
