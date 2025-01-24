@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { SignIn, useUser } from "@clerk/nextjs"
+import { Loader } from "@/components/loader"
 
 export default function SignInPage() {
   const { isLoaded, user } = useUser()
@@ -16,16 +17,7 @@ export default function SignInPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="relative inline-block h-24 w-24">
-            <div className="absolute h-full w-full animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-          </div>
-          <p className="mt-4 text-muted-foreground">
-            Checking authentication...
-          </p>
-        </div>
-      </div>
+      <Loader title="Checking authentication..."/>
     )
   }
 

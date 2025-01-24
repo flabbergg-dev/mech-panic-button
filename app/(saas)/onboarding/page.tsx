@@ -1,87 +1,128 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { onboardUserAction } from "@/app/actions/onboard-user.action"
+import { checkUserRoleAction } from "@/app/actions/check-user-role.action"
+import { MechanicDocuments } from "@/components/onboarding/mechanic-documents"
+import { useToast } from "@/hooks/use-toast"
 
 export default function OnboardingPage() {
-  const { user, isLoaded } = useUser()
+  const { user } = useUser()
   const router = useRouter()
+  const { toast } = useToast()
+  const [selectedRole, setSelectedRole] = useState<"Customer" | "Mechanic" | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
-    email: user?.primaryEmailAddress?.emailAddress || "",
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
+    firstName: "",
+    lastName: "",
+    email: "",
   })
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  const handleRoleSelection = async (role: "Customer" | "Mechanic") => {
-    if (!user || isSubmitting) return
-    
-    if (!formData.email || !formData.firstName || !formData.lastName) {
-      alert("Please fill in all required fields")
-      return
+  
+  // verify if the user is already a customer or mechanic
+  useEffect(() => {
+    const checkRole = async () => {
+      const role = await checkUserRoleAction()
+      if (role) {
+        router.push('/dashboard')
+      }
     }
     
-    setIsSubmitting(true)
-    try {
-      const response = await fetch("/api/user/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          role,
-          ...formData
-        }),
+    if (user) {
+      checkRole()
+    }
+  }, [user, router])
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.emailAddresses[0]?.emailAddress || "",
       })
+    }
+  }, [user])
 
-      if (!response.ok) {
-        throw new Error("Failed to create user")
+  const handleRoleSelection = async (role: "Customer" | "Mechanic") => {
+    if (isSubmitting) return
+
+    // Check if formData is fully populated
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields before submitting.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    console.log("Submitting form with data:", formData);
+
+    try {
+      setIsSubmitting(true)
+      setSelectedRole(role)
+
+      if (role === "Customer") {
+        const result = await onboardUserAction({
+          ...formData,
+          role,
+        })
+
+        if (result.redirect) {
+          router.push(result.redirect)
+          return
+        }
+
+        if (!result.success) {
+          throw new Error(result.error)
+        }
+
+        router.push("/dashboard")
       }
-
-      // Wait a moment for the role to be properly set
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Redirect to the appropriate dashboard
-      router.push(role === "Mechanic" ? `/dashboard/mechanic/${user.id}` : `/dashboard/customer/${user.id}`)
+      // For mechanics, just show the document upload form
+      // User will be created when documents are submitted
     } catch (error) {
-      console.error("Error creating user:", error)
-      alert("Failed to create user. Please try again.")
+      console.error("Error onboarding user:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create user",
+        variant: "destructive",
+      })
+      setSelectedRole(null)
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  // If mechanic role is selected, show document upload form
+  if (selectedRole === "Mechanic") {
+    return <MechanicDocuments formData={formData} />
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome to Mech-Panic</h1>
-          <p className="mt-2 text-gray-600">Please complete your profile</p>
+    <div className="container max-w-2xl mx-auto py-8">
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">Complete Your Profile</h1>
+          <p className="text-muted-foreground">
+            Please provide your information to get started
+          </p>
         </div>
 
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          
           <div>
             <Label htmlFor="firstName">First Name</Label>
             <Input
@@ -92,7 +133,7 @@ export default function OnboardingPage() {
               required
             />
           </div>
-          
+
           <div>
             <Label htmlFor="lastName">Last Name</Label>
             <Input
@@ -104,24 +145,55 @@ export default function OnboardingPage() {
             />
           </div>
 
-          <div className="space-y-4 pt-4">
-            <h2 className="text-xl font-semibold text-center">I am a...</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                onClick={() => handleRoleSelection("Customer")}
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                Customer
-              </Button>
-              <Button
-                onClick={() => handleRoleSelection("Mechanic")}
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                Mechanic
-              </Button>
-            </div>
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              readOnly
+            />
+          </div>
+
+          <div>
+            <Label>I am a...</Label>
+            <RadioGroup
+              defaultValue={selectedRole || undefined}
+              onValueChange={(value) => handleRoleSelection(value as "Customer" | "Mechanic")}
+              className="grid grid-cols-2 gap-4 mt-2"
+              disabled={isSubmitting}
+            >
+              <div>
+                <RadioGroupItem
+                  value="Customer"
+                  id="customer"
+                  className="peer sr-only"
+                />
+                <Label
+                  htmlFor="customer"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4  hover:bg-primary hover:text-primary-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                >
+                  <span>Customer</span>
+                </Label>
+              </div>
+
+              <div>
+                <RadioGroupItem
+                  value="Mechanic"
+                  id="mechanic"
+                  className="peer sr-only"
+                />
+                <Label
+                  htmlFor="mechanic"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-primary hover:text-primary-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                >
+                  <span>Mechanic</span>
+                </Label>
+              </div>
+            </RadioGroup>
           </div>
         </div>
       </div>

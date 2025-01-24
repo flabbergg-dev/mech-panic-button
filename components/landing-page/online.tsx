@@ -40,10 +40,10 @@ export default function Online() {
             className="lg:w-1/2 mb-10 lg:mb-0"
           >
             <h2 className="text-4xl font-bold text-[#001529] mb-6">
-              24/7 Online Support
+              24/7 On-Demand Mechanics & Roadside Assistance
             </h2>
             <p className="text-xl text-[#001529] mb-8">
-              Our dedicated team of mechanics is ready to assist you anytime,
+              Our dedicated team of mechanics are ready to assist you anytime,
               day or night. Whether you need urgent help or want to schedule a
               future appointment, we&apos;re here for you.
             </p>

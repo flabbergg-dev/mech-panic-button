@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { Clock, LucideIcon, MapPin, Shield, Zap } from "lucide-react"
 import { motion } from "framer-motion"
 
@@ -36,6 +36,20 @@ const FeatureItem = ({
 )
 
 export default function CompleteExperience() {
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0)
+  const images = [
+    { src: "/maps.jpg", alt: "Service Area Map" },
+    { src: "/maps_usa_east.jpg", alt: "Service Area Map East" },
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev === 0 ? 1 : 0))
+    }, 5000)
+
+    return () => clearInterval(timer)
+  }, [])
+
   return (
     <section className="py-20 bg-gradient-to-br from-[#DEDCEA] to-[#F0EFF7] w-full">
       <div className="container mx-auto px-4">
@@ -83,24 +97,25 @@ export default function CompleteExperience() {
         >
           <div className="h-1 w-full bg-gradient-to-r from-primary via-blue-500 to-green-500"></div>
           <div className="relative h-[600px]">
-            {/* TODO - Add the correct image path */}
-            <img
-              src="/maps.png"
-              alt="Service Area Map"
-              className="w-full h-full object-cover"
-            />
+            <motion.div
+              className="w-full h-full"
+              key={currentImageIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            >
+              <img
+                src={images[currentImageIndex].src}
+                alt={images[currentImageIndex].alt}
+                className="w-full h-full object-cover"
+              />
+            </motion.div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-8">
               <p className="text-white text-2xl font-semibold">
                 Our Extensive Service Coverage
               </p>
             </div>
-            <motion.div
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-            >
-              <MapPin className="w-12 h-12 text-primary" />
-            </motion.div>
+           
           </div>
         </motion.div>
       </div>

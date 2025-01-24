@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "../ui/button"
 import { PwaInstall } from "../PwaInstall"
+import Link from "next/link"
 
 export default function Header() {
   const [isVisible, setIsVisible] = useState(false)
@@ -49,8 +50,11 @@ export default function Header() {
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto text-lg px-8 py-6 rounded-full shadow-md hover:shadow-lg transition-all duration-300"
-              >
+                asChild
+                >
+                  <Link href="/#how-it-works" >
                 See How It Works
+                  </Link>
               </Button>
             </div>
 

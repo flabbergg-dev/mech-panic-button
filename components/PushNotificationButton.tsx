@@ -5,8 +5,9 @@ import { Button } from './ui/button';
 import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '@/utils/pushNotifications';
 import { useUser } from '@clerk/nextjs';
 import { Bell, BellOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export function PushNotificationButton() {
+export function PushNotificationButton({ className }: { className?: string }) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const { isSignedIn } = useUser();
@@ -51,7 +52,7 @@ export function PushNotificationButton() {
     <Button
       onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
       variant="ghost"
-      className="fixed top-4 right-4 z-50 rounded-full p-2 shadow group hover:bg-card/10"
+      className={cn("z-50 rounded-full p-2 shadow group hover:bg-card/10", className)}
     >
       {isSubscribed ? <BellOff className="h-4 w-4 group-hover:text-red-500 group-hover:animate-bounce ease-in-out" /> : <Bell className="h-4 w-4 group-hover:text-green-500 group-hover:animate-bounce ease-in-out " />}
     </Button>

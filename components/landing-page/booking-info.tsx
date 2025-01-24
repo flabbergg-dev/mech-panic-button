@@ -62,13 +62,15 @@ export default function BookingInfo() {
           >
             <div className="relative w-full h-[300px] md:h-[400px]">
               <img
-                src="/maps.png"
+                src="/maps.jpg"
                 alt="Service area map"
                 className="rounded-xl shadow-2xl w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-xl flex items-end justify-center pb-4 md:pb-8">
-                <p className="text-white text-xl md:text-2xl font-semibold">
-                  Our Service Area
+                <p className="text-white text-xl md:text-2xl font-semibold text-center">
+                  We Cover All Areas
+                  <br />
+                  Including USA
                 </p>
               </div>
             </div>

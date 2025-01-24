@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
+import { Separator } from './ui/separator';
 
 let deferredPrompt: any;
 
@@ -30,7 +31,7 @@ export function PwaInstall(props: PwaInstallProps) {
       setInstallable(false);
       toast({
         title: 'Successfully installed',
-        description: 'You can use this app offline',
+        description: 'You can use this app from your home screen',
         className: 'bg-green-500 text-white',
       });
     });
@@ -54,8 +55,17 @@ export function PwaInstall(props: PwaInstallProps) {
           if (!installable) {
           toast({
             title: 'Installation not available',
-            description: 'To install this app, you must use a supported browser like Safari, Edge, or Chrome.',
-            variant: 'destructive',
+            description: (
+              <div>
+                To install this app, you must use a supported browser like Edge, or Chrome. 
+                <Separator />
+                <br/>
+                If you're in an iPhone, use the add to home screen option.
+                <br/>
+                <a href="/installpwa" className="underline bg-white text-primary hover:text-blue-400">... or click here to see how to install it on any device</a>
+              </div>
+            ),
+            className: 'bg-red-500 text-white',
           })
             
             return;

@@ -1,4 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
 import { NextResponse } from "next/server"
 
 // Define protected routes that require authentication
@@ -7,7 +7,7 @@ const isProtectedRoute = createRouteMatcher([
   '/onboarding(.*)',
   '/api/mechanic/(.*)',
   '/api/service/(.*)',
-  '/api/user/create(.*)'  // Protect other user endpoints except role
+  '/api/user/create(.*)'
 ])
 
 // Define public routes that don't require authentication
@@ -17,69 +17,71 @@ const isPublicRoute = createRouteMatcher([
   '/contact',
   '/privacy-policy',
   '/terms-of-use',
-  '/api/webhook/(.*)',  // Webhooks are public
-  '/api/user/role'  // Make role endpoint public
+  '/api/webhook/(.*)'
 ])
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId, redirectToSignIn } = await auth()
+  const { userId, redirectToSignIn } = await auth() as { userId: string | null; redirectToSignIn: Function }
+  
+  if (isPublicRoute(req)) {
+    return NextResponse.next()
+  }
+
+  const path = req.nextUrl.pathname
+  console.log('Middleware - Path:', path)
+  console.log('Middleware - User ID:', userId)
   
   // If it's a protected route and user is not authenticated, redirect to sign in
   if (isProtectedRoute(req) && !userId) {
+    console.log('Middleware - Redirecting to sign in')
     return redirectToSignIn({ returnBackUrl: req.url })
   }
 
   // Handle protected routes and dashboard redirection for authenticated users
   if (userId && isProtectedRoute(req)) {
     try {
-      // Get user role from our API endpoint
-      const baseUrl = new URL(req.url).origin
-      const roleResponse = await fetch(`${baseUrl}/api/user/role`, {
-        headers: {
-          'Accept': 'application/json'
-        },
-        credentials: 'include'
+      // Get user directly from Clerk
+      const clerk = await clerkClient()
+      const user = await clerk.users.getUser(userId)
+      const role = user.publicMetadata.role as string | undefined
+      
+      console.log('Middleware - User Role:', role)
+      console.log('Middleware - Full Metadata:', user.publicMetadata)
+
+      // If no role is set and not on onboarding page, redirect to onboarding
+      if (!role && !path.includes('/onboarding')) {
+        console.log('Middleware - No role, redirecting to onboarding')
+        return NextResponse.redirect(new URL('/onboarding', req.url))
+      }
+
+      // If role is set and on onboarding page, redirect to dashboard
+      if (role && path.includes('/onboarding')) {
+        console.log('Middleware - Has role, redirecting from onboarding to dashboard')
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+
+      // Check dashboard access based on role
+      const isMechanicPath = path.includes('/mechanic')
+      const isCustomerPath = path.includes('/customer')
+
+      console.log('Middleware - Path checks:', {
+        isMechanicPath,
+        isCustomerPath,
+        currentRole: role
       })
 
-      if (!roleResponse.ok) {
-        console.error(`API request failed with status ${roleResponse.status}`)
-        return NextResponse.next()
-      }
-
-      const responseText = await roleResponse.text()
-      let role
-      try {
-        const data = JSON.parse(responseText)
-        role = data.role
-      } catch (error) {
-        console.error('Error parsing role response:', error, 'Response text:', responseText)
-        return NextResponse.next()
-      }
-
-      // If user has no role, redirect to onboarding unless they're already there
-      if (!role) {
-        const path = new URL(req.url).pathname
-        if (path !== '/onboarding') {
-          return NextResponse.redirect(new URL('/onboarding', req.url))
-        }
-        return NextResponse.next()
-      }
-
-      const path = req.nextUrl.pathname
-
-      // Check if trying to access role-specific routes
-      const isMechanicRoute = path.includes('/mechanic') || path.includes('mechanic')
-      const isCustomerRoute = path.includes('/customer') || path.includes('customer')
-
-      // Prevent role crossover access for all routes
-      if (role === 'Mechanic' && isCustomerRoute && !path.startsWith('/api')) {
-        return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
-      }
-      if (role === 'Customer' && isMechanicRoute && !path.startsWith('/api')) {
+      // Strict role-based access control
+      if (role === 'Customer' && isMechanicPath) {
+        console.log('Middleware - Customer attempting to access mechanic path')
         return NextResponse.redirect(new URL(`/dashboard/customer/${userId}`, req.url))
       }
 
-      // Handle specific dashboard route redirection based on role
+      if (role === 'Mechanic' && isCustomerPath) {
+        console.log('Middleware - Mechanic attempting to access customer path')
+        return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
+      }
+
+      // Handle root dashboard redirection
       if (path === '/dashboard') {
         if (role === 'Mechanic') {
           return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
@@ -88,22 +90,19 @@ export default clerkMiddleware(async (auth, req) => {
         }
       }
 
-      // Check if trying to access dashboard routes
-      const isMechanicDashboard = path.startsWith('/dashboard/mechanic/')
-      const isCustomerDashboard = path.startsWith('/dashboard/customer/')
-
       // Ensure users can only access their own dashboard
-      const urlParts = path.split('/')
-      const dashboardUserId = urlParts[urlParts.length - 1]
-      
-      if ((isMechanicDashboard || isCustomerDashboard) && dashboardUserId !== userId) {
-        // Redirect to their own dashboard if trying to access another user's dashboard
-        return NextResponse.redirect(new URL(`/dashboard/${role.toLowerCase()}/${userId}`, req.url))
+      if (path.startsWith('/dashboard/')) {
+        const urlParts = path.split('/')
+        const dashboardUserId = urlParts[urlParts.length - 1]
+        
+        if (dashboardUserId !== userId) {
+          console.log('Middleware - User attempting to access another users dashboard')
+          return NextResponse.redirect(new URL(`/dashboard/${role}/${userId}`, req.url))
+        }
       }
+
     } catch (error) {
       console.error('Error in middleware:', error)
-      // In case of error accessing the API, allow the request to continue
-      // The page's server-side logic can handle any necessary error states
       return NextResponse.next()
     }
   }

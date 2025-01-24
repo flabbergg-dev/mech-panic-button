@@ -1,8 +1,5 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
 import {
   HistoryIcon,
   HomeIcon,
@@ -10,37 +7,56 @@ import {
   SettingsIcon,
   UserIcon,
 } from "lucide-react"
-import { MECHANIC_ROUTES } from "@/lib/routes/mechanic.routes"
 import { cn } from "@/lib/utils"
 
 type UserRole = "Mechanic" | "Customer"
 
-export const BottomNavigation = () => {
-  const { user } = useUser()
-  const pathname = usePathname()
-  const userRole : UserRole = pathname.includes("mechanic") ? "Mechanic" : "Customer" as UserRole
+interface BottomNavigationProps {
+  activeTab: string
+  onTabChange: (tab: string) => void
+  userRole?: UserRole
+}
+
+export const BottomNavigation = ({ 
+  activeTab, 
+  onTabChange,
+  userRole = "Mechanic" 
+}: BottomNavigationProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 max-w-md mx-auto rounded-t-3xl">
       <div className="flex justify-around items-center h-16 max-w-md mx-auto px-4">
-        <NavItem href={MECHANIC_ROUTES.DASHBOARD} icon={<HomeIcon />} />
+        <NavItem 
+          id="home"
+          icon={<HomeIcon />} 
+          isActive={activeTab === "home"}
+          onClick={() => onTabChange("home")}
+        />
 
         {userRole === "Customer" && (
           <NavItem
-            href={MECHANIC_ROUTES.MAP(user?.id || "")}
+            id="map"
             icon={<PinIcon />}
+            isActive={activeTab === "map"}
+            onClick={() => onTabChange("map")}
           />
         )}
         <NavItem
-          href={MECHANIC_ROUTES.SERVICE_HISTORY(user?.id || "")}
+          id="history"
           icon={<HistoryIcon />}
+          isActive={activeTab === "history"}
+          onClick={() => onTabChange("history")}
         />
         <NavItem
-          href={MECHANIC_ROUTES.PROFILE(user?.id || "")}
+          id="profile"
           icon={<UserIcon />}
+          isActive={activeTab === "profile"}
+          onClick={() => onTabChange("profile")}
         />
         <NavItem
-          href={MECHANIC_ROUTES.SETTINGS(user?.id || "")}
+          id="settings"
           icon={<SettingsIcon />}
+          isActive={activeTab === "settings"}
+          onClick={() => onTabChange("settings")}
         />
       </div>
     </nav>
@@ -48,22 +64,22 @@ export const BottomNavigation = () => {
 }
 
 interface NavItemProps {
-  href: string
+  id: string
   icon: React.ReactNode
+  isActive: boolean
+  onClick: () => void
 }
 
-const NavItem = ({ href, icon }: NavItemProps) => {
-  const isActive = usePathname() === href
-
+const NavItem = ({ id, icon, isActive, onClick }: NavItemProps) => {
   return (
-    <Link
-      href={href}
+    <button
+      onClick={onClick}
       className={cn(
         "flex items-center justify-center w-12 h-12 rounded-full",
         isActive ? "text-red-600" : "text-gray-500"
       )}
     >
       {icon}
-    </Link>
+    </button>
   )
 }
