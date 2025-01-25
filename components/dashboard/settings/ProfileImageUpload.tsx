@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { updateProfileImageAction } from "@/app/actions/update-profile-image.action"
+import { updateProfileImageAction } from "@/app/actions/user/update-profile-image.action"
 
 export function ProfileImageUpload({ currentImage, userId }: { currentImage?: string; userId: string }) {
   const [isUploading, setIsUploading] = useState(false)

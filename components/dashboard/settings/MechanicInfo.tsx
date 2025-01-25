@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { UpdateMechanicDTO, updateMechanicProfileSchema } from "@/lib/domain/dtos/user.dto"
-import { updateUserProfileAction } from "@/app/actions/update-user-profile.action"
+import { updateUserProfileAction } from "@/app/actions/user/update-user-profile.action"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"

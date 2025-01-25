@@ -7,8 +7,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { onboardUserAction } from "@/app/actions/onboard-user.action"
-import { updateMechanicDocumentsAction } from "@/app/actions/update-mechanic-documents.action"
+import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
+import { updateMechanicDocumentsAction } from "@/app/actions/mechanic/update-mechanic-documents.action"
 
 interface MechanicDocumentsProps {
   formData: {

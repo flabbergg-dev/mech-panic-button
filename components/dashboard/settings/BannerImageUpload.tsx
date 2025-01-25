@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
-import { updateMechanicBannerAction } from "@/app/actions/update-mechanic-banner.action"
+import { updateMechanicBannerAction } from "@/app/actions/mechanic/update-mechanic-banner.action"
 
 export function BannerImageUpload({ currentImage, userId }: { currentImage?: string; userId: string }) {
   const [isUploading, setIsUploading] = useState(false)

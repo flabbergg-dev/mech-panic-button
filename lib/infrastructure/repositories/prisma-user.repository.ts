@@ -1,4 +1,3 @@
-import { PrismaClient, UserRole, SubscriptionPlan, SubscriptionStatus } from "@prisma/client"
 import { createClient } from "@supabase/supabase-js"
 import {
   UpdateUserDTO,

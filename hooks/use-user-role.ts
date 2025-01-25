@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
-import { getUserRole } from "@/app/actions/get-user-role.action"
+import { getUserRole } from "@/app/actions/user/get-user-role.action"
 
 type UserRole = "Mechanic" | "Customer" | null
 

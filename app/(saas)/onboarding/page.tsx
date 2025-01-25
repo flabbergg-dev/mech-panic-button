@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { onboardUserAction } from "@/app/actions/onboard-user.action"
-import { checkUserRoleAction } from "@/app/actions/check-user-role.action"
+import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
+import { checkUserRoleAction } from "@/app/actions/user/check-user-role.action"
 import { MechanicDocuments } from "@/components/onboarding/mechanic-documents"
 import { useToast } from "@/hooks/use-toast"
 
@@ -56,7 +56,7 @@ export default function OnboardingPage() {
       toast({
         title: "Error",
         description: "Please fill in all fields before submitting.",
-        variant: "destructive",
+        className: "bg-red-500 text-white",
       })
       return
     }
