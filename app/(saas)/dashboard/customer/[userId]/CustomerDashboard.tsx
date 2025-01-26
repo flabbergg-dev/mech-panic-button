@@ -22,7 +22,7 @@ export default function CustomerDashboard() {
         }
 
         const data = await response.json()
-        
+
         // If no role, redirect to onboarding
         if (!data.role) {
           router.push("/onboarding")
