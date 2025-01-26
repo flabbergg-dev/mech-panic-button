@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { useUser } from "@clerk/nextjs"
-import { MechanicHome } from "@/components/dashboard/MechanicHome"
-import { MechanicProfile } from "@/components/dashboard/MechanicProfile"
+import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicHome"
+import { MechanicProfile } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
-import MechanicSettings from "@/components/dashboard/MechanicSettings"
+import MechanicSettings from "@/components/dashboard/MechanicDashboard/MechanicSettings"
 
 
 export const MechanicDashboard = () => {

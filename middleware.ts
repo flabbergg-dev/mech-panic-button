@@ -21,7 +21,7 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   const { userId, redirectToSignIn } = await auth() as { userId: string | null; redirectToSignIn: Function }
-  
+
   if (isPublicRoute(req)) {
     return NextResponse.next()
   }
@@ -29,7 +29,7 @@ export default clerkMiddleware(async (auth, req) => {
   const path = req.nextUrl.pathname
   console.log('Middleware - Path:', path)
   console.log('Middleware - User ID:', userId)
-  
+
   // If it's a protected route and user is not authenticated, redirect to sign in
   if (isProtectedRoute(req) && !userId) {
     console.log('Middleware - Redirecting to sign in')
@@ -43,7 +43,7 @@ export default clerkMiddleware(async (auth, req) => {
       const clerk = await clerkClient()
       const user = await clerk.users.getUser(userId)
       const role = user.publicMetadata.role as string | undefined
-      
+
       console.log('Middleware - User Role:', role)
       console.log('Middleware - Full Metadata:', user.publicMetadata)
 

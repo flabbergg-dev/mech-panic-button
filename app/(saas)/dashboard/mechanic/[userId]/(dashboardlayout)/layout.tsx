@@ -10,7 +10,7 @@ export default async function Layout({
     <div>
       <DashboardLayout>
         {children}
-        </DashboardLayout>
+      </DashboardLayout>
     </div>
   )
 }

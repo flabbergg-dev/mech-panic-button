@@ -80,8 +80,7 @@ interface NavItemProps {
 
 const NavItem = ({ id, pathname, icon, isActive, onClick }: NavItemProps) => {
   return (
-    <Link
-      href={`${pathname}/${id}`}
+    <button
       onClick={onClick}
       className={cn(
         "flex items-center justify-center w-12 h-12 rounded-full",
@@ -89,6 +88,6 @@ const NavItem = ({ id, pathname, icon, isActive, onClick }: NavItemProps) => {
       )}
     >
       {icon}
-    </Link>
+    </button>
   )
 }
