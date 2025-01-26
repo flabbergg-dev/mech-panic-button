@@ -1,6 +1,4 @@
 import { ReactNode } from "react"
-import { BottomNavigation } from "../navigation/bottom.navigation"
-import { PushNotificationButton } from "../PushNotificationButton"
 
 interface DashboardLayoutProps {
   children: ReactNode

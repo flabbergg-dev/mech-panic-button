@@ -36,11 +36,16 @@ export async function POST(request: NextRequest) {
 
       for (const url of oldFiles) {
         if (url) {
-          const oldPath = new URL(url).pathname.split('/').pop()
-          if (oldPath) {
-            await supabase.storage
-              .from("documents")
-              .remove([`${userId}/${oldPath}`])
+          try {
+            // Extract just the path part from the stored location
+            const oldPath = url.split('documents/')[1]
+            if (oldPath) {
+              await supabase.storage
+                .from("documents")
+                .remove([oldPath])
+            }
+          } catch (error) {
+            console.error("Error deleting old file:", error)
           }
         }
       }
@@ -61,22 +66,33 @@ export async function POST(request: NextRequest) {
           upsert: true
         })
 
-      if (error) throw error
+      if (error) {
+        console.error(`Error uploading ${prefix}:`, error)
+        throw error
+      }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("documents")
-        .getPublicUrl(data.path)
-
-      return publicUrl
+      // Return the storage path instead of public URL
+      return `documents/${filePath}`
     }
 
-    const [driversLicenseUrl, merchantDocumentUrl] = await Promise.all([
+    // Upload both documents
+    const [driversLicenseId, merchantDocumentUrl] = await Promise.all([
       uploadFile(driversLicense, "drivers-license"),
       uploadFile(merchantDocument, "merchant-doc")
     ])
 
+    // Update mechanic profile with new document paths
+    await prisma.mechanic.update({
+      where: { userId },
+      data: {
+        driversLicenseId,
+        merchantDocumentUrl
+      }
+    })
+
     return NextResponse.json({
-      driversLicenseUrl,
+      success: true,
+      driversLicenseId,
       merchantDocumentUrl
     })
   } catch (error) {

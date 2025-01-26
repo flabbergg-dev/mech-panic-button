@@ -169,15 +169,26 @@ export class PrismaUserRepository implements IUserRepository {
         {}
 
       // Update in transaction to ensure consistency
+      // This is important because we are updating both the User and Mechanic
+      // tables in a single operation, and we want to ensure that either
+      // both updates succeed or neither does (i.e. we don't want to end
+      // up in a state where the User table is updated but the Mechanic
+      // table is not, or vice versa).
       const updatedProfile = await prisma.$transaction(async (tx) => {
         // Update user data
+        // We are not updating the profileImage here because it is handled
+        // separately in the uploadProfileImage method.
         const user = await tx.user.update({
           where: { id: userId },
           data: {
+            // Update user data
             ...userData,
+            // Convert dob to Date object
             dob: dobDate,
+            // Set currentLocation and serviceArea to null if not provided
             currentLocation: currentLocation || null,
             serviceArea: serviceArea || null,
+            // Set documentsUrl to an empty array if not provided
             documentsUrl: documentsUrl || [],
           },
           select: {
@@ -202,9 +213,12 @@ export class PrismaUserRepository implements IUserRepository {
         })
 
         // Update mechanic data
+        // We are updating the Mechanic table here because we have
+        // additional fields that are specific to mechanics.
         const mechanic = await tx.mechanic.upsert({
           where: { userId },
           create: {
+            // Create a new Mechanic record if one does not exist
             userId,
             bio: bio || null,
             servicesOffered: servicesOffered || [],
@@ -214,11 +228,15 @@ export class PrismaUserRepository implements IUserRepository {
             merchantDocumentUrl: merchantDocumentUrl || null,
           },
           update: {
+            // Update the Mechanic record if one already exists
             bio: bio || null,
             servicesOffered: servicesOffered || [],
             availabilityStatus: availabilityStatus || false,
+            // Set bannerImage to null if not provided
             ...(uploadedDocs.bannerImage && { bannerImage: uploadedDocs.bannerImage }),
+            // Set driversLicenseId to null if not provided
             ...(driversLicenseId && { driversLicenseId }),
+            // Set merchantDocumentUrl to null if not provided
             ...(merchantDocumentUrl && { merchantDocumentUrl }),
           },
           select: {
