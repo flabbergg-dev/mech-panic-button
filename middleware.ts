@@ -90,15 +90,15 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
       // Ensure users can only access their own dashboard
-      if (path.startsWith('/dashboard/')) {
-        const urlParts = path.split('/')
-        const dashboardUserId = urlParts[urlParts.length - 1]
-        
-        if (dashboardUserId !== userId) {
-          console.log('Middleware - User attempting to access another users dashboard')
-          return NextResponse.redirect(new URL(`/dashboard/${role}/${userId}`, req.url))
-        }
-      }
+      // if (path.startsWith('/dashboard/')) {
+      //   const urlParts = path.split('/')
+      //   const dashboardUserId = urlParts[urlParts.length - 1]
+
+      //   if (dashboardUserId !== userId) {
+      //     console.log('Middleware - User attempting to access another users dashboard')
+      //     return NextResponse.redirect(new URL(`/dashboard/${role}/${userId}`, req.url))
+      //   }
+      // }
 
     } catch (error) {
       console.error('Error in middleware:', error)
