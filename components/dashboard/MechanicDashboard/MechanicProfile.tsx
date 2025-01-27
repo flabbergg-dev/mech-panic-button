@@ -2,8 +2,9 @@
 
 import { useUser } from "@clerk/nextjs"
 import { UserCircle } from "lucide-react"
-import { Card } from "../ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card } from "@/components/ui/card"
 
 export const MechanicProfile = () => {
   const { user } = useUser()

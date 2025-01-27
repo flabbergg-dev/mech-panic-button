@@ -2,7 +2,8 @@
 
 import { cn } from "@/lib/utils"
 import { Booking } from "@/components/cards/Booking"
-import { motion } from "motion/react"
+import { motion } from "framer-motion"
+
 
 const BentoInfo = [
   {

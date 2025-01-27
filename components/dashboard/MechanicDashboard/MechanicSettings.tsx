@@ -14,14 +14,16 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { PersonalInfoForm } from "./settings/PersonalInfo"
-import { MechanicInfoForm } from "./settings/MechanicInfo"
-import { usePathname } from "next/navigation"
-import { Separator } from "../ui/separator"
-import { ThemeSwitcher } from "../theme-switcher"
+
 import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
-import { PushNotificationButton } from "../PushNotificationButton"
+import { usePathname } from "next/navigation"
+import { PersonalInfoForm } from "@/components/forms/PersonalInfoForm"
+import { Separator } from "@/components/ui/separator"
+import { MechanicInfoForm } from "../settings/MechanicInfo"
+import { PushNotificationButton } from "@/components/PushNotificationButton"
+import { ThemeSwitcher } from "@/components/theme-switcher"
+
 
 const sections = [
   { 

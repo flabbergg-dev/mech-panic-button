@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useMemo, useRef, useState } from "react"
-import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { useUserRole } from "@/hooks/use-user-role"
 import { FileText } from "lucide-react"
@@ -12,7 +11,7 @@ import { InTransitInstructions } from "./InTransitInstructions"
 import "mapbox-gl/dist/mapbox-gl.css"
 
 import Image from "next/image"
-import { useParams, usePathname } from "next/navigation"
+import {  usePathname } from "next/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Modal } from "@/components/Modal/Modal"
 import { Mechanic } from "@prisma/client"
