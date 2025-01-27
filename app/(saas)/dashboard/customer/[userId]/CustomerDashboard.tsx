@@ -1,13 +1,10 @@
 "use client"
-import { RippleComp } from "@/components/Animated/RippleComp"
-import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
+
 import { Profile } from "@/components/profile/Profile"
-import BentoGrid from "@/components/BentoBoxes/BentoGrid"
 import { MapDashboard } from "@/components/dashboard/MapDashboard/MapDashboard"
 
 import { useUser } from "@clerk/nextjs"
 import { useState, Suspense } from "react"
-import AccountForm from "@/components/forms/AccountForm"
 import { SkeletonBasic } from "@/components/Skeletons/SkeletonBasic"
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard/ClientDashboard"
 
@@ -28,7 +25,7 @@ export default function CustomerDashboard() {
         case "settings":
         return (
         <Suspense fallback={<SkeletonBasic />}>
-          <AccountForm />
+          {/* TODO: add settings  for custome */}
         </Suspense>
         )
       case "profile":

@@ -18,11 +18,11 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
 import { usePathname } from "next/navigation"
-import { PersonalInfoForm } from "@/components/forms/PersonalInfoForm"
 import { Separator } from "@/components/ui/separator"
 import { MechanicInfoForm } from "../settings/MechanicInfo"
 import { PushNotificationButton } from "@/components/PushNotificationButton"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { PersonalInfoForm } from "../settings/PersonalInfo"
 
 
 const sections = [
