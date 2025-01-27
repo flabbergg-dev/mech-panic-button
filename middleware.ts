@@ -90,15 +90,28 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
       // Ensure users can only access their own dashboard
-      // if (path.startsWith('/dashboard/')) {
-      //   const urlParts = path.split('/')
-      //   const dashboardUserId = urlParts[urlParts.length - 1]
+      if (path.startsWith('/dashboard/')) {
+        // Extract userId using regex pattern matching
+        // This will match the userId regardless of how deeply nested the route is
+        const customerMatch = path.match(/\/dashboard\/customer\/([^\/]+)/)
+        const mechanicMatch = path.match(/\/dashboard\/mechanic\/([^\/]+)/)
+        
+        let dashboardUserId = null
+        if (customerMatch) {
+          dashboardUserId = customerMatch[1]
+        } else if (mechanicMatch) {
+          dashboardUserId = mechanicMatch[1]
+        }
 
-      //   if (dashboardUserId !== userId) {
-      //     console.log('Middleware - User attempting to access another users dashboard')
-      //     return NextResponse.redirect(new URL(`/dashboard/${role}/${userId}`, req.url))
-      //   }
-      // }
+        if (dashboardUserId && dashboardUserId !== userId) {
+          console.log('Middleware - User attempting to access another users dashboard')
+          if (role === 'Mechanic') {
+            return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
+          } else if (role === 'Customer') {
+            return NextResponse.redirect(new URL(`/dashboard/customer/${userId}`, req.url))
+          }
+        }
+      }
 
     } catch (error) {
       console.error('Error in middleware:', error)

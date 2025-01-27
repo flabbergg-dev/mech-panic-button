@@ -62,14 +62,10 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
 
     // Update Clerk metadata with the user's role
     await client.users.updateUser(userId, {
-      publicMetadata: { role: validatedData.role }
-    })
-
-    // Update user information in Clerk
-    await client.users.updateUser(userId, { 
       firstName: validatedData.firstName,
       lastName: validatedData.lastName,
-    });
+      publicMetadata: { role: validatedData.role }
+    })
 
     // If user is a mechanic, create mechanic profile
     if (validatedData.role === "Mechanic") {

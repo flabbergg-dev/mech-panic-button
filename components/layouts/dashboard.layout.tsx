@@ -1,9 +1,5 @@
-"use client"
+import { ReactNode } from "react"
 
-import { ReactNode, useState } from "react"
-import { BottomNavigation } from "../navigation/bottom.navigation"
-import { PushNotificationButton } from "../PushNotificationButton"
-import { useUserRole } from "@/hooks/use-user-role"
 interface DashboardLayoutProps {
   children: ReactNode
 }
