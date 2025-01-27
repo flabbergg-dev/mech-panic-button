@@ -6,8 +6,8 @@ import webPush from 'web-push';
 // Initialize web-push with VAPID details
 const vapidDetails = {
   subject: 'mailto:support@digitalsunsets.dev',
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
-  privateKey: process.env.VAPID_PRIVATE_KEY || '',
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+  privateKey: process.env.VAPID_PRIVATE_KEY!,
 };
 
 webPush.setVapidDetails(

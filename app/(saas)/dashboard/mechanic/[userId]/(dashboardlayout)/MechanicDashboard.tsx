@@ -2,12 +2,11 @@
 
 import { useState } from "react"
 import { useUser } from "@clerk/nextjs"
-import { MechanicHome } from "@/components/dashboard/MechanicHome"
-import { MechanicProfile } from "@/components/dashboard/MechanicProfile"
+import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicHome"
+import { MechanicProfile } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
-import MechanicSettings from "@/components/dashboard/MechanicSettings"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { UserCircle } from "lucide-react"
+import MechanicSettings from "@/components/dashboard/MechanicDashboard/MechanicSettings"
+
 
 
 export const MechanicDashboard = () => {
@@ -36,15 +35,7 @@ export const MechanicDashboard = () => {
   return (
     <div className="w-full">
       {renderContent()}
-      <Avatar>
-        <AvatarImage
-          src={user?.publicMetadata?.avatar as string || user?.imageUrl || ""}
-          alt={user?.firstName || "User"}
-        />
-        <AvatarFallback>
-          <UserCircle />
-        </AvatarFallback>
-      </Avatar>
+    
       <BottomNavigation 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
