@@ -18,7 +18,7 @@ interface BottomNavigationProps {
 export const BottomNavigation = ({
   activeTab,
   onTabChange,
-  userRole = "Mechanic"
+  userRole
 }: BottomNavigationProps) => {
 
   return (

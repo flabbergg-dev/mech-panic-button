@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 // import {
@@ -21,37 +21,13 @@ import { Separator } from "@/components/ui/separator"
 import { Slider } from "@/components/ui/slider"
 import { MechanicListCard } from "@/components/layouts/MechanicListCard.Layout"
 import { HalfSheet } from "@/components/ui/HalfSheet"
-import { Car, MapPin, MoveLeftIcon, Star, StarIcon, User } from "lucide-react"
-
+import { Car, MapPin, MoveLeftIcon, Star, StarIcon, User, User2Icon } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { MessageCircleMoreIcon } from "../../Animated/message-circle-more"
 import { DynamicAvatar } from "../../DynamicAvatar/DynamicAvatar"
 import { Mechanic, Message } from "@prisma/client"
-
-interface MechanicProps {
-  id: string
-  userId: string
-  bio: string
-  servicesOffered: string[]
-  availabilityStatus: string
-  rating: number
-  bannerImage: string
-  driversLicenseId: string
-  merchantDocumentUrl: string[]
-  earnings: number
-  user: IUser
-  serviceRequests: any[]
-}
-
-
-interface IUser {
-  id: string
-  userId: string
-  firstName: string
-  lastName: string
-  email: string
-  createdAt: Date
-  updatedAt: Date
-}
+import { DepositModal } from "@/components/Modal/DepositModal"
 
 interface UserCoordinates {
   latitude: number
@@ -93,7 +69,7 @@ export const ClientMap = ({
   mechanicUsers,
 }: clientMapProps) => {
   // managing the account balance
-  const [accountBalance, setAccountBalance] = useState(0.0)
+  const [accountBalance, setAccountBalance] = useState(10.0)
   // managing the dashboard state
   const [currentStep, setCurrentStep] = useState<
     | "mechanicList"
@@ -113,11 +89,20 @@ export const ClientMap = ({
   const { user: currentUser } = useUser()
   // if theres no mechanic in range increase mile radius
   const [rangeValue, setRangeValue] = useState(0)
-
+  // services offered by mechanic
+  const [mechanicServices, setMechanicServices] = useState<Mechanic | null>(
+    null
+  )
   // Loading state/ui related
   const [isLoading, setIsLoading] = useState(false)
-  // This state handles the selected mechanics services
-  const [mechanicServices, setMechanicServices] = useState<MechanicProps>()
+
+  const servicesPerMechanic = selectedMechanic?.servicesOffered
+
+  useEffect(() => {
+    if (selectedMechanic) {
+      setMechanicServices(selectedMechanic)
+    }
+  }, [selectedMechanic])
 
   // useEffect(() => {
   //   const fetchChat = async () => {
@@ -246,107 +231,94 @@ export const ClientMap = ({
       )}
       <MechanicListCard>
         {currentStep === "mechanicList" && (
-          <>
-            {mechanics.length > 0 ? (
+            <>
+            {mechanics.filter((mechanic) => mechanic.availabilityStatus === true).length > 0 ? (
               <p className="text-3xl font-semibold pb-4">Available mechanics</p>
             ) : (
               <div className="flex flex-col">
-                <p className="text-3xl pb-4">No available mechanics</p>
-                {/* <span>Expand Range</span>
+              <p className="text-3xl pb-4">No available mechanics</p>
+              {/* <span>Expand Range</span>
               <Slider
-                defaultValue={[10]}
-                max={40}
-                step={10}
-                onValueChange={(value) => {
-                  if (value[0] !== undefined) {
-                    setRangeValue(value[0])
-                  }
-                }}
+              defaultValue={[10]}
+              max={40}
+              step={10}
+              onValueChange={(value) => {
+                if (value[0] !== undefined) {
+                setRangeValue(value[0])
+                }
+              }}
               />
               <span>{rangeValue} miles</span>
               <Button>
-                <span>Search</span>
+              <span>Search</span>
               </Button> */}
               </div>
             )}
             <div className="grid grid-cols-2 gap-2">
-              {mechanics.length > 0 ? (
-                mechanics.map((mechanic) => {
-                  const mechanicUser = mechanicUsers.find(
-                    (user) =>
-                      user.id === mechanic.userId && user.role === "Mechanic"
-                  )
-                  return (
-                    <Card
-                      key={mechanic.id}
-                      onClick={() => handleDashboardChangeAndUserPick(mechanic)}
-                      className="hover:bg-slate-300 transition-all"
-                    >
-                      <CardContent className="flex flex-col gap-4 p-4">
-                        {/* <DynamicAvatar fallbackText="SC" /> */}
-                        <p className="font-semibold">
-                          {mechanicUser?.firstName} {mechanicUser?.lastName}
-                        </p>
-                        <div className="flex gap-4">
-                          <MapPin size={24} />
-                          <p className="font-semibold">
-                            {mechanicUser?.currentLocation
-                              ? `${mechanicUser.currentLocation.latitude}, ${mechanicUser.currentLocation.longitude}`
-                              : "Location not available"}
-                          </p>
-                        </div>
-                        <div className="flex gap-4">
-                          <StarIcon size={24} />
-                          <p className="font-semibold">{mechanic.rating}</p>
-                        </div>
-                        <p className="font-semibold">{mechanic.bio}</p>
-                      </CardContent>
-                    </Card>
-                  )
+              {mechanics.length > 0 && (
+              mechanics
+                .filter((mechanic) => mechanic.availabilityStatus === true)
+                .map((mechanic) => {
+                const mechanicUser = mechanicUsers.find(
+                  (user) =>
+                  user.id === mechanic.userId && user.role === "Mechanic"
+                )
+                return (
+                  <Card
+                  key={mechanic.id}
+                  onClick={() => handleDashboardChangeAndUserPick(mechanic)}
+                  className="hover:bg-slate-300 transition-all"
+                  >
+                  <CardContent className="flex flex-col gap-4 p-4">
+                    {/* <DynamicAvatar fallbackText="SC" /> */}
+                    <p className="font-semibold">
+                    {mechanicUser?.firstName} {mechanicUser?.lastName}
+                    </p>
+                    <div className="flex gap-4">
+                    <MapPin size={24} />
+                    <p className="font-semibold">
+                      {mechanicUser?.currentLocation
+                      ? `${mechanicUser.currentLocation.latitude}, ${mechanicUser.currentLocation.longitude}`
+                      : "Location not available"}
+                    </p>
+                    </div>
+                    <div className="flex gap-4">
+                    <StarIcon size={24} />
+                    <p className="font-semibold">{mechanic.rating}</p>
+                    </div>
+                    <p className="font-semibold">{mechanic.bio}</p>
+                  </CardContent>
+                  </Card>
+                )
                 })
-              ) : (
-                <div></div>
               )}
             </div>
-          </>
+            </>
         )}
 
         {currentStep === "mechanicDetails" && (
           <>
-            <p className="text-3xl font-semibold pb-4">Mechanic details</p>
-            <div className="flex justify-between gap-2">
-              <DynamicAvatar
-                src="/images/car.png"
-                fallbackText="SC"
-                className="border"
-              />
-              <div>
-                <div className="flex gap-2 justify-between items-center">
-                  <User size={24} />
-                  <div className="flex gap-1 items-center">
-                    <p className="font-semibold">{selectedUser?.firstName}</p>
-                    <p className="font-semibold">{selectedUser?.lastName}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 justify-between">
-                  <Car size={24} />
-                  <p className="font-semibold">Toyota Camry</p>
-                </div>
-              </div>
+          <div className="flex justify-between gap-4 items-center">
+            <p className="text-3xl font-semibold pb-4">{selectedUser?.firstName}&apos;s Services</p>
+            <div className="flex justify-between gap-4 items-center">
+              <StarIcon size={24} />
+              <p className="font-bold text-xl">{selectedMechanic.rating}</p>
             </div>
-            <div className="grid gap-4 my-4">
-              <Select>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Choose service" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* {mechanicServices?.servicesOffered.map((service, index) => (
-                  <SelectItem key={index} value={service}>
-                    {service}
-                  </SelectItem>
-                ))} */}
-                </SelectContent>
-              </Select>
+          </div>
+            <div className="grid gap-4">
+              <RadioGroup defaultValue={mechanicServices?.servicesOffered[0]}>
+                {mechanicServices?.servicesOffered.map((service, index) => (
+                  <div key={index} className="flex items-center border space-x-2 justify-between p-2 rounded-md border-slate-400">
+                    <div className="flex items-center justify-between gap-2">
+                      <RadioGroupItem value={service} id={`service-${index}`} />
+                      <Label htmlFor={`service-${index}`} className="text-xl">{service}</Label>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor={`service-${index}`} className="text-xl">${(service as any).price || ""}</Label>
+                    </div>
+                  </div>
+                ))}
+              </RadioGroup>
               <div className="relative">
                 <div className="flex place-self-center justify-between items-center bottom-6 rounded-t-md gap-2 p-2 bg-foreground text-white w-[98%]">
                   <div className="flex gap-2 text-lg">
@@ -357,13 +329,7 @@ export const ClientMap = ({
                       <p className="font-semibold">${accountBalance}</p>
                     )}
                   </div>
-                  <Button
-                    variant={"default"}
-                    className="bg-primary"
-                    onClick={() => setAccountBalance(10)}
-                  >
-                    Deposit
-                  </Button>
+                  <DepositModal />
                 </div>
                 <Button
                   onClick={() => setCurrentStep("mechanicWatch")}
@@ -383,24 +349,26 @@ export const ClientMap = ({
             <h1 className="p-1 bg-slate-600 text-white rounded-md w-fit">
               Waiting for mechanic to accept
             </h1>
-            <div className="flex gap-24 my-4">
-              <div className="flex gap-2 my-4">
+            <div className="flex justify-between my-4">
+                <div className="flex gap-2 my-4">
                 <DynamicAvatar
-                  src={"/images/download.jpeg"}
-                  fallbackText="SC"
+                  src={selectedUser?.profileImage || <User2Icon/>}
+                  fallbackText={selectedUser?.firstName.slice(0, 2)}
+                  className="border-2 border-slate-500"
                 />
-                <div>
-                  <span>Selina</span>
+                <div className="flex flex-col gap-2">
+                  <p className="text-3xl">{selectedUser?.firstName}</p>
+                  <p className="text-xl">{selectedUser?.lastName}</p>
                   <Star size={24} />
                 </div>
-              </div>
-              <div className="grid">
+                </div>
+              <div className="grid gap-4">
                 <Image
                   src="/images/maps.png"
                   alt="car"
                   width={100}
                   height={100}
-                  className="rounded-lg"
+                  className="rounded-lg border-2 w-full"
                 />
                 <div className="flex gap-4 text-xs">
                   <span>Toyota Camry</span>
@@ -431,12 +399,12 @@ export const ClientMap = ({
         {currentStep === "chat" && (
           <>
             <div className="flex justify-between items-center">
-              <Button
+              {/* <Button
                 onClick={() => setCurrentStep("mechanicWatch")}
                 className="bg-slate-500 text-white rounded-3xl"
               >
                 Back
-              </Button>
+              </Button> */}
               <h1 className="p-2 bg-slate-600 text-white rounded-md w-fit my-4">
                 Chat with mechanic
               </h1>
@@ -518,7 +486,12 @@ export const ClientMap = ({
             <div className="flex gap-4 my-4">
               <DynamicAvatar src={"/images/download.jpeg"} fallbackText="SC" />
               <div>
-                <span>Selina</span>
+                <p>
+                  {selectedUser.firstName}
+                </p>
+                <p>
+                  {selectedUser.lastName}
+                </p>
                 <Star size={24} />
               </div>
             </div>

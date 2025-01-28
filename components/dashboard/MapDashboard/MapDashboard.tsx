@@ -102,7 +102,7 @@ export const MapDashboard = () => {
     try {
       const response = await getMechanicByIdAction(id)
       setSelectedMechanic({
-        id: response!.data!.id,
+        id: response!.data!.id!,
         userId: response!.data!.userId,
         bio: response!.data!.bio || "",
         servicesOffered: response!.data!.servicesOffered,

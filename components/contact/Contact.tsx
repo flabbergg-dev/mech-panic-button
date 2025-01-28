@@ -2,7 +2,7 @@ import React from "react"
 import Image from "next/image"
 import { SquareArrowOutDownLeftIcon } from "lucide-react"
 
-export default function page() {
+export const Contact = () => {
   return (
     <div className=" flex  flex-col  items-center  min-h-screen  justify-center  gap-3">
       <Image
