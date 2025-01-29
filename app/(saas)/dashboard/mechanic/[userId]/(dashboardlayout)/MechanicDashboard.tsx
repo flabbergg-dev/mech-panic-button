@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs"
 import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicHome"
 import { MechanicProfile } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
-import MechanicSettings from "@/components/dashboard/MechanicDashboard/MechanicSettings"
+import SettingsPage from "@/components/dashboard/settings/Settings"
 
 export const MechanicDashboard = () => {
   const { user } = useUser()
@@ -20,7 +20,7 @@ export const MechanicDashboard = () => {
       case "home":
         return <MechanicHome />
       case "settings":
-        return <MechanicSettings />
+        return <SettingsPage />
       case "profile":
         return <MechanicProfile />
       case "history":

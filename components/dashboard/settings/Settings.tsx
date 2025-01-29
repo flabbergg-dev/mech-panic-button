@@ -19,11 +19,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
 import { usePathname } from "next/navigation"
 import { Separator } from "@/components/ui/separator"
-import { MechanicInfoForm } from "../settings/MechanicInfo"
+import { MechanicInfoForm } from "./MechanicInfo"
 import { PushNotificationButton } from "@/components/PushNotificationButton"
 import { ThemeSwitcher } from "@/components/theme-switcher"
-import { PersonalInfoForm } from "../settings/PersonalInfo"
-
+import { PersonalInfoForm } from "./PersonalInfo"
 
 const sections = [
   { 

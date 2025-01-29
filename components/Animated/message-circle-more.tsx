@@ -32,7 +32,7 @@ const MessageCircleMoreIcon = () => {
 
   return (
     <div
-      className="cursor-pointer select-none p-2 hover:bg-accent rounded-md transition-colors duration-200 flex items-center justify-center overflow-hidden"
+      className="cursor-pointer select-none p-2 transition-colors duration-200 flex items-center justify-center overflow-hidden"
       onMouseEnter={() => controls.start('animate')}
       onMouseLeave={() => controls.start('normal')}
     >

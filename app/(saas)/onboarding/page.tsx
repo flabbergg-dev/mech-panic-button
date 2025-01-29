@@ -109,7 +109,11 @@ export default function OnboardingPage() {
 
   // If mechanic role is selected, show document upload form
   if (selectedRole === "Mechanic") {
-    return <MechanicDocuments formData={formData} />
+    return (
+    <div className="min-h-screen flex flex-col items-center justify-center">
+      <MechanicDocuments formData={formData} />
+    </div>
+    )
   }
 
   return (

@@ -1,22 +1,10 @@
 import React, { useEffect, useState } from "react"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
-// import {
-//   BaseMechanic as MechanicProps,
-//   BaseUser as UserProps,
-//   UserRole,
-// } from "@repo/application"
-// import { Mechanic, Message, User as UserType } from "@repo/domain"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Slider } from "@/components/ui/slider"
 import { MechanicListCard } from "@/components/layouts/MechanicListCard.Layout"
@@ -28,6 +16,8 @@ import { MessageCircleMoreIcon } from "../../Animated/message-circle-more"
 import { DynamicAvatar } from "../../DynamicAvatar/DynamicAvatar"
 import { Mechanic, Message } from "@prisma/client"
 import { DepositModal } from "@/components/Modal/DepositModal"
+import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
+import { createMessageAction } from "@/app/actions/chats/create-message.action"
 
 interface UserCoordinates {
   latitude: number
@@ -104,38 +94,38 @@ export const ClientMap = ({
     }
   }, [selectedMechanic])
 
-  // useEffect(() => {
-  //   const fetchChat = async () => {
-  //     try {
-  //       const usersChat = await getChatByUserIdAction(currentUser!.id)
-  //       if (usersChat) {
-  //         setChatId(parseInt(usersChat.chatId))
-  //       } else {
-  //         return null
-  //       }
+  useEffect(() => {
+    const fetchChat = async () => {
+      try {
+        const usersChat = await getChatByUserIdAction(currentUser!.id)
+        if (usersChat) {
+          setChatId(parseInt(usersChat.chatId))
+        } else {
+          return null
+        }
 
-  //       if (chatId) {
-  //         const Chat = await getChatAction(chatId)
-  //         if (Chat) {
-  //           setChatId(Chat.id)
-  //           const subToMessages = async () => {
-  //             await subscribeToMessages().then((data) => {
-  //               console.log("Data: ", data)
-  //               setMessages(data)
-  //             })
-  //           }
-  //           subToMessages()
-  //         }
-  //       } else {
-  //         return null
-  //       }
-  //     } catch (error) {
-  //       console.error(error)
-  //     }
-  //   }
+        if (chatId) {
+          const Chat = await getChatAction(chatId)
+          if (Chat) {
+            setChatId(Chat.id)
+            const subToMessages = async () => {
+              await subscribeToMessages().then((data) => {
+                console.log("Data: ", data)
+                setMessages(data)
+              })
+            }
+            subToMessages()
+          }
+        } else {
+          return null
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    }
 
-  //   fetchChat()
-  // }, [messages, chatId, currentUser])
+    fetchChat()
+  }, [messages, chatId, currentUser])
 
   // TODO: Clean this function of Clientmap
   // useEffect(() => {
@@ -165,39 +155,41 @@ export const ClientMap = ({
   //   fetchData()
   // }, [])
 
-  // const createChat = async (userId: string, mechanicId: string) => {
-  //   try {
-  //     const chat = await createChatWithUserAction(userId, mechanicId)
-  //     if (chat) {
-  //       setChatId(chat)
-  //       return chat
-  //     }
-  //     return null
-  //   } catch (error) {
-  //     throw new Error(`Error creating chat: ${error}`)
-  //   }
-  // }
+  const createChat = async (userId: string, mechanicId: string) => {
+    try {
+      const chat = await createChatWithUserAction(userId, mechanicId)
+      if (chat) {
+        if (chat.chat?.id !== undefined) {
+          setChatId(chat.chat.id)
+        }
+        return chat
+      }
+      return null
+    } catch (error) {
+      throw new Error(`Error creating chat: ${error}`)
+    }
+  }
 
-  // const createNewMessage = async (message: Message) => {
-  //   try {
-  //     await createMessage(message)
-  //   } catch (error) {
-  //     throw new Error(`Error sending message: ${error}`)
-  //   }
-  // }
+  const createNewMessage = async (message: Message) => {
+    try {
+      await createMessageAction(message.userId, message.chatId, message.content)
+    } catch (error) {
+      throw new Error(`Error sending message: ${error}`)
+    }
+  }
 
-  // const handleNewMessage = async () => {
-  //   setMessages([
-  //     {
-  //       chatId: 1,
-  //       authorId: currentUser!.id,
-  //       content: "Hello, how can I help you?",
-  //       userId: selectedMechanic!.id, // TODO: This can be dinamic for both users
-  //       id: 0,
-  //     },
-  //   ])
-  //   // createNewMessage(messages)
-  // }
+  const handleNewMessage = async () => {
+    setMessages([
+      {
+        chatId: 1,
+        authorId: currentUser!.id,
+        content: "Hello, how can I help you?",
+        userId: selectedMechanic!.id, // TODO: This can be dinamic for both users
+        id: 0,
+      },
+    ])
+    // createNewMessage(messages)
+  }
 
   const handleDashboardChangeAndUserPick = (Mechanic: any) => {
     setSelectedMechanic(Mechanic)
@@ -346,20 +338,26 @@ export const ClientMap = ({
 
         {currentStep === "mechanicWatch" && (
           <>
+          {/* TODO: add variance to h1 tag like realtime changes */}
             <h1 className="p-1 bg-slate-600 text-white rounded-md w-fit">
               Waiting for mechanic to accept
             </h1>
             <div className="flex justify-between my-4">
-                <div className="flex gap-2 my-4">
+                <div className="flex items-center gap-2 my-4">
                 <DynamicAvatar
                   src={selectedUser?.profileImage || <User2Icon/>}
                   fallbackText={selectedUser?.firstName.slice(0, 2)}
                   className="border-2 border-slate-500"
                 />
                 <div className="flex flex-col gap-2">
-                  <p className="text-3xl">{selectedUser?.firstName}</p>
-                  <p className="text-xl">{selectedUser?.lastName}</p>
-                  <Star size={24} />
+                  <div className="flex items-center gap-2">
+                    <p className="text-3xl">{selectedUser?.firstName}</p>
+                    <p className="text-xl">{selectedUser?.lastName}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Star size={24} />
+                    <p className="text-xl">{selectedMechanic.rating} (345)</p>
+                  </div>
                 </div>
                 </div>
               <div className="grid gap-4">
@@ -376,21 +374,19 @@ export const ClientMap = ({
                 </div>
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={() => setCurrentStep("chat")}
-                className="bg-slate-500 text-white rounded-3xl"
-                disabled={accountBalance < 9}
-              >
-                <MessageCircleMoreIcon />
-              </Button>
-            </div>
-            <div>
+            <div className="flex justify-between">
               <Button
                 onClick={() => setCurrentStep("providePin")}
                 variant={"secondary"}
               >
                 Complete request
+              </Button>
+              <Button
+                onClick={() => setCurrentStep("chat")}
+                variant={"default"}
+                disabled={accountBalance < 9}
+              >
+                <MessageCircleMoreIcon />
               </Button>
             </div>
           </>
@@ -398,64 +394,71 @@ export const ClientMap = ({
 
         {currentStep === "chat" && (
           <>
-            <div className="flex justify-between items-center">
-              {/* <Button
-                onClick={() => setCurrentStep("mechanicWatch")}
-                className="bg-slate-500 text-white rounded-3xl"
-              >
-                Back
-              </Button> */}
+            <div className="flex flex-col justify-between">
               <h1 className="p-2 bg-slate-600 text-white rounded-md w-fit my-4">
                 Chat with mechanic
               </h1>
-            </div>
-            <Separator />
-            <div className="grid gap-4 my-4">
-              {mechanicMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="h-auto w-auto flex flex-col items-start justify-start"
-                >
-                  <p className="bg-slate-600 text-white p-2 rounded-lg">
-                    {msg.content}
-                  </p>
+              <div className="flex items-center gap-2 my-4">
+                <DynamicAvatar
+                src={selectedUser?.profileImage || <User2Icon/>}
+                fallbackText={selectedUser?.firstName.slice(0, 2)}
+                className="border-2 border-slate-500"
+                />
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                  <p className="text-3xl">{selectedUser?.firstName}</p>
+                  <p className="text-xl">{selectedUser?.lastName}</p>
+                  </div>
                 </div>
-              ))}
-              {userMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="place-self-center h-auto w-24 flex flex-col items-center justify-center"
-                >
-                  <p className="bg-black text-white p-1 rounded-lg">
-                    {msg.content}
-                  </p>
-                </div>
-              ))}
-              {!chatId && (
-                <Button
-                  onClick={() => {
-                    if (currentUser && selectedUser) {
-                      // createChat(currentUser.id, selectedMechanic.id)
-                    }
-                  }}
-                >
-                  Create Chat
-                </Button>
-              )}
-              {chatId && (
-                <div className="flex gap-4 my-4">
-                  <Input
-                    placeholder="Type a message"
-                    // onChange={() => handleNewMessage()}
-                  />
-                  <Button
-                    variant={"secondary"}
-                    // onClick={() => createNewMessage(messages[0])}
+              </div>
+              <Separator />
+              <div className="grid gap-4 my-4">
+                {mechanicMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="h-auto w-auto flex flex-col items-start justify-start"
                   >
-                    Send
+                    <p className="bg-slate-600 text-white p-2 rounded-lg">
+                      {msg.content}
+                    </p>
+                  </div>
+                ))}
+                {userMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="place-self-center h-auto w-24 flex flex-col items-center justify-center"
+                  >
+                    <p className="bg-black text-white p-1 rounded-lg">
+                      {msg.content}
+                    </p>
+                  </div>
+                ))}
+                {!chatId && (
+                  <Button
+                    onClick={() => {
+                      if (currentUser && selectedUser) {
+                        // createChat(currentUser.id, selectedMechanic.id)
+                      }
+                    }}
+                  >
+                    Create Chat
                   </Button>
-                </div>
-              )}
+                )}
+                {chatId && (
+                  <div className="flex gap-4 my-4">
+                    <Input
+                      placeholder="Type a message"
+                      // onChange={() => handleNewMessage()}
+                    />
+                    <Button
+                      variant={"secondary"}
+                      // onClick={() => createNewMessage(messages[0])}
+                    >
+                      Send
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}

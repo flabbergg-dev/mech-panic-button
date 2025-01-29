@@ -68,14 +68,25 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
     })
 
     // If user is a mechanic, create mechanic profile
-    if (validatedData.role === "Mechanic") {
+    try {
+      if (validatedData.role === "Mechanic") {
       await prisma.mechanic.create({
         data: {
-          userId: user.id,
-          servicesOffered: [],
-          availabilityStatus: false,
+        userId: user.id,
+        servicesOffered: [],
+        availabilityStatus: true,
+        isAvailable: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
         },
       })
+      }
+    } catch (error) {
+      console.error("Error creating mechanic profile:", error)
+      return {
+      success: false,
+      error: "Failed to create mechanic profile",
+      }
     }
 
     revalidatePath('/dashboard')

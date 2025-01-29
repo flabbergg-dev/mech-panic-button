@@ -11,6 +11,8 @@ import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
 import BentoGrid from "@/components/BentoBoxes/BentoGrid"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import { useUserRole } from "@/hooks/use-user-role"
+import SettingsPage from "@/components/dashboard/settings/Settings"
+
 export default function CustomerDashboard() {
   const { user } = useUser()
   const [activeTab, setActiveTab] = useState("home")
@@ -37,7 +39,7 @@ export default function CustomerDashboard() {
       case "settings":
       return (
       <Suspense fallback={<SkeletonBasic />}>
-        {/* TODO: add settings  for custome */}
+        <SettingsPage />
       </Suspense>
       )
       case "profile":
@@ -58,7 +60,7 @@ export default function CustomerDashboard() {
       <BottomNavigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        userRole={userRole ?? undefined}
+        userRole={userRole!}
       />
     </div>
   )
