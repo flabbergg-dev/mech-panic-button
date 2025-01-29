@@ -26,29 +26,38 @@ model User {
   stripeSubscriptionPlan   SubscriptionPlan?
   stripeSubscriptionStatus SubscriptionStatus?
   documentsUrl             String[]
+  bookings                 Booking[]
   ChatUser                 ChatUser[]
   mechanic                 Mechanic?
   Message                  Message[]
   chatMessages             Message[]           @relation("UserMessages")
+  pushSubscriptions        PushSubscription[]
   reviews                  Review[]
   serviceRequests          ServiceRequest[]
   Vehicle                  Vehicle[]
-  pushSubscriptions        PushSubscription[]
 }
 
 model Mechanic {
-  id                  String           @id @default(uuid())
-  userId              String           @unique
+  id                  String            @id @default(uuid())
+  userId              String            @unique
   bio                 String?
-  servicesOffered     String[]
-  availabilityStatus  Boolean          @default(false)
+  availabilityStatus  Boolean           @default(false)
   rating              Float?
   bannerImage         String?
   driversLicenseId    String?
   merchantDocumentUrl String?
+  availability        Json?
+  isAvailable         Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  servicesOffered     ServiceType[]
+  bookings            Booking[]
   earnings            Earning[]
-  user                User             @relation(fields: [userId], references: [id])
+  user                User              @relation(fields: [userId], references: [id])
+  services            MechanicService[]
   serviceRequests     ServiceRequest[]
+
+  ServiceOffer ServiceOffer[]
 }
 
 model Vehicle {
@@ -65,17 +74,23 @@ model ServiceRequest {
   id             String        @id
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  clientId       String?
+  clientId       String
   mechanicId     String?
-  serviceType    String
+  serviceType    ServiceType   @default(DIAGNOSTIC)
   status         ServiceStatus
   location       Json
   description    String?
   paymentHoldId  String?
   completionCode String?
+  paymentId      String?
+  offeredPrice   Float?        // Price offered by mechanic
+  offerExpiry    DateTime?     // Optional expiry time for the offer
+  offerNote      String?       // Optional note from mechanic about the offer
+  offers         ServiceOffer[]
   review         Review?
-  client         User?         @relation(fields: [clientId], references: [id])
+  client         User          @relation(fields: [clientId], references: [id])
   mechanic       Mechanic?     @relation(fields: [mechanicId], references: [id])
+  payment        Payment?      @relation(fields: [paymentId], references: [id])
 }
 
 model Review {
@@ -148,6 +163,77 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id])
 }
 
+model Service {
+  id          String            @id @default(cuid())
+  type        ServiceType
+  name        String
+  description String
+  price       Float
+  duration    Int
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  bookings    Booking[]
+  mechanics   MechanicService[]
+}
+
+model MechanicService {
+  id         String   @id @default(cuid())
+  mechanicId String
+  serviceId  String
+  price      Float
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  mechanic   Mechanic @relation(fields: [mechanicId], references: [id])
+  service    Service  @relation(fields: [serviceId], references: [id])
+
+  @@unique([mechanicId, serviceId])
+}
+
+model Booking {
+  id             String        @id @default(cuid())
+  customerId     String
+  mechanicId     String
+  serviceId      String
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+  status         BookingStatus @default(PENDING)
+  totalPrice     Float
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  customer       User          @relation(fields: [customerId], references: [id])
+  mechanic       Mechanic      @relation(fields: [mechanicId], references: [id])
+  service        Service       @relation(fields: [serviceId], references: [id])
+  payment        Payment?
+}
+
+model Payment {
+  id             String           @id @default(cuid())
+  bookingId      String           @unique
+  paymentMethod  String
+  paymentStatus  String
+  amount         Float
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  booking        Booking          @relation(fields: [bookingId], references: [id])
+  ServiceRequest ServiceRequest[]
+}
+
+model ServiceOffer {
+  id              String        @id @default(cuid())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  mechanicId      String
+  serviceRequestId String
+  price           Float
+  note            String?
+  status          OfferStatus   @default(PENDING)
+  expiresAt       DateTime?
+  mechanic        Mechanic      @relation(fields: [mechanicId], references: [id])
+  serviceRequest  ServiceRequest @relation(fields: [serviceRequestId], references: [id])
+}
+
 enum UserRole {
   Customer
   Mechanic
@@ -155,6 +241,7 @@ enum UserRole {
 
 enum ServiceStatus {
   REQUESTED
+  OFFERED
   ACCEPTED
   IN_PROGRESS
   COMPLETED
@@ -171,4 +258,30 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELED
   UNPAID
+}
+
+enum ServiceType {
+  OIL_CHANGE
+  BRAKE_REPAIR
+  TIRE_SERVICE
+  ENGINE_REPAIR
+  DIAGNOSTIC
+  BATTERY_SERVICE
+  AC_SERVICE
+  GENERAL_MAINTENANCE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
 }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/domain/dtos/user.dto"
 import { IUserRepository } from "@/lib/domain/repositories/user.repository"
 import { prisma } from "@/lib/prisma"
+import { ServiceType } from "@prisma/client"
 
 export class PrismaUserRepository implements IUserRepository {
   private supabase

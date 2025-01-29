@@ -33,11 +33,12 @@ export const ApproveButton: React.FC<ApproveButtonProps> = ({
     <AnimatePresence mode="wait">
       {isSubscribed ? (
         <motion.button
-          className="relative flex h-10 w-[200px] items-center justify-center overflow-hidden rounded-md bg-white outline outline-1 outline-black"
+          className="relative flex h-10 w-[200px] items-center justify-center overflow-hidden rounded-md bg-white outline outline-1 outline-black "
           onClick={handleOnClick}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          whileTap={{ scale: 0.98 }}
         >
           <motion.span
             key="action"

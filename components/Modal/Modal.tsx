@@ -57,8 +57,9 @@ export const Modal = ({
       <ResponsiveModalContent className={className}>
         <ResponsiveModalHeader>
           <ResponsiveModalTitle>{dialogText}</ResponsiveModalTitle>
-          <ResponsiveModalDescription>{children}</ResponsiveModalDescription>
         </ResponsiveModalHeader>
+        {/* Moved the children outside of ResponsiveModalDescription to avoid p > div nesting */}
+        {children}
       </ResponsiveModalContent>
     </ResponsiveModal>
   )

@@ -2,6 +2,7 @@ import { type Metadata } from "next"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import CustomerDashboard from "./CustomerDashboard"
+import { Navbar } from "@/components/navigation/client-navbar.navigation"
 
 export const metadata: Metadata = {
   title: "Customer Dashboard",
@@ -16,5 +17,11 @@ export default async function Page() {
 
 
 
-  return <CustomerDashboard />
+  return (
+  <>
+   <Navbar/>
+   <CustomerDashboard />
+  </>
+
+)
 }

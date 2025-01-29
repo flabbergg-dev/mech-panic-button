@@ -143,7 +143,9 @@ export const MapDashboard = () => {
     try {
       const response = await getAvailableMechanicsListAction()
       if (response) {
-        setMechanics(response.data!)
+        // TODO: no need to set the mechanic list just the marker of the mechanic comming from the api so that the client can see where the mechanic is at
+        // setMechanics(response.data!)
+        
       }
     } catch (error) {
       console.error(error)
