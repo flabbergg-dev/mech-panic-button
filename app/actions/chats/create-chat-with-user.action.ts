@@ -12,12 +12,32 @@ export async function createChatWithUserAction(userId: string, mechanicId: strin
             },
         })
 
+        const [chatUser, chatMechanic] = await Promise.all([
+            prisma.chatUser.create({
+            data: {
+                id: undefined,
+                chatId: chat.id,
+                userId: userId,
+            },
+            }),
+            prisma.chatUser.create({
+            data: {
+                id: undefined,
+                chatId: chat.id,
+                userId: mechanicId,
+            },
+            })
+        ])
+
         return {
             success: true,
             chat,
+            chatUser,
+            chatMechanic,
         }
+
     } catch (error) {
-        console.error("Error in getMechanicByIdAction:", error)
+        console.error("Error in createChatWithUserAction:", error)
         return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to fetch mechanic",

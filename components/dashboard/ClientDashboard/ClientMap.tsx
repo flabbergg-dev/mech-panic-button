@@ -18,6 +18,7 @@ import { Mechanic, Message } from "@prisma/client"
 import { DepositModal } from "@/components/Modal/DepositModal"
 import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
 import { createMessageAction } from "@/app/actions/chats/create-message.action"
+import { getChatByUserIdAction } from "@/app/actions/chats/get-chat-by-user-id.action"
 
 interface UserCoordinates {
   latitude: number
@@ -99,26 +100,17 @@ export const ClientMap = ({
       try {
         const usersChat = await getChatByUserIdAction(currentUser!.id)
         if (usersChat) {
-          setChatId(parseInt(usersChat.chatId))
+          setChatId(usersChat.chat!.id)
         } else {
           return null
         }
-
-        if (chatId) {
-          const Chat = await getChatAction(chatId)
-          if (Chat) {
-            setChatId(Chat.id)
-            const subToMessages = async () => {
-              await subscribeToMessages().then((data) => {
-                console.log("Data: ", data)
-                setMessages(data)
-              })
-            }
-            subToMessages()
-          }
-        } else {
-          return null
-        }
+        // const subToMessages = async () => {
+        //   await subscribeToMessages().then((data) => {
+        //     console.log("Data: ", data)
+        //     setMessages(data)
+        //   })
+        // }
+        // subToMessages()
       } catch (error) {
         console.error(error)
       }
@@ -126,34 +118,6 @@ export const ClientMap = ({
 
     fetchChat()
   }, [messages, chatId, currentUser])
-
-  // TODO: Clean this function of Clientmap
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       const response = await fetch("/api/mapbox", {
-  //         method: "GET",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`,
-  //         },
-  //         // body: JSON.stringify({
-  //         //   service: "driving",
-  //         //   coordinates: [-74.5, 30],
-  //         // }),
-  //       })
-  //       if (!response.ok) {
-  //         throw new Error("Network response was not ok")
-  //       }
-  //       const data = await response.json()
-  //       console.log(data)
-  //     } catch (error) {
-  //       console.error("Fetch error:", error)
-  //     }
-  //   }
-
-  //   fetchData()
-  // }, [])
 
   const createChat = async (userId: string, mechanicId: string) => {
     try {
@@ -224,7 +188,7 @@ export const ClientMap = ({
       <MechanicListCard>
         {currentStep === "mechanicList" && (
             <>
-            {mechanics.filter((mechanic) => mechanic.availabilityStatus === true).length > 0 ? (
+            {mechanics.filter((mechanic) => mechanic.isAvailable === true).length > 0 ? (
               <p className="text-3xl font-semibold pb-4">Available mechanics</p>
             ) : (
               <div className="flex flex-col">
@@ -249,7 +213,7 @@ export const ClientMap = ({
             <div className="grid grid-cols-2 gap-2">
               {mechanics.length > 0 && (
               mechanics
-                .filter((mechanic) => mechanic.availabilityStatus === true)
+                .filter((mechanic) => mechanic.isAvailable === true)
                 .map((mechanic) => {
                 const mechanicUser = mechanicUsers.find(
                   (user) =>
@@ -406,8 +370,8 @@ export const ClientMap = ({
                 />
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                  <p className="text-3xl">{selectedUser?.firstName}</p>
-                  <p className="text-xl">{selectedUser?.lastName}</p>
+                    <p className="text-3xl">{selectedUser?.firstName}</p>
+                    <p className="text-xl">{selectedUser?.lastName}</p>
                   </div>
                 </div>
               </div>
@@ -437,7 +401,7 @@ export const ClientMap = ({
                   <Button
                     onClick={() => {
                       if (currentUser && selectedUser) {
-                        // createChat(currentUser.id, selectedMechanic.id)
+                        createChat(currentUser.id, selectedMechanic.id)
                       }
                     }}
                   >
