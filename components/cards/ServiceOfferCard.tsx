@@ -46,9 +46,9 @@ export function ServiceOfferCard({
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+    <Card className="w-full max-w-md mx-auto ">
+      <CardHeader className="">
+        <CardTitle className="flex items-center justify-between space-x-2">
           <div>
             <span>Service Offer from {mechanicName}</span>
             {mechanicRating && (

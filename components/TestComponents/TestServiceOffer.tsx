@@ -34,7 +34,7 @@ export function TestServiceOffer({ mechanicId, serviceRequests }: TestServiceOff
         serviceRequestId: selectedRequest.id,
         price: parseFloat(price),
         note: note || undefined,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
       })
 
       if (!result.success) {

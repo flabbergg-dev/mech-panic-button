@@ -10,7 +10,7 @@ export function RippleComp({ children }: RippleCompProps) {
       <div className="z-10 whitespace-pre-wrap text-center text-5xl font-medium tracking-tighter text-white">
         {children}
       </div>
-      <Ripple />
+      <Ripple   />
     </div>
   )
 }
