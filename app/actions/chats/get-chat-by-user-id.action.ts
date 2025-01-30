@@ -2,17 +2,15 @@
 
 import { prisma } from "@/lib/prisma"
 
-export async function getChatByUserIdAction(userId: string) {
+export async function getChatByUserIdAction(userId: string, mechanicId: string) {
     try {
-        const chat = await prisma.chat.findFirst({
-            where: { users: { some: { id: userId } } },
+        const chat = await prisma.chat.findUnique({
+            where: { customerId_mechanicId: { customerId: userId, mechanicId: mechanicId } },
             select: {
                 id: true,
                 customerId: true,
                 mechanicId: true,
-                messages: true,
-                users: true,
-            },
+            }
         })
         return {
             success: true,

@@ -101,15 +101,22 @@ export const MapDashboard = () => {
   const fetchSingleMechanic = async (id: string) => {
     try {
       const response = await getMechanicByIdAction(id)
-      setSelectedMechanic({
-        id: response!.data!.id!,
-        userId: response!.data!.userId,
-        bio: response!.data!.bio || "",
-        servicesOffered: response!.data!.servicesOffered,
-        availabilityStatus: response!.data!.availabilityStatus,
-        rating: response!.data!.rating ?? 0,
-        bannerImage: response!.data!.bannerImage ?? "",
-      } as Mechanic)
+      if (response && response.data) {
+        setSelectedMechanic({
+          id: response.data.id,
+          userId: response.data.userId,
+          bio: response.data.bio || "",
+          servicesOffered: response.data.servicesOffered,
+          availability: response.data.availability,
+          rating: response.data.rating ?? 0,
+          bannerImage: response.data.bannerImage ?? "",
+          driversLicenseId: response.data.driversLicenseId ?? "",
+          merchantDocumentUrl: response.data.merchantDocumentUrl ?? "",
+          isAvailable: response.data.isAvailable,
+          createdAt: new Date(response.data.createdAt),
+          updatedAt: new Date(response.data.updatedAt),
+        } as Mechanic)
+      }
     } catch (error) {
       console.error(error)
     }
@@ -143,7 +150,20 @@ export const MapDashboard = () => {
     try {
       const response = await getAvailableMechanicsListAction()
       if (response) {
-        setMechanics(response.data!)
+        setMechanics(response.data!.map((mechanic: any) => ({
+          id: mechanic.id,
+          userId: mechanic.userId,
+          bio: mechanic.bio || "",
+          servicesOffered: mechanic.servicesOffered,
+          isAvailable: mechanic.isAvailable,
+          rating: mechanic.rating ?? 0,
+          bannerImage: mechanic.bannerImage ?? "",
+          driversLicenseId: mechanic.driversLicenseId ?? "",
+          merchantDocumentUrl: mechanic.merchantDocumentUrl ?? "",
+          availability: mechanic.availability ?? [],
+          createdAt: new Date(mechanic.createdAt),
+          updatedAt: new Date(mechanic.updatedAt),
+        })))
       }
     } catch (error) {
       console.error(error)

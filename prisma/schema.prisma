@@ -41,7 +41,6 @@ model Mechanic {
   id                  String            @id @default(uuid())
   userId              String            @unique
   bio                 String?
-  availabilityStatus  Boolean           @default(false)
   rating              Float?
   bannerImage         String?
   driversLicenseId    String?
@@ -116,8 +115,12 @@ model Chat {
   id         Int        @id @default(autoincrement())
   customerId     String
   mechanicId String
+  // createdAt  DateTime @default(now())
+  // updatedAt  DateTime @updatedAt
   users      ChatUser[]
   messages   Message[]
+
+  @@unique([customerId, mechanicId]) // Ensures unique chats between user and mechanic
 }
 
 model ChatUser {

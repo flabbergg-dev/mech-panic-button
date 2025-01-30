@@ -19,6 +19,8 @@ import { DepositModal } from "@/components/Modal/DepositModal"
 import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
 import { createMessageAction } from "@/app/actions/chats/create-message.action"
 import { getChatByUserIdAction } from "@/app/actions/chats/get-chat-by-user-id.action"
+import { subscribeToMessages } from "@/app/actions/chats/subcribe-to-chat.action"
+import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action"
 
 interface UserCoordinates {
   latitude: number
@@ -75,8 +77,18 @@ export const ClientMap = ({
   // messages based on chat based in user (creating in client)
   const [messages, setMessages] = useState([] as any)
   // state for user and mechanic messages (fetching from db)
-  const [userMessages, setUserMessages] = useState<Message[]>([])
-  const [mechanicMessages, setMechanicMessages] = useState<Message[]>([])
+  const [userMessages, setUserMessages] = useState<{
+    id: number
+    chatId: number
+    userId: string
+    content: string
+  }[]>([])
+  const [mechanicMessages, setMechanicMessages] = useState<{
+    id: number
+    chatId: number
+    userId: string
+    content: string
+  }[]>([])
   const { user: currentUser } = useUser()
   // if theres no mechanic in range increase mile radius
   const [rangeValue, setRangeValue] = useState(0)
@@ -86,38 +98,6 @@ export const ClientMap = ({
   )
   // Loading state/ui related
   const [isLoading, setIsLoading] = useState(false)
-
-  const servicesPerMechanic = selectedMechanic?.servicesOffered
-
-  useEffect(() => {
-    if (selectedMechanic) {
-      setMechanicServices(selectedMechanic)
-    }
-  }, [selectedMechanic])
-
-  useEffect(() => {
-    const fetchChat = async () => {
-      try {
-        const usersChat = await getChatByUserIdAction(currentUser!.id)
-        if (usersChat) {
-          setChatId(usersChat.chat!.id)
-        } else {
-          return null
-        }
-        // const subToMessages = async () => {
-        //   await subscribeToMessages().then((data) => {
-        //     console.log("Data: ", data)
-        //     setMessages(data)
-        //   })
-        // }
-        // subToMessages()
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
-    fetchChat()
-  }, [messages, chatId, currentUser])
 
   const createChat = async (userId: string, mechanicId: string) => {
     try {
@@ -135,31 +115,61 @@ export const ClientMap = ({
   }
 
   const createNewMessage = async (message: Message) => {
+    console.log("Message: ", message)
+    if (!message.userId || !message.chatId || !message.content) {
+      throw new Error("Message parameters cannot be null")
+    }
     try {
-      await createMessageAction(message.userId, message.chatId, message.content)
+      const newMessage = await createMessageAction(message.userId, message.chatId, message.content)
+      setUserMessages((prevMessages: any) => [...prevMessages, newMessage])
+      return newMessage
     } catch (error) {
       throw new Error(`Error sending message: ${error}`)
     }
   }
 
-  const handleNewMessage = async () => {
-    setMessages([
-      {
-        chatId: 1,
-        authorId: currentUser!.id,
-        content: "Hello, how can I help you?",
-        userId: selectedMechanic!.id, // TODO: This can be dinamic for both users
-        id: 0,
-      },
-    ])
-    // createNewMessage(messages)
+  const handleNewMessage = async (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const newMessage = {
+      chatId: chatId,
+      authorId: currentUser!.id,
+      content: ev.target.value,
+      userId: selectedMechanic!.id,
+      id: 0,
+    }
+    setMessages((prevMessages: any) => [...prevMessages, newMessage])
   }
 
+  // handles Dashboard change and calls the users chat based on the user id
+  const handleDashboardChangeOpeningChat = async () => {
+    setCurrentStep("chat")
+    if (currentUser) {
+      const chat = await getChatByUserIdAction(currentUser.id, selectedUser.id)
+
+      const usersMessages = await getChatMessages(chat.chat!.id, currentUser.id)
+      const mechanicsMessages = await getChatMessages(chat.chat!.id, selectedUser.id)
+
+      if (chat) {
+        if (chat.chat?.id !== undefined) {
+          setChatId(chat.chat.id)
+        }
+      }
+
+      if (usersMessages) {
+        setUserMessages(usersMessages.messages.map(msg => ({ ...msg, userId: msg.authorId })))
+      }
+
+      if (mechanicsMessages) {
+        setMechanicMessages(mechanicsMessages.messages.map(msg => ({ ...msg, userId: msg.authorId })))
+      }
+    }
+  }
+  // picks a mechanic and changes the dashboard state
   const handleDashboardChangeAndUserPick = (Mechanic: any) => {
     setSelectedMechanic(Mechanic)
     setCurrentStep("mechanicDetails")
   }
 
+  //  goes back to the previous step
   const handlePreviousStep = () => {
     const steps = [
       "mechanicList",
@@ -174,6 +184,25 @@ export const ClientMap = ({
       setCurrentStep(steps[currentIndex - 1] as typeof currentStep)
     }
   }
+
+  useEffect(() => {
+    if (selectedMechanic) {
+      setMechanicServices(selectedMechanic)
+    }
+  }, [selectedMechanic])
+
+  useEffect(() => {
+    if(currentStep === "chat") {
+      if (currentUser && selectedUser) {
+        const subToMessages = async () => {
+            await subscribeToMessages(currentUser.id, selectedUser.id).then((data) => {
+            console.log("Data: ", data)
+            })
+        }
+        subToMessages()
+      }
+    }
+  }, [currentUser, selectedUser])
 
   return (
     <HalfSheet>
@@ -346,9 +375,8 @@ export const ClientMap = ({
                 Complete request
               </Button>
               <Button
-                onClick={() => setCurrentStep("chat")}
+                onClick={() => handleDashboardChangeOpeningChat()}
                 variant={"default"}
-                disabled={accountBalance < 9}
               >
                 <MessageCircleMoreIcon />
               </Button>
@@ -380,28 +408,36 @@ export const ClientMap = ({
                 {mechanicMessages.map((msg) => (
                   <div
                     key={msg.id}
-                    className="h-auto w-auto flex flex-col items-start justify-start"
+                    className="place-self-left h-auto gap-4 w-24 flex items-center justify-center"
                   >
-                    <p className="bg-slate-600 text-white p-2 rounded-lg">
-                      {msg.content}
-                    </p>
+                    <DynamicAvatar className="border-2" src={typeof currentUser?.username === 'string' ? currentUser.username : undefined} fallbackText={currentUser?.firstName ? currentUser.firstName.slice(0, 2) : "NA"} />
+                    <div className="flex w-[-webkit-fill-available]">
+                      <p className="text-white bg-slate-600 p-2 rounded-lg">
+                        {msg.content}
+                      </p>
+                    </div>
                   </div>
                 ))}
                 {userMessages.map((msg) => (
                   <div
                     key={msg.id}
-                    className="place-self-center h-auto w-24 flex flex-col items-center justify-center"
+                    className="place-self-right h-auto gap-4 w-24 flex items-center justify-center"
                   >
-                    <p className="bg-black text-white p-1 rounded-lg">
-                      {msg.content}
-                    </p>
+                    <div className="flex w-32">
+                      <DynamicAvatar className="border-2" src={typeof currentUser?.username === 'string' ? currentUser.username : undefined} fallbackText={currentUser?.firstName ? currentUser.firstName.slice(0, 2) : "NA"} />
+                    </div>
+                    <div className="flex w-32">
+                      <p className="text-white bg-slate-600 p-2 rounded-lg">
+                        {msg.content}
+                      </p>
+                    </div>
                   </div>
                 ))}
                 {!chatId && (
                   <Button
                     onClick={() => {
                       if (currentUser && selectedUser) {
-                        createChat(currentUser.id, selectedMechanic.id)
+                        createChat(currentUser.id, selectedUser.id)
                       }
                     }}
                   >
@@ -412,11 +448,17 @@ export const ClientMap = ({
                   <div className="flex gap-4 my-4">
                     <Input
                       placeholder="Type a message"
-                      // onChange={() => handleNewMessage()}
+                      onChange={(ev) => handleNewMessage(ev)}
                     />
                     <Button
                       variant={"secondary"}
-                      // onClick={() => createNewMessage(messages[0])}
+                      onClick={() => createNewMessage({
+                        id: 0,
+                        userId: currentUser!.id,
+                        chatId: chatId,
+                        authorId: currentUser!.id,
+                        content: messages[messages.length - 1].content,
+                      })}
                     >
                       Send
                     </Button>
