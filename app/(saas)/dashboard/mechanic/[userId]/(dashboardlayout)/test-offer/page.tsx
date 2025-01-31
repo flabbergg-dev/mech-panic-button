@@ -23,9 +23,13 @@ export default async function TestOfferPage() {
   }
 
   // Get all service requests in REQUESTED status
-  const serviceRequests = await prisma.serviceRequest.findMany({
+  
+  let serviceRequests = await prisma.serviceRequest.findMany({
     where: {
-      status: "REQUESTED"
+      OR: [
+        { status: "REQUESTED" },
+        { status: "OFFERED" }
+      ]
     },
     include: {
       client: true
@@ -33,6 +37,18 @@ export default async function TestOfferPage() {
     orderBy: {
       createdAt: 'desc'
     }
+  })
+
+  // Filter service requests to show only those that don't have an offer from the logged mechanic
+  const serviceOffer = await prisma.serviceOffer.findMany({
+    where: {
+      mechanicId: mechanic.id,
+     
+    }
+  })
+
+  serviceRequests = serviceRequests.filter((request) => {
+    return !serviceOffer.some((offer) => offer.serviceRequestId === request.id)
   })
 
   return (

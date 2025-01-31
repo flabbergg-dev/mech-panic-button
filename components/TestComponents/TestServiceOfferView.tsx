@@ -32,22 +32,33 @@ export function TestServiceOfferView({ serviceRequests }: TestServiceOfferViewPr
   return (
     <div className="space-y-6">
       {serviceRequests.map((request) => {
-        const latestOffer = request.offers[0] // Assumes offers are ordered by createdAt desc
-        if (!latestOffer) return null
+        if (request.offers.length === 0) return null;
+
+        // Sort offers by creation date (newest first)
+        const sortedOffers = [...request.offers].sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
 
         return (
-          <ServiceOfferCard
-            key={request.id}
-            serviceRequestId={request.id}
-            mechanicName={`${latestOffer.mechanic.user.firstName} ${latestOffer.mechanic.user.lastName}`}
-            price={latestOffer.price}
-            note={latestOffer.note || undefined}
-            expiresAt={latestOffer.expiresAt || undefined}
-            onOfferHandled={() => {
-              // You might want to refresh the page or update the UI here
-              window.location.reload()
-            }}
-          />
+          <div key={request.id} className="border rounded-lg p-4 space-y-4">
+            <h3 className="text-lg font-semibold">Service Request Offers</h3>
+            <div className="grid gap-4">
+              {sortedOffers.map((offer) => (
+                <ServiceOfferCard
+                  key={offer.id}
+                  serviceRequestId={request.id}
+                  mechanicName={`${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`}
+                  price={offer.price}
+                  note={offer.note || undefined}
+                  expiresAt={offer.expiresAt || undefined}
+                  onOfferHandled={() => {
+                    // You might want to refresh the page or update the UI here
+                    window.location.reload()
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         )
       })}
     </div>

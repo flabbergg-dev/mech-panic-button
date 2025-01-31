@@ -41,7 +41,6 @@ model Mechanic {
   id                  String            @id @default(uuid())
   userId              String            @unique
   bio                 String?
-  availabilityStatus  Boolean           @default(false)
   rating              Float?
   bannerImage         String?
   driversLicenseId    String?
@@ -55,9 +54,8 @@ model Mechanic {
   earnings            Earning[]
   user                User              @relation(fields: [userId], references: [id])
   services            MechanicService[]
+  ServiceOffer        ServiceOffer[]
   serviceRequests     ServiceRequest[]
-
-  ServiceOffer ServiceOffer[]
 }
 
 model Vehicle {
@@ -71,26 +69,26 @@ model Vehicle {
 }
 
 model ServiceRequest {
-  id             String        @id
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id             String         @id
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   clientId       String
   mechanicId     String?
-  serviceType    ServiceType   @default(DIAGNOSTIC)
+  serviceType    ServiceType    @default(DIAGNOSTIC)
   status         ServiceStatus
   location       Json
   description    String?
   paymentHoldId  String?
   completionCode String?
   paymentId      String?
-  offeredPrice   Float?        // Price offered by mechanic
-  offerExpiry    DateTime?     // Optional expiry time for the offer
-  offerNote      String?       // Optional note from mechanic about the offer
-  offers         ServiceOffer[]
+  offerExpiry    DateTime?
+  offerNote      String?
+  offeredPrice   Float?
   review         Review?
-  client         User          @relation(fields: [clientId], references: [id])
-  mechanic       Mechanic?     @relation(fields: [mechanicId], references: [id])
-  payment        Payment?      @relation(fields: [paymentId], references: [id])
+  offers         ServiceOffer[]
+  client         User           @relation(fields: [clientId], references: [id])
+  mechanic       Mechanic?      @relation(fields: [mechanicId], references: [id])
+  payment        Payment?       @relation(fields: [paymentId], references: [id])
 }
 
 model Review {
@@ -115,10 +113,12 @@ model Earning {
 
 model Chat {
   id         Int        @id @default(autoincrement())
-  chatUserId String
-  messageId  Int
+  mechanicId String
+  customerId String
   users      ChatUser[]
   messages   Message[]
+
+  @@unique([customerId, mechanicId])
 }
 
 model ChatUser {
@@ -221,17 +221,17 @@ model Payment {
 }
 
 model ServiceOffer {
-  id              String        @id @default(cuid())
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  mechanicId      String
+  id               String         @id @default(cuid())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  mechanicId       String
   serviceRequestId String
-  price           Float
-  note            String?
-  status          OfferStatus   @default(PENDING)
-  expiresAt       DateTime?
-  mechanic        Mechanic      @relation(fields: [mechanicId], references: [id])
-  serviceRequest  ServiceRequest @relation(fields: [serviceRequestId], references: [id])
+  price            Float
+  note             String?
+  status           OfferStatus    @default(PENDING)
+  expiresAt        DateTime?
+  mechanic         Mechanic       @relation(fields: [mechanicId], references: [id])
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id])
 }
 
 enum UserRole {
@@ -241,10 +241,10 @@ enum UserRole {
 
 enum ServiceStatus {
   REQUESTED
-  OFFERED
   ACCEPTED
   IN_PROGRESS
   COMPLETED
+  OFFERED
 }
 
 enum SubscriptionPlan {
@@ -284,4 +284,5 @@ enum OfferStatus {
   ACCEPTED
   DECLINED
   EXPIRED
+  REJECTED
 }

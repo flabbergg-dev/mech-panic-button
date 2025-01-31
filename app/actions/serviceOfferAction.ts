@@ -34,8 +34,8 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
       throw new Error("Service request not found")
     }
 
-    if (serviceRequest.status !== ServiceStatus.REQUESTED) {
-      throw new Error("Service request is not in REQUESTED status")
+    if (serviceRequest.status !== ServiceStatus.REQUESTED && serviceRequest.status !== ServiceStatus.OFFERED) {
+      throw new Error("Service request is not in REQUESTED neither in OFFERED status")
     }
 
     // Create the offer
@@ -47,18 +47,6 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
         note: input.note,
         expiresAt: input.expiresAt,
         status: OfferStatus.PENDING
-      }
-    })
-
-    // Update service request status to OFFERED
-    await prisma.serviceRequest.update({
-      where: { id: input.serviceRequestId },
-      data: {
-        mechanicId: input.mechanicId,
-        status: ServiceStatus.OFFERED,
-        offeredPrice: input.price,
-        offerNote: input.note,
-        offerExpiry: input.expiresAt
       }
     })
 
@@ -80,22 +68,20 @@ export async function handleServiceOfferAction(
   accepted: boolean
 ): Promise<ServiceOfferResponse> {
   try {
-    // Get the service request and its latest offer
-    const serviceRequest = await prisma.serviceRequest.findUnique({
-      where: { id: serviceRequestId },
+    // Get the service offer by serviceRequestId
+    const serviceOffer = await prisma.serviceOffer.findMany({
+      where: { AND: { serviceRequestId: serviceRequestId, status: OfferStatus.PENDING} },
       include: {
-        offers: {
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        }
+        mechanic: true,
+        serviceRequest: true
       }
     })
 
-    if (!serviceRequest) {
-      throw new Error("Service request not found")
+    if (!serviceOffer || serviceOffer.length === 0) {
+      throw new Error("Service offer not found")
     }
 
-    const latestOffer = serviceRequest.offers[0]
+    const latestOffer = serviceOffer[0]
     if (!latestOffer) {
       throw new Error("No offer found for this service request")
     }

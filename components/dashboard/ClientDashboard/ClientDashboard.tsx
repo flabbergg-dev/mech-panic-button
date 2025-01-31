@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useServiceRequests } from '@/hooks/useServiceRequests'
+import { useServiceOffers } from '@/hooks/useServiceOffers'
 import { ServiceOfferCard } from '@/components/cards/ServiceOfferCard'
 import { RippleComp } from "@/components/Animated/RippleComp"
 import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
@@ -13,23 +13,25 @@ import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { toast } from '@/hooks/use-toast'
 import { motion } from 'framer-motion';
+import { ServiceStatus, ServiceRequest } from '@prisma/client'
+import { EnrichedServiceOffer } from '@/app/actions/getServiceOffersAction'
 
 export function ClientDashboard() {
   const { user } = useUser()
-  const { requests, loading, error, refetch } = useServiceRequests(user?.id || '')
   const [activeTab, setActiveTab] = useState("home")
+  const { requests, offers, loading, error, refetch } = useServiceOffers(user?.id || '')
 
-  // Check if there's an active request (either REQUESTED or OFFERED status)
-  const hasActiveRequest = requests.some(request => 
-    request.status === 'REQUESTED' || request.status === 'OFFERED'
+  // Check if there's an active request
+  const activeRequest = requests.find((request: ServiceRequest) => 
+    request.status === ServiceStatus.REQUESTED || request.status === ServiceStatus.OFFERED
   )
 
   // Force requests tab if there's an active request
   useEffect(() => {
-    if (hasActiveRequest) {
+    if (activeRequest) {
       setActiveTab("requests")
     }
-  }, [hasActiveRequest])
+  }, [activeRequest])
 
   const handleRequestCreated = () => {
     setActiveTab("requests")
@@ -68,22 +70,12 @@ export function ClientDashboard() {
 
   // Debug logging
   console.log('All requests:', requests)
-
-  const offeredRequests = requests.filter(request => 
-    request.status === 'OFFERED'
-  )
-
-  const activeRequests = requests.filter(request => 
-    request.status === 'REQUESTED' 
-  )
-
-  // Debug logging
-  console.log('Offered requests:', offeredRequests)
-  console.log('Active requests:', activeRequests)
+  console.log('Active request:', activeRequest)
+  console.log('Active offers:', offers)
 
   const renderContent = () => {
     // If there's an active request, only show the requests tab
-    if (hasActiveRequest && activeTab !== "requests") {
+    if (activeRequest && activeTab !== "requests") {
       return null
     }
 
@@ -115,50 +107,56 @@ export function ClientDashboard() {
       case "requests":
         return (
           <div className="space-y-6 p-4 pb-20">
-            {activeRequests.length > 0 && (
+            {activeRequest && (
               <div>
                 <h2 className="text-xl font-semibold mb-4">Active Request</h2>
                 <div className="space-y-4">
-                  {activeRequests.map((request) => (
-                    <Card key={request.id} className="p-4">
-                      <div className="flex justify-between items-start space-x-4">
-                        <div className="space-y-2 flex-1">
-                          <h3 className="font-semibold">Waiting for mechanics...</h3>
-                          <p className="text-sm text-muted-foreground">Your request is being sent to nearby mechanics</p>
-                        </div>
-                        <motion.div whileTap={{ scale: 0.98 }}>
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => handleCancelRequest(request.id)}
-                            className="transition-transform"
-                          >
-                            Cancel
-                          </Button>
-                        </motion.div>
+                  <Card className="p-4">
+                    <div className="flex justify-between items-start space-x-4">
+                      <div className="space-y-2 flex-1">
+                        <h3 className="font-semibold">
+                          {offers.length === 0 
+                            ? "Waiting for mechanics..." 
+                            : `${offers.length} offer${offers.length === 1 ? '' : 's'} received`}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {offers.length === 0 
+                            ? "Your request is being sent to nearby mechanics"
+                            : "Review the offers below"}
+                        </p>
                       </div>
-                    </Card>
-                  ))}
+                      <motion.div whileTap={{ scale: 0.98 }}>
+                        <Button 
+                          variant="destructive" 
+                          onClick={() => handleCancelRequest(activeRequest.id)}
+                          className="transition-transform"
+                        >
+                          Cancel Request
+                        </Button>
+                      </motion.div>
+                    </div>
+                  </Card>
                 </div>
               </div>
             )}
 
-            {offeredRequests.length > 0 && (
+            {offers.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">New Offers</h2>
+                <h2 className="text-xl font-semibold mb-4">Mechanic Offers</h2>
                 <div className="space-y-4">
-                  {offeredRequests.map((request) => (
+                  {offers.map((offer: EnrichedServiceOffer) => (
                     <ServiceOfferCard
-                      key={request.id}
-                      serviceRequestId={request.id}
+                      key={offer.id}
+                      serviceRequestId={offer.serviceRequestId}
                       mechanicName={
-                        request.mechanic?.user 
-                          ? `${request.mechanic.user.firstName} ${request.mechanic.user.lastName}`
+                        offer.mechanic?.user 
+                          ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`
                           : 'Unknown Mechanic'
                       }
-                      mechanicRating={request.mechanic?.rating || undefined}
-                      price={request.offeredPrice || 0}
-                      note={request.offerNote || undefined}
-                      expiresAt={request.offerExpiry || undefined}
+                      mechanicRating={offer.mechanic?.rating || undefined}
+                      price={offer.price || 0}
+                      note={offer.note || undefined}
+                      expiresAt={offer.expiresAt || undefined}
                       onOfferHandled={refetch}
                     />
                   ))}
@@ -166,7 +164,7 @@ export function ClientDashboard() {
               </div>
             )}
 
-            {activeRequests.length === 0 && offeredRequests.length === 0 && (
+            {!activeRequest && offers.length === 0 && (
               <div className="text-center text-muted-foreground">
                 No active requests or offers
               </div>
@@ -191,11 +189,11 @@ export function ClientDashboard() {
         activeTab={activeTab} 
         onTabChange={tab => {
           // Only allow tab changes if there's no active request or if switching to requests tab
-          if (!hasActiveRequest || tab === "requests") {
+          if (!activeRequest || tab === "requests") {
             setActiveTab(tab)
           }
         }} 
-        disabledTabs={hasActiveRequest ? ["home", "map"] : []}
+        disabledTabs={activeRequest ? ["home", "map"] : []}
       />
     </div>
   )
