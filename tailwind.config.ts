@@ -18,6 +18,10 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        'roboto-regular': ['var(--font-roboto-regular)'],
+        'michroma-sans': ['var(--font-michroma-sans)'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

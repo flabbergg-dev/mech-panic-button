@@ -7,6 +7,7 @@ import {
 } from "@/lib/domain/dtos/user.dto"
 import { IUserRepository } from "@/lib/domain/repositories/user.repository"
 import { prisma } from "@/lib/prisma"
+import { ServiceType } from "@prisma/client"
 
 export class PrismaUserRepository implements IUserRepository {
   private supabase
@@ -232,6 +233,7 @@ export class PrismaUserRepository implements IUserRepository {
             bannerImage: uploadedDocs.bannerImage || null,
             driversLicenseId: driversLicenseId || null,
             merchantDocumentUrl: merchantDocumentUrl || null,
+            updatedAt: new Date(),
           },
           update: {
             // Update the Mechanic record if one already exists

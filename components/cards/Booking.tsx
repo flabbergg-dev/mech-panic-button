@@ -1,104 +1,134 @@
 "use client"
 
-import { ChangeEvent, FormEvent, useState } from "react"
-import Image from "next/image"
+import {  FormEvent, useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
 import { CheckCircle2, Loader } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
+import { format, addDays, startOfToday } from "date-fns"
 
-type User = {
-  username: string
-  email: string
+// This would come from your API/database
+type MechanicAvailability = {
+  date: Date
+  slots: string[]
 }
 
 export const Booking = () => {
+  const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
-  const [isSelected, setIsSelected] = useState("")
-  const [user, setUser] = useState<User>({
-    username: "",
-    email: "",
-  })
+  const [isSelected, setIsSelected] = useState<string[]>([])
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [loading, setLoading] = useState(false)
   const [isConfirmed, setIsConfirmed] = useState(false)
   const [isActive, setIsActive] = useState(0)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const [availability, setAvailability] = useState<MechanicAvailability[]>([])
 
+  // Fetch mechanic availability - This would be replaced with your actual API call
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      // Simulate API call
+      const today = startOfToday()
+      const mockAvailability: MechanicAvailability[] = Array.from({ length: 7 }, (_, i) => ({
+        date: addDays(today, i),
+        // Randomly generate available slots
+        slots: ["9:00 AM", "10:00 AM", "2:00 PM", "3:00 PM"].filter(() => Math.random() > 0.3)
+      }))
+      setAvailability(mockAvailability)
+    }
+
+    fetchAvailability()
+  }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  
   const bookingVariant = {
     initial: {
       opacity: 0,
-      y: -200,
+      y: 100,
     },
     animate: {
       opacity: 1,
-      y: -320,
+      y: 0,
       transition: {
         type: "spring",
-        stiffness: 260,
-        damping: 20,
-        delay: 0.2,
-        duration: 5,
-        ease: [0.9, 0.1, 0.25, 1],
+        stiffness: 200,
+        damping: 25,
       },
     },
     exit: {
       opacity: 0,
-      y: -180,
+      y: 100,
       transition: {
         duration: 0.2,
       },
     },
   }
 
-  const times = ["1:00pm", "2:00pm", "3:00pm", "4:00pm"]
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+  // Get available time slots for selected date
+  const getAvailableSlots = (date: Date) => {
+    const dayAvailability = availability.find(
+      (a) => format(a.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+    )
+    return dayAvailability?.slots || []
+  }
 
-  const onChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target
-
-    setUser((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+  const handleDateSelect = (index: number) => {
+    const newDate = addDays(startOfToday(), index)
+    setSelectedDate(newDate)
+    setIsActive(index)
+    setIsSelected([]) // Clear selected time when date changes
   }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-
     try {
       setLoading(true)
-
-      // validate form
-      if (!username || !email) {
-        throw new Error("Please fill out all fields")
-      }
-      // make some fake async call with promise for 5
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-
+      // Here you would make an API call to save the booking
+      await new Promise((resolve) => setTimeout(resolve, 1500))
       setIsConfirmed(true)
       setTimeout(() => {
         setIsOpen(false)
+        setIsConfirmed(false)
+        setIsSelected([])
+        setIsActive(0)
       }, 2000)
-    } catch (error: any) {
+    } catch (error) {
+      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  const { username, email } = user
+  if (!user) return null
+
+  // Generate next 7 days
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(startOfToday(), i)
+    return format(date, 'EEE')
+  })
 
   return (
-    <div className="h-full flex items-end justify-center w-full">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        version="1.1"
-        className="absolute"
-      >
+    <div className="fixed bottom-24 left-0 right-0 md:relative md:h-full flex items-end justify-center w-full z-20 p-4">
+      <svg xmlns="http://www.w3.org/2000/svg" version="1.1" className="absolute">
         <defs>
           <filter id="goo">
-            <feGaussianBlur
-              in="SourceGraphic"
-              stdDeviation="10"
-              result="blur"
-            />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
             <feColorMatrix
               in="blur"
               mode="matrix"
@@ -109,223 +139,170 @@ export const Booking = () => {
           </filter>
         </defs>
       </svg>
-      <div
-        style={{
-          filter: "url(#goo)",
-        }}
-      >
+      <div style={{ filter: "url(#goo)" }} className="w-full max-w-lg mx-auto">
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              className="h-[300px] bg-primary text-primary-foreground  absolute rounded-3xl overflow-scroll -z-10 w-[200px] md:w-[500px] p-5 mx-auto "
+              ref={modalRef}
+              className="min-h-[300px] max-h-[85vh] bg-primary text-primary-foreground fixed bottom-20 left-0 right-0 md:bottom-24 md:left-4 md:right-4 md:absolute md:w-[500px] rounded-t-3xl md:rounded-3xl overflow-auto scrollbar-hide -z-10 p-4 md:p-5 mx-auto touch-pan-y"
               variants={bookingVariant}
               initial="initial"
               animate="animate"
               exit="exit"
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(e, { offset, velocity }) => {
+                if (offset.y > 200 || velocity.y > 500) {
+                  setIsOpen(false)
+                }
+              }}
             >
+              <div className="w-full flex justify-center mb-2 md:hidden">
+                <div className="w-10 h-1 bg-primary-foreground/20 rounded-full" />
+              </div>
               <AnimatePresence>
                 {isSelected.length === 0 && (
                   <motion.div
-                    exit={{
-                      opacity: 0,
-                      y: -100,
-                      transition: {
-                        duration: 0.2,
-                      },
-                    }}
-                    className="w-full h-full gap-10 flex"
+                    className="flex flex-col gap-6 md:gap-8"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                   >
-                    <div className="flex-1">
-                      <div className="w-full flex items-center justify-between text-primary-foreground/50">
-                        <p>
-                          Wed <span>21</span>
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-5 gap-3 text-primary-foreground/80">
-                        {days.map((day) => {
-                          // some code here
-
+                    <div className="flex flex-col gap-4">
+                      <h1 className="text-xl md:text-2xl font-medium">Select a Date & Time</h1>
+                      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {days.map((day, index) => {
+                          const date = addDays(startOfToday(), index)
+                          const hasSlots = getAvailableSlots(date).length > 0
                           return (
                             <motion.button
-                              key={day}
-                              className="py-1.5 rounded-xl flex-1"
-                            >
-                              {day}
-                            </motion.button>
-                          )
-                        })}
-                      </div>
-                      <div className="grid grid-cols-5 gap-3">
-                        {Array.from({ length: 20 }).map((_, index) => {
-                          //some code here
-
-                          return (
-                            <div
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleDateSelect(index)}
                               key={index}
+                              disabled={!hasSlots}
                               className={cn(
-                                "h-10 w-10 text-primary-foreground center rounded-xl cursor-pointer hover:bg-white/20 transition-all duration-150",
-                                isActive === index &&
-                                  "bg-white/50 hover:bg-background"
+                                "bg-secondary backdrop-blur px-4 py-1.5 rounded-xl whitespace-nowrap text-sm md:text-base",
+                                isActive === index
+                                  ? "bg-background text-primary dark:text-white"
+                                  : "text-black dark:text-white",
+                                !hasSlots && "opacity-50 cursor-not-allowed"
                               )}
-                              onClick={() => {
-                                setIsActive(index)
-                              }}
                             >
-                              {index + 1}
-                            </div>
+                              <span className="block text-center">
+                                {day}
+                              </span>
+                              <span className="block text-center text-xs opacity-70">
+                                {format(date, 'd')}
+                              </span>
+                            </motion.button>
                           )
                         })}
                       </div>
                     </div>
-                    <div className="flex-[0.6] bg-primary flex flex-col gap-10">
-                      <div className="w-full flex items-center justify-between text-primary-foreground/50">
-                        <p>
-                          Wed <span>21</span>
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col gap-4 ">
-                        {times.map((time) => {
-                          // some code here
-
-                          return (
-                            <motion.button
-                              whileTap={{
-                                scale: 0.9,
-                              }}
-                              onClick={() => setIsSelected(time)}
-                              key={time}
-                              className="bg-secondary backdrop-blur text-black dark:text-white px-4 py-1.5 rounded-xl"
-                            >
-                              {time}
-                            </motion.button>
-                          )
-                        })}
+                    <div className="flex flex-col gap-4">
+                      <h2 className="text-lg md:text-xl font-medium">Available Times</h2>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {getAvailableSlots(selectedDate).map((time) => (
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setIsSelected([time])}
+                            key={time}
+                            className="bg-secondary backdrop-blur text-black dark:text-white px-4 py-1.5 rounded-xl whitespace-nowrap text-sm md:text-base"
+                          >
+                            {time}
+                          </motion.button>
+                        ))}
                       </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
               <AnimatePresence>
-                {isSelected && (
+                {isSelected.length > 0 && (
                   <motion.div
-                    className="text-primary-foreground h-full w-auto grid md:flex gap-2"
-                    initial={{
-                      y: 0,
-                      opacity: 0,
-                    }}
+                    className="text-primary-foreground h-full w-full flex flex-col md:flex-row gap-6 md:gap-2 pb-safe"
+                    initial={{ y: 0, opacity: 0 }}
                     animate={{
                       y: isConfirmed ? -400 : 0,
                       opacity: 1,
-                      transition: {
-                        duration: 0.5,
-                      },
                     }}
-                    exit={{
-                      opacity: 0,
-                      y: -100,
-                      transition: {
-                        duration: 0.2,
-                      },
-                    }}
+                    exit={{ opacity: 0 }}
                   >
-                    <div className="flex flex-[.65] flex-col space-y-4 text-primary-foreground/90">
-                      <h1 className="textw">Confirm your booking</h1>
-                      <div className="space-y-2">
-                        <div className="flex gap-2 items-center">
-                          <div className="h-10 w-10 rounded-full relative overflow-hidden">
-                            <Image
-                              src={"/apps/web/public/images/card.png"}
-                              alt="Bossadi zenith"
-                              fill
-                            />
-                          </div>
-                          <span className="font-semibold">Bossadi Zenith</span>
+                    <div className="flex flex-col gap-6 w-full">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-background rounded-xl p-2 h-12 w-12 md:h-14 md:w-14 flex items-center justify-center">
+                          <img
+                            src={user.imageUrl}
+                            alt="Mechanic"
+                            width={100}
+                            height={100}
+                            className="rounded-lg"
+                          />
                         </div>
-                        <h2 className="flex flex-col gap-2">
-                          <span> Monday, August {isActive + 1} 2024</span>{" "}
-                          <span className="text-lg text-muted-foreground">
-                            {isSelected}
-                          </span>
+                        <h2 className="flex flex-col gap-1 text-sm md:text-base">
+                          <span>{format(selectedDate, 'EEEE, MMMM d yyyy')}</span>
+                          <span className="text-muted-foreground">{isSelected[0]}</span>
                         </h2>
                       </div>
                     </div>
-                    <div className="flex flex-1">
-                      <form
-                        onSubmit={handleSubmit}
-                        className="flex flex-col gap-5 w-full"
-                      >
-                        <div className="flex flex-col gap-2">
-                          <label
-                            htmlFor="name"
-                            className="font-medium text-primary-foreground/70"
-                          >
-                            Your name
-                          </label>
-                          <input
-                            type="text"
-                            id="name"
-                            name="username"
-                            value={username}
-                            onChange={onChange}
-                            required
-                            disabled={loading}
-                            className="h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-5 text-primary-foreground/70 outline-none border-background"
-                            placeholder="Your name"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-2  w-full">
-                          <label
-                            htmlFor="name"
-                            className="font-medium text-primary-foreground/70"
-                          >
-                            Your email
-                          </label>
-                          <input
-                            type="email"
-                            id="name"
-                            name="email"
-                            value={email}
-                            onChange={onChange}
-                            required
-                            placeholder="Your email"
-                            disabled={loading}
-                            className="h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-5 text-primary-foreground/70 outline-none border-background"
-                          />
-                        </div>
-                        <motion.button
-                          type="submit"
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 md:gap-5 w-full">
+                      <div className="flex flex-col gap-2">
+                        <label htmlFor="name" className="font-medium text-primary-foreground/70 text-sm">
+                          Your name
+                        </label>
+                        <input
+                          type="text"
+                          id="name"
+                          name="firstName"
+                          value={user.firstName || ''}
+                          readOnly
+                          required
                           disabled={loading}
-                          className="bg-background dark:text-white text-black flex items-center gap-2  justify-center px-4 h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {loading && (
-                            <Loader className="animate-spin h-4 w-4" />
-                          )}{" "}
-                          Book Now
-                        </motion.button>
-                      </form>
-                    </div>
+                          className="h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-4 text-sm md:text-base text-primary-foreground/70 outline-none border-background"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2 w-full">
+                        <label htmlFor="email" className="font-medium text-primary-foreground/70 text-sm">
+                          Your email
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={user.emailAddresses[0]?.emailAddress || ''}
+                          readOnly
+                          required
+                          disabled={loading}
+                          className="h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-4 text-sm md:text-base text-primary-foreground/70 outline-none border-background"
+                        />
+                      </div>
+                      <motion.button
+                        type="submit"
+                        disabled={loading}
+                        className="bg-background dark:text-white text-black flex items-center gap-2 justify-center px-4 h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base mt-auto"
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {loading && <Loader className="animate-spin h-4 w-4" />}
+                        Book Now
+                      </motion.button>
+                    </form>
                   </motion.div>
                 )}
               </AnimatePresence>
               <AnimatePresence>
                 {isConfirmed && (
                   <motion.div
-                    initial={{
-                      opacity: 0,
-                    }}
-                    animate={{
-                      y: 0,
-                      opacity: 1,
-                    }}
-                    className="h-full w-full black absolute top-0 left-0 flex flex-col gap-4 items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="h-full w-full black absolute top-0 left-0 flex flex-col gap-4 items-center justify-center p-4"
                   >
                     <CheckCircle2
-                      className="text-primary-foreground"
+                      className="text-primary-foreground h-12 w-12 md:h-16 md:w-16"
                       fill="white"
                       stroke="black"
                     />
-                    <h1 className="text-primary-foreground font-bold flex flex-col text-center text-xl">
+                    <h1 className="text-primary-foreground font-bold flex flex-col text-center text-lg md:text-xl">
                       <span>Booking confirmed!</span>
                       <span>Looking forward to chatting!</span>
                     </h1>
@@ -336,22 +313,20 @@ export const Booking = () => {
           )}
         </AnimatePresence>
 
-        <div className="h-20 flex items-center justify-center">
-          <div className="flex items-center justify-between bg-primary rounded-2xl mx-auto z-10  p-1 w-auto md:w-[500px] px-2.5">
+        <div className="h-16 md:h-20 flex items-center justify-center fixed bottom-0 left-0 right-0 md:relative bg-background/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none">
+          <div className="flex items-center justify-between bg-primary rounded-2xl mx-auto z-10 p-1 w-[calc(100%-2rem)] md:w-[500px] px-2.5">
             <motion.div
-              animate={{
-                height: 50,
-              }}
-              className="bg-primary bg-black rounded-lg max-w-[50px] min-w-[50px] flex items-center justify-center"
+              animate={{ height: 42 }}
+              className="bg-primary bg-black rounded-lg max-w-[42px] min-w-[42px] flex items-center justify-center"
             >
-              <div className="h-4 rounded w-4 bg-white dark:bg-black rotate-45" />
+              <div className="h-3 rounded w-3 bg-white dark:bg-black rotate-45" />
             </motion.div>
-
             <motion.button
-              className="bg-secondary text-black dark:text-white px-4 py-1.5 rounded-xl"
+              className="bg-secondary text-black dark:text-white px-4 py-1.5 rounded-xl text-sm md:text-base font-medium"
               onClick={() => setIsOpen((prev) => !prev)}
+              whileTap={{ scale: 0.98 }}
             >
-              Book a call
+              {isOpen ? "Close" : "Book a Mechanic"}
             </motion.button>
           </div>
         </div>

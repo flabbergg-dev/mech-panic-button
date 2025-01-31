@@ -95,12 +95,12 @@ export function MechanicDocuments({ formData }: MechanicDocumentsProps) {
 
       // Update mechanic profile with document URLs
       const result = await updateMechanicDocumentsAction(user.id, {
-        driversLicenseId: data.driversLicenseUrl,
+        driversLicenseId: data.driversLicenseId,
         merchantDocumentUrl: data.merchantDocumentUrl,
       })
 
-      if (!result.success) {
-        throw new Error(result.error)
+      if (!result || !result.success) {
+        throw new Error(result?.error || "Failed to update mechanic documents")
       }
 
       toast({

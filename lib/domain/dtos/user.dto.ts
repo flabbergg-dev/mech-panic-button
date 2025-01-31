@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { UserRole, SubscriptionPlan, SubscriptionStatus } from "@prisma/client"
+import { UserRole, SubscriptionPlan, SubscriptionStatus, ServiceType } from "@prisma/client"
 
 // Base user schema without mechanic-specific fields
 export const updateUserSchema = z.object({
@@ -30,7 +30,7 @@ export const updateUserSchema = z.object({
 // Additional fields for mechanics
 export const updateMechanicSchema = z.object({
   bio: z.string().optional(),
-  servicesOffered: z.array(z.string()).optional(),
+  servicesOffered: z.array(z.nativeEnum(ServiceType)).optional(),
   isAvailable: z.boolean().optional(),
   bannerImage: z.instanceof(File).optional(),
   driversLicenseId: z.string().optional(),
@@ -67,7 +67,7 @@ export interface MechanicProfileEntity extends UserProfileEntity {
   mechanic: {
     id: string
     bio: string | null
-    servicesOffered: string[]
+    servicesOffered: ServiceType[]
     isAvailable: boolean
     rating: number | null
     bannerImage: string | null

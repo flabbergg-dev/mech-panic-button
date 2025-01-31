@@ -35,6 +35,21 @@ export default function CustomerDashboard() {
           </>
         )
       case "map":
+        // TODO: add map component but only show it when client has an active request
+        // return <MapDashboard />
+        return null
+        case "settings":
+        return (
+          <>
+            <div className="flex items-center justify-center min-h-screen">
+              <RippleComp>
+                <MechPanicButton user={user} />
+              </RippleComp>
+            </div>
+            <BentoGrid user={user} />
+          </>
+        )
+      case "map":
       return <MapDashboard />
       case "settings":
       return (
@@ -52,10 +67,6 @@ export default function CustomerDashboard() {
 
   return (
     <div className="w-full">
-      {/* <h1 className="text-3xl font-bold mb-8">Customer Dashboard</h1>
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Welcome, {user?.firstName}!</h2>
-      </div> */}
       {renderContent()}
       <BottomNavigation
         activeTab={activeTab}

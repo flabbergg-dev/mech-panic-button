@@ -72,11 +72,10 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
       if (validatedData.role === "Mechanic") {
       await prisma.mechanic.create({
         data: {
-        userId: user.id,
-        servicesOffered: [],
-        isAvailable: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+          userId: user.id,
+          servicesOffered: [],
+          isAvailable: false,
+          updatedAt: new Date(),
         },
       })
       }

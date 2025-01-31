@@ -101,22 +101,15 @@ export const MapDashboard = () => {
   const fetchSingleMechanic = async (id: string) => {
     try {
       const response = await getMechanicByIdAction(id)
-      if (response && response.data) {
-        setSelectedMechanic({
-          id: response.data.id,
-          userId: response.data.userId,
-          bio: response.data.bio || "",
-          servicesOffered: response.data.servicesOffered,
-          availability: response.data.availability,
-          rating: response.data.rating ?? 0,
-          bannerImage: response.data.bannerImage ?? "",
-          driversLicenseId: response.data.driversLicenseId ?? "",
-          merchantDocumentUrl: response.data.merchantDocumentUrl ?? "",
-          isAvailable: response.data.isAvailable,
-          createdAt: new Date(response.data.createdAt),
-          updatedAt: new Date(response.data.updatedAt),
-        } as Mechanic)
-      }
+      setSelectedMechanic({
+        id: response!.data!.id,
+        userId: response!.data!.userId,
+        bio: response!.data!.bio || "",
+        servicesOffered: response!.data!.servicesOffered,
+        isAvailable: response!.data!.isAvailable,
+        rating: response!.data!.rating ?? 0,
+        bannerImage: response!.data!.bannerImage ?? "",
+      } as Mechanic)
     } catch (error) {
       console.error(error)
     }
@@ -164,6 +157,9 @@ export const MapDashboard = () => {
           createdAt: new Date(mechanic.createdAt),
           updatedAt: new Date(mechanic.updatedAt),
         })))
+        // TODO: no need to set the mechanic list just the marker of the mechanic comming from the api so that the client can see where the mechanic is at
+        // setMechanics(response.data!)
+
       }
     } catch (error) {
       console.error(error)

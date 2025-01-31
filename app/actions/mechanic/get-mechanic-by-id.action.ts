@@ -13,7 +13,6 @@ export async function getMechanicByIdAction(userId: string) {
                 userId: true,
                 bio: true,
                 servicesOffered: true,
-                availability: true,
                 isAvailable: true,
                 rating: true,
                 bannerImage: true,
