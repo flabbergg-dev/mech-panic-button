@@ -31,7 +31,7 @@ export const updateUserSchema = z.object({
 export const updateMechanicSchema = z.object({
   bio: z.string().optional(),
   servicesOffered: z.array(z.nativeEnum(ServiceType)).optional(),
-  availabilityStatus: z.boolean().optional(),
+  isAvailable: z.boolean().optional(),
   bannerImage: z.instanceof(File).optional(),
   driversLicenseId: z.string().optional(),
   merchantDocumentUrl: z.string().optional(),
@@ -68,7 +68,7 @@ export interface MechanicProfileEntity extends UserProfileEntity {
     id: string
     bio: string | null
     servicesOffered: ServiceType[]
-    availabilityStatus: boolean
+    isAvailable: boolean
     rating: number | null
     bannerImage: string | null
     driversLicenseId: string | null

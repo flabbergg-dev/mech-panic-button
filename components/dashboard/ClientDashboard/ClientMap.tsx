@@ -32,7 +32,7 @@ interface MechanicProps {
   userId: string
   bio: string
   servicesOffered: string[]
-  availabilityStatus: string
+  isAvailable: boolean
   rating: number
   bannerImage: string
   driversLicenseId: string

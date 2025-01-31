@@ -106,7 +106,7 @@ export const MapDashboard = () => {
         userId: response!.data!.userId,
         bio: response!.data!.bio || "",
         servicesOffered: response!.data!.servicesOffered,
-        availabilityStatus: response!.data!.availabilityStatus,
+        isAvailable: response!.data!.isAvailable,
         rating: response!.data!.rating ?? 0,
         bannerImage: response!.data!.bannerImage ?? "",
       } as Mechanic)

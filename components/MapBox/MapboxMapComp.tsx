@@ -249,7 +249,7 @@ export const MapboxMapComp = ({
             </CardHeader>
             <CardContent>
               <p className="text-lg font-bold mt-4">
-                {selectedMechanic.availabilityStatus}
+                {selectedMechanic.isAvailable ? "Available" : "Not Available"}
               </p>
               <p className="">{selectedMechanic.bio}</p>
               <p className="">Rating: {selectedMechanic.rating}</p>

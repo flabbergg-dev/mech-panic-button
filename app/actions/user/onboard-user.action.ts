@@ -73,7 +73,7 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         data: {
           userId: user.id,
           servicesOffered: [],
-          availabilityStatus: false,
+          isAvailable: false,
         },
       })
     }

@@ -45,7 +45,7 @@ export function MechanicInfoForm() {
     defaultValues: {
       bio: "",
       servicesOffered: [],
-      availabilityStatus: false,
+      isAvailable: false,
     },
   })
 
@@ -119,7 +119,7 @@ export function MechanicInfoForm() {
 
         <div className="flex items-center space-x-2">
           <Controller
-            name="availabilityStatus"
+            name="isAvailable"
             control={control}
             render={({ field }) => (
               <Switch
@@ -128,9 +128,9 @@ export function MechanicInfoForm() {
               />
             )}
           />
-          <Label htmlFor="availabilityStatus">Available for Service</Label>
-          {errors.availabilityStatus && (
-            <p className="text-sm text-red-500">{errors.availabilityStatus.message}</p>
+          <Label htmlFor="isAvailable">Available for Service</Label>
+          {errors.isAvailable && (
+            <p className="text-sm text-red-500">{errors.isAvailable.message}</p>
           )}
         </div>
 
