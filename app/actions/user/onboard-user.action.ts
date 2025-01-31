@@ -74,7 +74,6 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         data: {
         userId: user.id,
         servicesOffered: [],
-        availabilityStatus: true,
         isAvailable: true,
         createdAt: new Date(),
         updatedAt: new Date(),

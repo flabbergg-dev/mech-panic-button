@@ -40,7 +40,7 @@ export async function updateMechanicDocumentsAction(
         driversLicenseId: documents.driversLicenseId,
         merchantDocumentUrl: documents.merchantDocumentUrl,
         servicesOffered: [],
-        availabilityStatus: false,
+        isAvailable: false,
         updatedAt: new Date(),
       },
       update: {

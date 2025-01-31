@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       await prisma.mechanic.create({
         data: {
           userId: user.id,
+          updatedAt: new Date(),
         },
       })
     }

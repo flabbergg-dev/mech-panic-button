@@ -73,7 +73,7 @@ export class PrismaUserRepository implements IUserRepository {
             id: true,
             bio: true,
             servicesOffered: true,
-            availabilityStatus: true,
+            isAvailable: true,
             rating: true,
             bannerImage: true,
             driversLicenseId: true,
@@ -149,7 +149,7 @@ export class PrismaUserRepository implements IUserRepository {
       const {
         bio,
         servicesOffered,
-        availabilityStatus,
+        isAvailable,
         bannerImage,
         driversLicenseId,
         merchantDocumentUrl,
@@ -159,6 +159,12 @@ export class PrismaUserRepository implements IUserRepository {
         dob,
         ...userData
       } = data
+
+      interface ServicesOfferedType {
+        serviceName: string
+        description: string
+        price: number
+      }
 
       // Handle date conversion
       const dobDate = dob ? new Date(dob) : null
@@ -222,7 +228,7 @@ export class PrismaUserRepository implements IUserRepository {
             userId,
             bio: bio || null,
             servicesOffered: servicesOffered || [],
-            availabilityStatus: availabilityStatus || false,
+            isAvailable: isAvailable || false,
             bannerImage: uploadedDocs.bannerImage || null,
             driversLicenseId: driversLicenseId || null,
             merchantDocumentUrl: merchantDocumentUrl || null,
@@ -231,7 +237,7 @@ export class PrismaUserRepository implements IUserRepository {
             // Update the Mechanic record if one already exists
             bio: bio || null,
             servicesOffered: servicesOffered || [],
-            availabilityStatus: availabilityStatus || false,
+            isAvailable: isAvailable || false,
             // Set bannerImage to null if not provided
             ...(uploadedDocs.bannerImage && { bannerImage: uploadedDocs.bannerImage }),
             // Set driversLicenseId to null if not provided
@@ -243,7 +249,7 @@ export class PrismaUserRepository implements IUserRepository {
             id: true,
             bio: true,
             servicesOffered: true,
-            availabilityStatus: true,
+            isAvailable: true,
             rating: true,
             bannerImage: true,
             driversLicenseId: true,
