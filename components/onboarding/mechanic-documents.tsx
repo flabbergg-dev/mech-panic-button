@@ -113,13 +113,15 @@ export function MechanicDocuments({ formData }: MechanicDocumentsProps) {
       router.refresh()
     } catch (error) {
       console.error("Error creating mechanic account:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create account",
-        variant: "destructive",
-      })
+      // toast({
+      //   title: "Error",
+      //   description: error instanceof Error ? error.message : "Failed to create account",
+      //   variant: "destructive",
+      // })
+
     } finally {
       setIsUploading(false)
+      router.refresh()
     }
   }
 

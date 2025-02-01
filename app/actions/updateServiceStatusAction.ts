@@ -47,7 +47,7 @@ export async function updateServiceToInProgress(requestId: string) {
   })
 }
 
-export async function verifyServiceStart(requestId: string, pin: number) {
+export async function verifyServiceStart(requestId: string, pin: string) {
   const request = await prisma.serviceRequest.findUnique({
     where: { id: requestId }
   })
@@ -67,7 +67,7 @@ export async function verifyServiceStart(requestId: string, pin: number) {
   })
 }
 
-export async function completeService(requestId: string, pin: number) {
+export async function completeService(requestId: string, pin: string) {
   const request = await prisma.serviceRequest.findUnique({
     where: { id: requestId }
   })
