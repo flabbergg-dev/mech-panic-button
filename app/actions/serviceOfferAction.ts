@@ -1,14 +1,21 @@
 'use server'
 
-import { ServiceStatus, OfferStatus } from '@prisma/client'
+import { ServiceStatus, OfferStatus, Prisma } from '@prisma/client'
 import { prisma } from "@/lib/prisma"
 
+
+type Location = {
+  latitude: number
+  longitude: number
+}
 type CreateServiceOfferInput = {
   mechanicId: string
   serviceRequestId: string
   price: number
   note?: string
+  location: Location
   expiresAt?: Date
+
 }
 
 type ServiceOfferResponse = {
@@ -17,11 +24,34 @@ type ServiceOfferResponse = {
   error?: string
 }
 
+
 export async function createServiceOfferAction(input: CreateServiceOfferInput): Promise<ServiceOfferResponse> {
   try {
     // Validate input
-    if (!input.mechanicId || !input.serviceRequestId || !input.price) {
+    if (!input.mechanicId || !input.serviceRequestId || !input.price ) {
       throw new Error("Invalid input: mechanicId, serviceRequestId, and price are required")
+    }
+
+    // Get mechanic's current location
+    const mechanic = await prisma.mechanic.findUnique({
+      where: { id: input.mechanicId },
+      select: { 
+        isAvailable: true 
+      }
+    })
+
+    if (!mechanic) {
+      throw new Error("Mechanic not found")
+    }
+
+    if (!input.location) {
+      throw new Error("Mechanic location not available")
+    }
+
+    // Parse and validate location
+    const location = input.location as Location
+    if (!location.latitude || !location.longitude) {
+      throw new Error("Invalid mechanic location")
     }
 
     // Verify service request exists and is in REQUESTED status
@@ -38,7 +68,7 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
       throw new Error("Service request is not in REQUESTED neither in OFFERED status")
     }
 
-    // Create the offer
+    // Create the offer with mechanic's current location
     const offer = await prisma.serviceOffer.create({
       data: {
         mechanicId: input.mechanicId,
@@ -46,7 +76,11 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
         price: input.price,
         note: input.note,
         expiresAt: input.expiresAt,
-        status: OfferStatus.PENDING
+        status: OfferStatus.PENDING,
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude
+        }
       }
     })
 

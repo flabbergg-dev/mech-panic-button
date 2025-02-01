@@ -20,7 +20,26 @@ import RequestMap from '@/components/MapBox/RequestMap'
 
 export function ClientDashboard() {
   const { user } = useUser()
-  const [activeTab, setActiveTab] = useState("home")
+  const [activeTab, setActiveTab] = useState<string>("requests")
+  const [customerLocation, setCustomerLocation] = useState<{latitude: number; longitude: number} | null>(null)
+  
+  // Get customer location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCustomerLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          })
+        },
+        (error) => {
+          console.error("Error getting location:", error)
+        }
+      )
+    }
+  }, [])
+
   const { requests, offers, loading, error, refetch } = useServiceOffers(user?.id || '')
 
   // Check if there's an active request
@@ -153,7 +172,9 @@ export function ClientDashboard() {
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Mechanic Offers</h2>
                   <div className="space-y-4">
-                    {offers.map((offer: EnrichedServiceOffer) => (
+                    {offers
+                      .slice() // Create a copy to avoid mutating the original array
+                      .map((offer: EnrichedServiceOffer) => (
                       <ServiceOfferCard
                         key={offer.id}
                         serviceRequestId={offer.serviceRequestId}
@@ -168,6 +189,8 @@ export function ClientDashboard() {
                         expiresAt={offer.expiresAt || undefined}
                         onOfferHandled={refetch}
                         userId={user.id}
+                        mechanicLocation={offer.location || null}
+                        customerLocation={customerLocation || null  }
                       />
                     ))}
                   </div>

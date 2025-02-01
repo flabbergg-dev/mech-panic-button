@@ -231,6 +231,7 @@ model ServiceOffer {
   note             String?
   status           OfferStatus    @default(PENDING)
   expiresAt        DateTime?
+  location         Json?
   mechanic         Mechanic       @relation(fields: [mechanicId], references: [id])
   serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id])
 }

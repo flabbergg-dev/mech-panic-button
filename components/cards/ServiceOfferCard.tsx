@@ -6,6 +6,11 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
 
+interface Location {
+  latitude: number
+  longitude: number
+}
+
 interface ServiceOfferCardProps {
   serviceRequestId: string
   mechanicName: string
@@ -15,6 +20,14 @@ interface ServiceOfferCardProps {
   expiresAt?: Date
   onOfferHandled?: () => void
   userId: string
+  mechanicLocation: {
+    latitude: number
+    longitude: number
+  } | null
+  customerLocation: {
+    latitude: number
+    longitude: number
+  } | null
 }
 
 export function ServiceOfferCard({
@@ -25,11 +38,73 @@ export function ServiceOfferCard({
   note,
   expiresAt,
   onOfferHandled,
-  userId
+  userId,
+  mechanicLocation,
+  customerLocation
 }: ServiceOfferCardProps) {
   const [isLoading, setIsLoading] = React.useState(false)
   const [isExpanded, setIsExpanded] = React.useState(false)
+  const [estimatedTime, setEstimatedTime] = React.useState<string | null>(null)
   const [firstName, lastName] = mechanicName.split(' ')
+
+  const calculateEstimatedTime = React.useCallback(async () => {
+
+    // Validate coordinates
+    if (!customerLocation?.latitude || !customerLocation?.longitude) {
+      console.error('Invalid customer location coordinates')
+      setEstimatedTime("N/A")
+      return
+    }
+    if (!mechanicLocation?.latitude || !mechanicLocation?.longitude) {
+      console.error('Invalid mechanic location coordinates')
+      setEstimatedTime("N/A")
+      return
+    }
+
+    // Validate Mapbox token
+    if (!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN) {
+      console.error('Mapbox access token not found')
+      setEstimatedTime("N/A")
+      return
+    }
+
+    try {
+      const mechanicCoords = mechanicLocation && `${mechanicLocation.longitude},${mechanicLocation.latitude}`
+      const customerCoords = customerLocation && `${customerLocation.longitude},${customerLocation.latitude}`
+
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${mechanicCoords};${customerCoords}`
+      const query = await fetch(
+        `${url}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`,
+        { 
+          method: "GET",
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      )
+      
+      if (!query.ok) {
+        throw new Error(`Mapbox API error: ${query.statusText}`)
+      }
+
+      const json = await query.json()
+      
+      if (json.routes?.[0]?.duration) {
+        const durationMinutes = Math.round(json.routes[0].duration / 60)
+        setEstimatedTime(`${durationMinutes} min`)
+      } else {
+        console.error('No valid route found in Mapbox response:', json)
+        setEstimatedTime("N/A")
+      }
+    } catch (error) {
+      console.error('Error calculating distance:', error)
+      setEstimatedTime("N/A")
+    }
+  }, [mechanicLocation, customerLocation])
+
+  React.useEffect(() => {
+    calculateEstimatedTime()
+  }, [calculateEstimatedTime])
 
   const handleOffer = async (accepted: boolean) => {
     try {
@@ -74,8 +149,6 @@ export function ServiceOfferCard({
     }
   }
 
-  const estimatedTime = "5 min." // TODO:This should come from a distance calculation
-
   return (
     <motion.div
       layout
@@ -95,7 +168,7 @@ export function ServiceOfferCard({
                 <div className="flex items-center text-sm text-muted-foreground">
                   <span>★ {mechanicRating?.toFixed(1) || '4.8'}</span>
                   <span className="mx-1">•</span>
-                  <span>{estimatedTime} Away</span>
+                  <span>{estimatedTime || 'Calculating...'} Away</span>
                 </div>
               </div>
             </div>

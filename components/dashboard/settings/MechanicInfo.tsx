@@ -56,6 +56,7 @@ export function MechanicInfoForm() {
 
       if (!result.success) {
         throw new Error(result.error)
+
       }
 
       toast({
@@ -65,6 +66,7 @@ export function MechanicInfoForm() {
 
       router.refresh()
     } catch (error) {
+      router.refresh()
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update profile",
@@ -72,6 +74,7 @@ export function MechanicInfoForm() {
       })
     } finally {
       setIsSubmitting(false)
+      router.refresh()
     }
   }
 
