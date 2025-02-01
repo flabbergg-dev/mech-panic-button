@@ -18,7 +18,6 @@ export async function getUserAction(userId: string) {
             documentsUrl: true,
             dob: true,
             currentLocation: true,
-            serviceArea: true,
             createdAt: true,
             updatedAt: true,
         },

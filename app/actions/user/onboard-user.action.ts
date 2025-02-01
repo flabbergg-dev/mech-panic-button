@@ -56,7 +56,6 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         role: validatedData.role,
         documentsUrl: [],
         currentLocation: undefined,
-        serviceArea: undefined,
       },
     })
 

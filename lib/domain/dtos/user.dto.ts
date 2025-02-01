@@ -57,7 +57,6 @@ export interface UserProfileEntity {
   stripeCustomerId: string | null
   stripeSubscriptionId: string | null
   currentLocation: any | null // Json in Prisma
-  serviceArea: any | null // Json in Prisma
   stripeSubscriptionPlan: SubscriptionPlan | null
   stripeSubscriptionStatus: SubscriptionStatus | null
   documentsUrl: string[]

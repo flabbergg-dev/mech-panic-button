@@ -74,7 +74,6 @@ export function PersonalInfoForm() {
             phoneNumber: result.data.phoneNumber || "",
             dob: result.data.dob || "",
             currentLocation: result.data.currentLocation || null,
-            serviceArea: result.data.serviceArea || null,
             documentsUrl: result.data.documentsUrl || [],
           }, { keepDefaultValues: false });
           

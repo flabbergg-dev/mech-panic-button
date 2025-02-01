@@ -40,7 +40,6 @@ export class PrismaUserRepository implements IUserRepository {
         stripeCustomerId: true,
         stripeSubscriptionId: true,
         currentLocation: true,
-        serviceArea: true,
         stripeSubscriptionPlan: true,
         stripeSubscriptionStatus: true,
         documentsUrl: true,
@@ -65,7 +64,6 @@ export class PrismaUserRepository implements IUserRepository {
         stripeCustomerId: true,
         stripeSubscriptionId: true,
         currentLocation: true,
-        serviceArea: true,
         stripeSubscriptionPlan: true,
         stripeSubscriptionStatus: true,
         documentsUrl: true,
@@ -111,7 +109,6 @@ export class PrismaUserRepository implements IUserRepository {
           ...userData,
           dob: dobDate,
           currentLocation: currentLocation || null,
-          serviceArea: serviceArea || null,
           documentsUrl: documentsUrl || [],
         },
         select: {
@@ -128,7 +125,6 @@ export class PrismaUserRepository implements IUserRepository {
           stripeCustomerId: true,
           stripeSubscriptionId: true,
           currentLocation: true,
-          serviceArea: true,
           stripeSubscriptionPlan: true,
           stripeSubscriptionStatus: true,
           documentsUrl: true,
@@ -194,7 +190,6 @@ export class PrismaUserRepository implements IUserRepository {
             dob: dobDate,
             // Set currentLocation and serviceArea to null if not provided
             currentLocation: currentLocation || null,
-            serviceArea: serviceArea || null,
             // Set documentsUrl to an empty array if not provided
             documentsUrl: documentsUrl || [],
           },
@@ -212,7 +207,6 @@ export class PrismaUserRepository implements IUserRepository {
             stripeCustomerId: true,
             stripeSubscriptionId: true,
             currentLocation: true,
-            serviceArea: true,
             stripeSubscriptionPlan: true,
             stripeSubscriptionStatus: true,
             documentsUrl: true,

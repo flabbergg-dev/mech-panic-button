@@ -116,10 +116,7 @@ export async function handleServiceOfferAction(
           where: { id: serviceRequestId },
           data: {
             mechanicId: null,
-            status: ServiceStatus.REQUESTED,
-            offeredPrice: null,
-            offerNote: null,
-            offerExpiry: null
+            status: ServiceStatus.REQUESTED
           }
         })
       ])

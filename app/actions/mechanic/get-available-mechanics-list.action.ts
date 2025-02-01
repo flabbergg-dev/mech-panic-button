@@ -18,17 +18,17 @@ export async function getAvailableMechanicsListAction() {
                 earnings: true,
                 user: true,
                 serviceRequests: true,
+                location: true,
+                serviceArea: true,
             },
         })
-
-        console.log("Database result:", mechanic)
 
         if (!mechanic) {
         throw new Error("Mechanic not found")
         }
 
         return {
-        data: mechanic,
+            mechanic,
         }
     } catch (error) {
         console.error("Error in getMechanicByIdAction:", error)

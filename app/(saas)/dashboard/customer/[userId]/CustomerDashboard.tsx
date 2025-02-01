@@ -36,8 +36,8 @@ export default function CustomerDashboard() {
         )
       case "map":
         // TODO: add map component but only show it when client has an active request
-        // return <MapDashboard />
-        return null
+        return <MapDashboard />
+        // return null
         case "settings":
         return (
           <>

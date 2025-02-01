@@ -10,6 +10,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PushNotificationButton } from "../../PushNotificationButton"
+import { ClientMap } from "../ClientDashboard/ClientMap"
 
 export const MechanicHome = () => {
   const { user } = useUser()
@@ -47,7 +48,7 @@ export const MechanicHome = () => {
       </div>
       
       <BalanceCard />
-
+      
       {!isServiceRequestAvailable ? (
         <div className="flex flex-col items-center justify-center space-y-4">
           <h3 className="text-md font-semibold mt-6">
@@ -94,6 +95,9 @@ export const MechanicHome = () => {
           </ScrollArea>
         </div>
       )}
+    <ClientMap selectedUser={undefined} selectedMechanic={undefined} setSelectedMechanic={function (value: any): void {
+        throw new Error("Function not implemented.")
+      } } mechanics={[]} mechanicUsers={[]} />
     </div>
   )
 }

@@ -102,13 +102,19 @@ export const MapDashboard = () => {
     try {
       const response = await getMechanicByIdAction(id)
       setSelectedMechanic({
-        id: response!.data!.id,
-        userId: response!.data!.userId,
-        bio: response!.data!.bio || "",
-        servicesOffered: response!.data!.servicesOffered,
-        isAvailable: response!.data!.isAvailable,
-        rating: response!.data!.rating ?? 0,
-        bannerImage: response!.data!.bannerImage ?? "",
+        userId: id,
+        bio: response.mechanic!.bio || "",
+        servicesOffered: response.mechanic!.servicesOffered,
+        isAvailable: response.mechanic!.isAvailable,
+        rating: response.mechanic!.rating ?? 0,
+        bannerImage: response.mechanic!.bannerImage ?? "",
+        driversLicenseId: response.mechanic!.driversLicenseId ?? "",
+        merchantDocumentUrl: response.mechanic!.merchantDocumentUrl ?? "",
+        availability: response.mechanic!.availability ?? [],
+        createdAt: new Date(response.mechanic!.createdAt),
+        updatedAt: new Date(response.mechanic!.updatedAt),
+        location: response.mechanic!.location ?? null,
+        serviceArea: response.mechanic!.serviceArea ?? null,
       } as Mechanic)
     } catch (error) {
       console.error(error)
@@ -130,7 +136,6 @@ export const MapDashboard = () => {
         documentsUrl: response!.documentsUrl ?? [],
         dob: response!.dob ? new Date(response!.dob) : null,
         currentLocation: response!.currentLocation,
-        serviceArea: response!.serviceArea,
         createdAt: new Date(response!.createdAt),
         updatedAt: new Date(response!.updatedAt),
       } as unknown as User)
@@ -143,60 +148,59 @@ export const MapDashboard = () => {
     try {
       const response = await getAvailableMechanicsListAction()
       if (response) {
-        setMechanics(response.data!.map((mechanic: any) => ({
-          id: mechanic.id,
-          userId: mechanic.userId,
-          bio: mechanic.bio || "",
-          servicesOffered: mechanic.servicesOffered,
-          isAvailable: mechanic.isAvailable,
-          rating: mechanic.rating ?? 0,
-          bannerImage: mechanic.bannerImage ?? "",
-          driversLicenseId: mechanic.driversLicenseId ?? "",
-          merchantDocumentUrl: mechanic.merchantDocumentUrl ?? "",
-          availability: mechanic.availability ?? [],
-          createdAt: new Date(mechanic.createdAt),
-          updatedAt: new Date(mechanic.updatedAt),
-        })))
-        // TODO: no need to set the mechanic list just the marker of the mechanic comming from the api so that the client can see where the mechanic is at
-        // setMechanics(response.data!)
-
+        setMechanics(response.mechanic!.map((mechanic: any) => ({
+                  id: mechanic.id,
+                  userId: mechanic.userId,
+                  bio: mechanic.bio || "",
+                  servicesOffered: mechanic.servicesOffered,
+                  isAvailable: mechanic.isAvailable,
+                  rating: mechanic.rating ?? 0,
+                  bannerImage: mechanic.bannerImage ?? "",
+                  driversLicenseId: mechanic.driversLicenseId ?? "",
+                  merchantDocumentUrl: mechanic.merchantDocumentUrl ?? "",
+                  availability: mechanic.availability ?? [],
+                  createdAt: new Date(mechanic.createdAt),
+                  updatedAt: new Date(mechanic.updatedAt),
+                  location: mechanic.location ?? null,
+                  serviceArea: mechanic.serviceArea ?? null,
+                })))
       }
     } catch (error) {
       console.error(error)
     }
   }
 
-  const fetchAllUsers = async () => {
-    try {
-      const response = await getAllUsersAction()
-      if (Array.isArray(response)) {
-        const MechanicPins = response
-          .filter((user: { role: string | null; currentLocation: any }) => user.role === "Mechanic" && user.currentLocation)
-          .map((user: { id: any; currentLocation: any }) => {
-            return {
-              id: user.id,
-              userId: user.id,
-              currentLocation: user.currentLocation!,
-            }
-          })
-        const mechanicList = response.filter(
-          (user: { role: string | null }): user is MechanicUser => user.role === "Mechanic"
-        ).map((user) => ({
-          ...user,
-          role: "Mechanic" as const,
-          currentLocation: user.currentLocation as unknown as UserCoordinates,
-          serviceArea: user.serviceArea as unknown as UserCoordinates,
-        }))
-        setMechanicUsers(mechanicList)
-        setMechanicMarkers(MechanicPins)
-        console.info("MechanicPins: ", MechanicPins)
-      } else {
-        console.error("Failed to fetch users")
-      }
-    } catch (error) {
-      console.error(error)
-    }
-  }
+  // const fetchAllUsers = async () => {
+  //   try {
+  //     const response = await getAllUsersAction()
+  //     if (Array.isArray(response)) {
+  //       const MechanicPins = response
+  //         .filter((user: { role: string | null; currentLocation: any }) => user.role === "Mechanic" && user.currentLocation)
+  //         .map((user: { id: any; currentLocation: any }) => {
+  //           return {
+  //             id: user.id,
+  //             userId: user.id,
+  //             currentLocation: user.currentLocation!,
+  //           }
+  //         })
+  //       const mechanicList = response.filter(
+  //         (user: { role: string | null }): user is MechanicUser => user.role === "Mechanic"
+  //       ).map((user) => ({
+  //         ...user,
+  //         role: "Mechanic" as const,
+  //         currentLocation: user.currentLocation as unknown as UserCoordinates,
+  //         serviceArea: user.serviceArea as unknown as UserCoordinates,
+  //       }))
+  //       setMechanicUsers(mechanicList)
+  //       setMechanicMarkers(MechanicPins)
+  //       console.info("MechanicPins: ", MechanicPins)
+  //     } else {
+  //       console.error("Failed to fetch users")
+  //     }
+  //   } catch (error) {
+  //     console.error(error)
+  //   }
+  // }
 
   useEffect(() => {
     if (selectedMechanic) {
@@ -205,7 +209,7 @@ export const MapDashboard = () => {
     }
     fetchMechanics()
     getUserLocation(setUserCords)
-    fetchAllUsers()
+    // fetchAllUsers()
   }, [selectedMechanic])
 
   return (

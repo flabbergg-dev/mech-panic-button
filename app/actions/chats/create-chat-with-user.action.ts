@@ -27,8 +27,8 @@ export async function createChatWithUserAction(userId: string, mechanicId: strin
 
         const chat = await prisma.chat.create({
             data: {
-                customerId: userId,
                 mechanicId: mechanicId,
+                customerId: userId,
             },
         })
 
