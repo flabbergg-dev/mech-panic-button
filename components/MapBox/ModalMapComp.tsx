@@ -228,7 +228,7 @@ export const ModalMapComp = ({ userCords, onLocationUpdate }: MapboxProps) => {
           borderRadius: "0.375rem"
         }}
       />
-      <div className="absolute bottom-2 left-2 bg-white/80 px-2 py-1 rounded text-xs">
+      <div className="absolute bottom-2 left-2 bg-background/80 px-2 py-1 rounded text-xs">
         Drag the marker to adjust location (max 100m radius)
       </div>
     </div>

@@ -1,7 +1,6 @@
 import React, { useState } from "react"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,7 +14,6 @@ import { Separator } from "@/components/ui/separator"
 import { MechanicListCard } from "@/components/layouts/MechanicListCard.Layout"
 import { HalfSheet } from "@/components/ui/HalfSheet"
 import { Car, MapPin, MoveLeftIcon, Star, StarIcon, User } from "lucide-react"
-
 import { MessageCircleMoreIcon } from "../../Animated/message-circle-more"
 import { DynamicAvatar } from "../../DynamicAvatar/DynamicAvatar"
 import { Mechanic, Message } from "@prisma/client"
@@ -62,7 +60,6 @@ interface MechanicUser {
   documentsUrl?: string[]
   dob?: string
   currentLocation?: UserCoordinates
-  
   createdAt?: Date
   updatedAt?: Date
   props?: any

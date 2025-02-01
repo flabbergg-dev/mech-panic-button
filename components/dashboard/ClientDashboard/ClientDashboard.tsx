@@ -15,6 +15,8 @@ import { toast } from '@/hooks/use-toast'
 import { motion } from 'framer-motion';
 import { ServiceStatus, ServiceRequest } from '@prisma/client'
 import { EnrichedServiceOffer } from '@/app/actions/getServiceOffersAction'
+import { ServiceRequestMap } from '@/components/MapBox/ServiceRequestMap'
+import RequestMap from '@/components/MapBox/RequestMap'
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -106,70 +108,78 @@ export function ClientDashboard() {
         return null
       case "requests":
         return (
-          <div className="space-y-6 p-4 pb-20">
-            {activeRequest && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Active Request</h2>
-                <div className="space-y-4">
-                  <Card className="p-4">
-                    <div className="flex justify-between items-start space-x-4">
-                      <div className="space-y-2 flex-1">
-                        <h3 className="font-semibold">
-                          {offers.length === 0 
-                            ? "Waiting for mechanics..." 
-                            : `${offers.length} offer${offers.length === 1 ? '' : 's'} received`}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {offers.length === 0 
-                            ? "Your request is being sent to nearby mechanics"
-                            : "Review the offers below"}
-                        </p>
+          <div className="relative min-h-screen">
+            {/* Map Container */}
+            <div className="fixed inset-0">
+              <RequestMap />
+            </div>
+            
+            {/* Content Container */}
+            <div className="relative z-10 space-y-6 p-4 pb-20">
+              {activeRequest && (
+                <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4">
+                  <h2 className="text-xl font-semibold mb-4">Active Request</h2>
+                  <div className="space-y-4">
+                    <Card className="bg-background/90 p-4">
+                      <div className="flex justify-between items-start space-x-4">
+                        <div className="space-y-2 flex-1">
+                          <h3 className="font-semibold">
+                            {offers.length === 0 
+                              ? "Waiting for mechanics..." 
+                              : `${offers.length} offer${offers.length === 1 ? '' : 's'} received`}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {offers.length === 0 
+                              ? "Your request is being sent to nearby mechanics"
+                              : "Review the offers below"}
+                          </p>
+                        </div>
+                        <motion.div whileTap={{ scale: 0.98 }}>
+                          <Button 
+                            variant="destructive" 
+                            onClick={() => handleCancelRequest(activeRequest.id)}
+                            className="transition-transform"
+                          >
+                            Cancel Request
+                          </Button>
+                        </motion.div>
                       </div>
-                      <motion.div whileTap={{ scale: 0.98 }}>
-                        <Button 
-                          variant="destructive" 
-                          onClick={() => handleCancelRequest(activeRequest.id)}
-                          className="transition-transform"
-                        >
-                          Cancel Request
-                        </Button>
-                      </motion.div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {offers.length > 0 && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Mechanic Offers</h2>
-                <div className="space-y-4">
-                  {offers.map((offer: EnrichedServiceOffer) => (
-                    <ServiceOfferCard
-                      key={offer.id}
-                      serviceRequestId={offer.serviceRequestId}
-                      mechanicName={
-                        offer.mechanic?.user 
-                          ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`
-                          : 'Unknown Mechanic'
-                      }
-                      mechanicRating={offer.mechanic?.rating || undefined}
-                      price={offer.price || 0}
-                      note={offer.note || undefined}
-                      expiresAt={offer.expiresAt || undefined}
-                      onOfferHandled={refetch}
-                      userId={user.id}
-                    />
-                  ))}
+              {offers.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Mechanic Offers</h2>
+                  <div className="space-y-4">
+                    {offers.map((offer: EnrichedServiceOffer) => (
+                      <ServiceOfferCard
+                        key={offer.id}
+                        serviceRequestId={offer.serviceRequestId}
+                        mechanicName={
+                          offer.mechanic?.user 
+                            ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`
+                            : 'Unknown Mechanic'
+                        }
+                        mechanicRating={offer.mechanic?.rating || undefined}
+                        price={offer.price || 0}
+                        note={offer.note || undefined}
+                        expiresAt={offer.expiresAt || undefined}
+                        onOfferHandled={refetch}
+                        userId={user.id}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {!activeRequest && offers.length === 0 && (
-              <div className="text-center text-muted-foreground">
-                No active requests or offers
-              </div>
-            )}
+              {!activeRequest && offers.length === 0 && (
+                <div className="text-center p-4 bg-background/80 backdrop-blur-sm rounded-lg text-muted-foreground">
+                  No active requests or offers
+                </div>
+              )}
+            </div>
           </div>
         )
       case "history":
