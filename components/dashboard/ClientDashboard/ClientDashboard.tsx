@@ -59,7 +59,7 @@ export function ClientDashboard() {
   }
 
   if (loading || !user) {
-    return <div className="flex justify-center items-center h-screen">
+    return <div className="flex justify-center items-center h-screen ">
       <Loader2Icon className="animate-spin h-8 w-8" />
     </div>
   }
@@ -82,7 +82,7 @@ export function ClientDashboard() {
     switch (activeTab) {
       case "home":
         return (
-          <div className="flex items-center  min-h-screen flex-col md:flex-row space-y-6">
+          <div className="flex items-center  min-h-screen flex-col space-y-6">
             <div className="relative z-10 w-full max-w-md">
               <Card className="p-6 shadow-lg bg-card/80 backdrop-blur border border-card/10">
                 <h1 className="text-2xl font-bold mb-4 text-center">
@@ -94,7 +94,7 @@ export function ClientDashboard() {
                
               </Card>
             </div>
-             <div className="flex items-center justify-center min-h-[400px] w-full">
+             <div className="flex items-center   justify-center min-h-[400px] w-full">
               <RippleComp>
                 <MechPanicButton user={user} onRequestCreated={handleRequestCreated}/>
               </RippleComp>
