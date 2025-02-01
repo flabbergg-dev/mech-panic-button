@@ -101,6 +101,14 @@ export async function handleServiceOfferAction(
             status: ServiceStatus.ACCEPTED,
             mechanicId: latestOffer.mechanicId
           }
+        }),
+        // Remove other offers
+        prisma.serviceOffer.deleteMany({
+          where: {
+            serviceRequestId: serviceRequestId,
+            id: { not: latestOffer.id },
+            status: OfferStatus.PENDING
+          }
         })
       ])
     } else {
@@ -117,9 +125,7 @@ export async function handleServiceOfferAction(
           data: {
             mechanicId: null,
             status: ServiceStatus.REQUESTED,
-            offeredPrice: null,
-            offerNote: null,
-            offerExpiry: null
+            
           }
         })
       ])

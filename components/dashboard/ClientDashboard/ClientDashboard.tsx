@@ -158,6 +158,7 @@ export function ClientDashboard() {
                       note={offer.note || undefined}
                       expiresAt={offer.expiresAt || undefined}
                       onOfferHandled={refetch}
+                      userId={user.id}
                     />
                   ))}
                 </div>

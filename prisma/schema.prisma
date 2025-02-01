@@ -22,7 +22,6 @@ model User {
   stripeCustomerId         String?
   stripeSubscriptionId     String?
   currentLocation          Json?
-  serviceArea              Json?
   stripeSubscriptionPlan   SubscriptionPlan?
   stripeSubscriptionStatus SubscriptionStatus?
   documentsUrl             String[]
@@ -50,6 +49,8 @@ model Mechanic {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   servicesOffered     ServiceType[]
+  location            Json?
+  serviceArea         Json?
   bookings            Booking[]
   earnings            Earning[]
   user                User              @relation(fields: [userId], references: [id])
@@ -79,11 +80,11 @@ model ServiceRequest {
   location       Json
   description    String?
   paymentHoldId  String?
-  completionCode String?
   paymentId      String?
-  offerExpiry    DateTime?
-  offerNote      String?
-  offeredPrice   Float?
+  completionCode Int?
+  arrivalCode    Int?
+  completionTime DateTime?
+  startTime      DateTime?
   review         Review?
   offers         ServiceOffer[]
   client         User           @relation(fields: [clientId], references: [id])
@@ -245,6 +246,8 @@ enum ServiceStatus {
   IN_PROGRESS
   COMPLETED
   OFFERED
+  SERVICING
+  PAYMENT_AUTHORIZED
 }
 
 enum SubscriptionPlan {

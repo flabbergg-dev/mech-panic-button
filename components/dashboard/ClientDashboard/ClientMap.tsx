@@ -1,24 +1,17 @@
 import React, { useState } from "react"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
-// import {
-//   BaseMechanic as MechanicProps,
-//   BaseUser as UserProps,
-//   UserRole,
-// } from "@repo/application"
-// import { Mechanic, Message, User as UserType } from "@repo/domain"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Slider } from "@/components/ui/slider"
 import { MechanicListCard } from "@/components/layouts/MechanicListCard.Layout"
 import { HalfSheet } from "@/components/ui/HalfSheet"
 import { Car, MapPin, MoveLeftIcon, Star, StarIcon, User } from "lucide-react"
