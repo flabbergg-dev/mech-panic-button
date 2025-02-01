@@ -62,7 +62,7 @@ interface MechanicUser {
   documentsUrl?: string[]
   dob?: string
   currentLocation?: UserCoordinates
-  serviceArea?: UserCoordinates
+  
   createdAt?: Date
   updatedAt?: Date
   props?: any

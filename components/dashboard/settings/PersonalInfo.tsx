@@ -37,7 +37,6 @@ export function PersonalInfoForm() {
       phoneNumber: "",
       dob: "",
       currentLocation: null,
-      serviceArea: null,
       documentsUrl: [],
     }
   })
@@ -74,7 +73,7 @@ export function PersonalInfoForm() {
             phoneNumber: result.data.phoneNumber || "",
             dob: result.data.dob || "",
             currentLocation: result.data.currentLocation || null,
-            serviceArea: result.data.serviceArea || null,
+            
             documentsUrl: result.data.documentsUrl || [],
           }, { keepDefaultValues: false });
           
@@ -120,7 +119,7 @@ export function PersonalInfoForm() {
         phoneNumber: data.phoneNumber || "",
         dob: data.dob || "",
         currentLocation: data.currentLocation || null,
-        serviceArea: data.serviceArea || null,
+       
         documentsUrl: data.documentsUrl || [],
       };
 

@@ -15,7 +15,6 @@ export async function getAllUsersAction() {
             phoneNumber: true,
             role: true,
             currentLocation: true,
-            serviceArea: true,
             createdAt: true,
             updatedAt: true,
         },

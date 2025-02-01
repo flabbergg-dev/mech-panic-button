@@ -55,6 +55,7 @@ export function TestServiceOfferView({ serviceRequests }: TestServiceOfferViewPr
                     // You might want to refresh the page or update the UI here
                     window.location.reload()
                   }}
+                  userId={offer.mechanic.userId}
                 />
               ))}
             </div>

@@ -15,7 +15,6 @@ export async function getUserProfileAction(userId: string) {
         phoneNumber: true,
         dob: true,
         currentLocation: true,
-        serviceArea: true,
         documentsUrl: true,
         profileImage: true,
       },
