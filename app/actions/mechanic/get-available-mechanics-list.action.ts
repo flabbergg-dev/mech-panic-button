@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma"
 export async function getAvailableMechanicsListAction() {
     try {
         const mechanic = await prisma.mechanic.findMany({
+            where: {
+                isAvailable: true
+            },  
             select: {
                 id: true,
                 userId: true,
@@ -13,6 +16,8 @@ export async function getAvailableMechanicsListAction() {
                 isAvailable: true,
                 rating: true,
                 bannerImage: true,
+                location: true,
+                serviceArea:true,
                 driversLicenseId: true,
                 merchantDocumentUrl: true,
                 earnings: true,

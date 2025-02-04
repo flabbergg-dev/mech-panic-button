@@ -16,7 +16,7 @@ export function useServiceOffers(userId: string) {
       const serviceRequests = await getServiceRequestsForClient(userId)
       
       const activeRequest = serviceRequests.find(
-        req => req.status === ServiceStatus.REQUESTED || req.status === ServiceStatus.OFFERED
+        req => req.status !== ServiceStatus.COMPLETED 
       )
       
       const offersData = activeRequest 

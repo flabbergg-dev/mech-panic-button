@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { TestServiceOffer } from "@/components/TestComponents/TestServiceOffer"
+import { ServiceStatus } from "@prisma/client"
 
 export default async function TestOfferPage() {
   const { userId } = await auth()
@@ -26,10 +27,8 @@ export default async function TestOfferPage() {
   
   let serviceRequests = await prisma.serviceRequest.findMany({
     where: {
-      OR: [
-        { status: "REQUESTED" },
-        { status: "OFFERED" }
-      ]
+        status: ServiceStatus.REQUESTED 
+      
     },
     include: {
       client: true

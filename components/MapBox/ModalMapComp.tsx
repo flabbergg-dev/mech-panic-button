@@ -48,134 +48,147 @@ export const ModalMapComp = ({ userCords, onLocationUpdate }: MapboxProps) => {
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!
+    // Add error handling for Mapbox token
+    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+    if (!mapboxToken) {
+      console.error('Mapbox token is not configured')
+      return
+    }
+    mapboxgl.accessToken = mapboxToken
+
     if (mapContainerRef.current) {
-      mapRef.current = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [userCords.longitude, userCords.latitude],
-        zoom: 16,
-        interactive: true,
-        dragRotate: true,
-        dragPan: true,
-        scrollZoom: true,
-        boxZoom: false,
-        doubleClickZoom: false,
-        touchZoomRotate: true,
-        pitch: 0,
-        bearing: 0,
-      })
+      try {
+        mapRef.current = new mapboxgl.Map({
+          container: mapContainerRef.current,
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [userCords.longitude, userCords.latitude],
+          zoom: 16,
+          interactive: true,
+          dragRotate: true,
+          dragPan: true,
+          scrollZoom: true,
+          boxZoom: false,
+          doubleClickZoom: false,
+          touchZoomRotate: true,
+          pitch: 0,
+          bearing: 0,
+        })
+      } catch (error) {
+        console.error('Error initializing Mapbox:', error)
+      }
 
       // Add zoom and rotation controls
-      mapRef.current.addControl(new mapboxgl.NavigationControl())
+      if (mapRef.current) {
+        mapRef.current.addControl(new mapboxgl.NavigationControl())
 
-      // Create a draggable marker
-      markerRef.current = new mapboxgl.Marker({
-        color: "#FF0000",
-        scale: 1.2,
-        draggable: true
-      })
-        .setLngLat([userCords.longitude, userCords.latitude])
-        .addTo(mapRef.current)
+        // Create a draggable marker
+        markerRef.current = new mapboxgl.Marker({
+          color: "#FF0000",
+          scale: 1.2,
+          draggable: true
+        })
+          .setLngLat([userCords.longitude, userCords.latitude])
+          .addTo(mapRef.current)
 
-      // Add 100m radius circle
-      mapRef.current.on('load', () => {
-        if (!mapRef.current) return
+        // Add 100m radius circle
+        mapRef.current.on('load', () => {
+          if (!mapRef.current) return
 
-        // Create a source for the radius circle - using original coordinates
-        mapRef.current.addSource('radius-circle', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'Point',
-              coordinates: [userCords.longitude, userCords.latitude]
+          // Create a source for the radius circle - using original coordinates
+          mapRef.current.addSource('radius-circle', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'Point',
+                coordinates: [userCords.longitude, userCords.latitude]
+              }
             }
-          }
-        })
-
-        // Add a fill layer for the radius
-        mapRef.current.addLayer({
-          id: 'radius-fill',
-          type: 'circle',
-          source: 'radius-circle',
-          paint: {
-            'circle-radius': {
-              base: 2,
-              stops: [
-                [0, 0],
-                [20, metersToPixelsAtMaxZoom(100, userCords.latitude)]
-              ]
-            },
-            'circle-color': '#ff0000',
-            'circle-opacity': 0.1,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ff0000',
-            'circle-stroke-opacity': 0.3
-          }
-        })
-
-        radiusCircleRef.current = mapRef.current.getSource('radius-circle') as mapboxgl.GeoJSONSource
-      })
-
-      // Handle marker drag
-      markerRef.current.on('dragend', () => {
-        if (!markerRef.current || !mapRef.current) return
-
-        const newPosition = markerRef.current.getLngLat()
-        const distance = calculateDistance(
-          userCords.latitude,
-          userCords.longitude,
-          newPosition.lat,
-          newPosition.lng
-        )
-
-        // If marker is dragged beyond 100 meters (0.1 km), reset to the boundary
-        if (distance > 0.1) {
-          // Calculate new position at 100m boundary
-          const angle = Math.atan2(
-            newPosition.lat - userCords.latitude,
-            newPosition.lng - userCords.longitude
-          )
-          const lat = userCords.latitude + Math.sin(angle) * (0.1 / 111.32)
-          const lng = userCords.longitude + Math.cos(angle) * (0.1 / (111.32 * Math.cos(userCords.latitude * (Math.PI / 180))))
-          
-          markerRef.current.setLngLat([lng, lat])
-          newPosition.lat = lat
-          newPosition.lng = lng
-        }
-
-        // Update coordinates through callback
-        if (onLocationUpdate) {
-          onLocationUpdate({
-            latitude: newPosition.lat,
-            longitude: newPosition.lng
           })
-        }
-      })
 
-      // Update position during drag but don't move the radius circle
-      markerRef.current.on('drag', () => {
-        if (!markerRef.current) return
-        const position = markerRef.current.getLngLat()
-        
-        // Calculate distance during drag for visual feedback
-        const distance = calculateDistance(
-          userCords.latitude,
-          userCords.longitude,
-          position.lat,
-          position.lng
-        )
+          // Add a fill layer for the radius
+          mapRef.current.addLayer({
+            id: 'radius-fill',
+            type: 'circle',
+            source: 'radius-circle',
+            paint: {
+              'circle-radius': {
+                base: 2,
+                stops: [
+                  [0, 0],
+                  [20, metersToPixelsAtMaxZoom(100, userCords.latitude)]
+                ]
+              },
+              'circle-color': '#ff0000',
+              'circle-opacity': 0.1,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ff0000',
+              'circle-stroke-opacity': 0.3
+            }
+          })
 
-        // Update marker color based on whether it's within bounds
-        const marker = markerRef.current.getElement()
-        if (distance > 0.1) {
-          marker.style.filter = 'hue-rotate(120deg)' // Makes it appear more reddish
-        } else {
-          marker.style.filter = 'none'
-        }
-      })
+          radiusCircleRef.current = mapRef.current.getSource('radius-circle') as mapboxgl.GeoJSONSource
+        })
+
+        // Handle marker drag
+        markerRef.current.on('dragend', () => {
+          if (!markerRef.current || !mapRef.current) return
+
+          const newPosition = markerRef.current.getLngLat()
+          const distance = calculateDistance(
+            userCords.latitude,
+            userCords.longitude,
+            newPosition.lat,
+            newPosition.lng
+          )
+
+          // If marker is dragged beyond 100 meters (0.1 km), reset to the boundary
+          if (distance > 0.1) {
+            // Calculate new position at 100m boundary
+            const angle = Math.atan2(
+              newPosition.lat - userCords.latitude,
+              newPosition.lng - userCords.longitude
+            )
+            const lat = userCords.latitude + Math.sin(angle) * (0.1 / 111.32)
+            const lng = userCords.longitude + Math.cos(angle) * (0.1 / (111.32 * Math.cos(userCords.latitude * (Math.PI / 180))))
+            
+            markerRef.current.setLngLat([lng, lat])
+            newPosition.lat = lat
+            newPosition.lng = lng
+          }
+
+          // Update coordinates through callback
+          if (onLocationUpdate) {
+            onLocationUpdate({
+              latitude: newPosition.lat,
+              longitude: newPosition.lng
+            })
+          }
+        })
+
+        // Update position during drag but don't move the radius circle
+        markerRef.current.on('drag', () => {
+          if (!markerRef.current) return
+          const position = markerRef.current.getLngLat()
+          
+          // Calculate distance during drag for visual feedback
+          const distance = calculateDistance(
+            userCords.latitude,
+            userCords.longitude,
+            position.lat,
+            position.lng
+          )
+
+          // Update marker color based on whether it's within bounds
+          const marker = markerRef.current.getElement()
+          if (distance > 0.1) {
+            marker.style.filter = 'hue-rotate(120deg)' // Makes it appear more reddish
+          } else {
+            marker.style.filter = 'none'
+          }
+        })
+      }
     }
 
     return () => {
@@ -215,7 +228,7 @@ export const ModalMapComp = ({ userCords, onLocationUpdate }: MapboxProps) => {
           borderRadius: "0.375rem"
         }}
       />
-      <div className="absolute bottom-2 left-2 bg-white/80 px-2 py-1 rounded text-xs">
+      <div className="absolute bottom-2 left-2 bg-background/80 px-2 py-1 rounded text-xs">
         Drag the marker to adjust location (max 100m radius)
       </div>
     </div>

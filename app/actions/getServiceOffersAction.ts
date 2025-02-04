@@ -13,6 +13,7 @@ export type EnrichedServiceOffer = {
   expiresAt: Date | null
   createdAt: Date
   updatedAt: Date
+  location: {latitude: number, longitude: number} | null
   mechanic?: {
     id: string
     rating: number | null
@@ -33,7 +34,8 @@ export async function getServiceOffersForClient(serviceRequestId: string) {
       status: OfferStatus.PENDING,
       expiresAt: {
         gt: new Date() // Only get non-expired offers
-      }
+      },
+     
     },
     orderBy: {
       createdAt: 'asc'
@@ -44,8 +46,12 @@ export async function getServiceOffersForClient(serviceRequestId: string) {
   // For pending offers, fetch mechanic details
   const enrichedOffers = await Promise.all(
     offers.map(async (offer): Promise<EnrichedServiceOffer> => {
+      const location = typeof offer.location === 'object' && offer.location 
+        ? offer.location as { latitude: number; longitude: number }
+        : null;
+
       if (!offer.mechanicId) {
-        return { ...offer }
+        return { ...offer, location };
       }
 
       const mechanic = await prisma.mechanic.findUnique({
@@ -62,10 +68,10 @@ export async function getServiceOffersForClient(serviceRequestId: string) {
 
       return {
         ...offer,
+        location,
         mechanic: mechanic
       }
     })
   )
-
   return enrichedOffers
 }

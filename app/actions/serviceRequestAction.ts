@@ -60,6 +60,7 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
         status: ServiceStatus[input.status as keyof typeof ServiceStatus],
         location: input.location,
         description: serviceType.toLowerCase().replace(/_/g, ' ') + ' service request',
+        totalAmount: 0, // Required by schema
         
         updatedAt: new Date(), // Required by schema
       }

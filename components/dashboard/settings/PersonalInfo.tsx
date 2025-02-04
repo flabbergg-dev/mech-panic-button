@@ -37,7 +37,6 @@ export function PersonalInfoForm() {
       phoneNumber: "",
       dob: "",
       currentLocation: null,
-      serviceArea: null,
       documentsUrl: [],
     }
   })
@@ -76,7 +75,6 @@ export function PersonalInfoForm() {
             currentLocation: result.data.currentLocation || null,
             documentsUrl: result.data.documentsUrl || [],
           }, { keepDefaultValues: false });
-          
           // Verify form values were set
           console.log("Form values after reset:", watch());
         } else {
@@ -119,7 +117,7 @@ export function PersonalInfoForm() {
         phoneNumber: data.phoneNumber || "",
         dob: data.dob || "",
         currentLocation: data.currentLocation || null,
-        serviceArea: data.serviceArea || null,
+       
         documentsUrl: data.documentsUrl || [],
       };
 

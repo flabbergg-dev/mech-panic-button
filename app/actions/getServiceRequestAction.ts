@@ -9,10 +9,10 @@ export async function getServiceRequestsForClient(userId: string) {
   const requests = await prisma.serviceRequest.findMany({
     where: {
       clientId: userId,
-      OR: [
-        { status: ServiceStatus.REQUESTED },
-        { status: ServiceStatus.OFFERED }
+      NOT: [
+        {status: ServiceStatus.COMPLETED}
       ]
+      
     },
     orderBy: {
       createdAt: 'desc'

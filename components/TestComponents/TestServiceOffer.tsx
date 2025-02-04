@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,27 @@ export function TestServiceOffer({ mechanicId, serviceRequests }: TestServiceOff
   const [price, setPrice] = useState<string>('')
   const [note, setNote] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
-
+  const [mechanicLocation, setMechanicLocation] = useState<{latitude: number; longitude: number}>({
+    latitude: 0,
+    longitude: 0
+  })
+  
+  // Get customer location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setMechanicLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          })
+        },
+        (error) => {
+          console.error("Error getting location:", error)
+        }
+      )
+    }
+  }, [])
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedRequest || !price) return
@@ -34,6 +54,7 @@ export function TestServiceOffer({ mechanicId, serviceRequests }: TestServiceOff
         serviceRequestId: selectedRequest.id,
         price: parseFloat(price),
         note: note || undefined,
+        location: mechanicLocation,
         expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
       })
 
@@ -46,6 +67,10 @@ export function TestServiceOffer({ mechanicId, serviceRequests }: TestServiceOff
       setSelectedRequest(null)
       setPrice('')
       setNote('')
+      setMechanicLocation({
+        latitude: 0,
+        longitude: 0
+      })
     } catch (error) {
       console.error('Error creating offer:', error)
       alert(error instanceof Error ? error.message : 'Failed to create offer')

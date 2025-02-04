@@ -40,6 +40,7 @@ export class PrismaUserRepository implements IUserRepository {
         stripeCustomerId: true,
         stripeSubscriptionId: true,
         currentLocation: true,
+       
         stripeSubscriptionPlan: true,
         stripeSubscriptionStatus: true,
         documentsUrl: true,
@@ -64,6 +65,7 @@ export class PrismaUserRepository implements IUserRepository {
         stripeCustomerId: true,
         stripeSubscriptionId: true,
         currentLocation: true,
+        
         stripeSubscriptionPlan: true,
         stripeSubscriptionStatus: true,
         documentsUrl: true,
@@ -97,7 +99,7 @@ export class PrismaUserRepository implements IUserRepository {
     data: UpdateUserDTO
   ): Promise<UserProfileEntity> {
     try {
-      const { documentsUrl, currentLocation, serviceArea, dob, ...userData } = data
+      const { documentsUrl, currentLocation,  dob, ...userData } = data
 
       // Handle date conversion
       const dobDate = dob ? new Date(dob) : null
@@ -109,6 +111,7 @@ export class PrismaUserRepository implements IUserRepository {
           ...userData,
           dob: dobDate,
           currentLocation: currentLocation || null,
+          
           documentsUrl: documentsUrl || [],
         },
         select: {
@@ -152,7 +155,7 @@ export class PrismaUserRepository implements IUserRepository {
         merchantDocumentUrl,
         documentsUrl,
         currentLocation,
-        serviceArea,
+        
         dob,
         ...userData
       } = data
@@ -190,6 +193,7 @@ export class PrismaUserRepository implements IUserRepository {
             dob: dobDate,
             // Set currentLocation and serviceArea to null if not provided
             currentLocation: currentLocation || null,
+            
             // Set documentsUrl to an empty array if not provided
             documentsUrl: documentsUrl || [],
           },
@@ -207,6 +211,7 @@ export class PrismaUserRepository implements IUserRepository {
             stripeCustomerId: true,
             stripeSubscriptionId: true,
             currentLocation: true,
+           
             stripeSubscriptionPlan: true,
             stripeSubscriptionStatus: true,
             documentsUrl: true,

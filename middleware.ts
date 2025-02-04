@@ -33,9 +33,8 @@ export default clerkMiddleware(async (auth, req) => {
   // If it's a protected route and user is not authenticated, redirect to sign in
   if (isProtectedRoute(req) && !userId) {
     console.log('Middleware - Redirecting to sign in')
-    return redirectToSignIn({ returnBackUrl: req.url })
+    return redirectToSignIn()
   }
-
   // Handle protected routes and dashboard redirection for authenticated users
   if (userId && isProtectedRoute(req)) {
     try {

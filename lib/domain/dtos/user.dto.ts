@@ -23,7 +23,7 @@ export const updateUserSchema = z.object({
     .optional()
     .or(z.literal('')),
   currentLocation: z.any().nullable(),
-  serviceArea: z.any().nullable(),
+ 
   documentsUrl: z.array(z.string()).default([]),
 })
 

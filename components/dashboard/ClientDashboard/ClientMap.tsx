@@ -1,17 +1,13 @@
 import React, { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Slider } from "@/components/ui/slider"
 import { MechanicListCard } from "@/components/layouts/MechanicListCard.Layout"
 import { HalfSheet } from "@/components/ui/HalfSheet"
 import { Car, MapPin, MoveLeftIcon, Star, StarIcon, User, User2Icon } from "lucide-react"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { MessageCircleMoreIcon } from "../../Animated/message-circle-more"
 import { DynamicAvatar } from "../../DynamicAvatar/DynamicAvatar"
 import { Mechanic, Message } from "@prisma/client"
@@ -23,6 +19,8 @@ import { subscribeToMessages } from "@/app/actions/chats/subcribe-to-chat.action
 import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action"
 import { RealtimeChannel } from "@supabase/supabase-js"
 import supabase from "@/utils/supabase/specialClient"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 
 interface UserCoordinates {
   latitude: number
@@ -40,7 +38,6 @@ interface MechanicUser {
   documentsUrl?: string[]
   dob?: string
   currentLocation?: UserCoordinates
-  serviceArea?: UserCoordinates
   createdAt?: Date
   updatedAt?: Date
   props?: any
