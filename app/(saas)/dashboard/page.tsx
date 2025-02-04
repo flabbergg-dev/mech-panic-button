@@ -24,7 +24,7 @@ export default async function DashboardPage() {
     redirect(`/dashboard/customer/${userId}`)
   }
 
-  // This is just a fallback, it should never render .
+  // This is just a fallback, it should never render.
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
