@@ -218,6 +218,7 @@ export function ClientDashboard() {
              <div className="flex items-center   justify-center min-h-[400px] w-full">
               <RippleComp>
                 <MechPanicButton user={user} onRequestCreated={handleRequestCreated}/>
+                {/* <MechPanicButtonLogo/> */}
               </RippleComp>
             </div>
           </div>

@@ -163,6 +163,9 @@ export function MechanicInfoForm() {
                 accept=".pdf"
                 {...register("merchantDocumentUrl")}
               />
+              <p className="text-sm text-muted-foreground">
+                Look for this in your Interal 
+              </p>
             </div>
           </div>
         </div>

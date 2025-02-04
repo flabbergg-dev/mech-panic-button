@@ -10,13 +10,13 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const driversLicense = formData.get("driversLicense") as File
-    const merchantDocument = formData.get("merchantDocument") as File
+    const driversLicense = formData.get("driversLicense") as File | null
+    const merchantDocument = formData.get("merchantDocument") as File | null
     const userId = formData.get("userId") as string
 
-    if (!driversLicense || !merchantDocument || !userId) {
+    if (!userId || (!driversLicense && !merchantDocument)) {
       return NextResponse.json(
-        { error: "Missing required files" },
+        { error: "Missing userId or no documents provided" },
         { status: 400 }
       )
     }
@@ -27,26 +27,25 @@ export async function POST(request: NextRequest) {
       select: { driversLicenseId: true, merchantDocumentUrl: true }
     })
 
-    // Delete old files if they exist
-    if (mechanic) {
-      const oldFiles = [
-        mechanic.driversLicenseId,
-        mechanic.merchantDocumentUrl
-      ].filter(Boolean)
+    if (!mechanic) {
+      return NextResponse.json(
+        { error: "Mechanic not found" },
+        { status: 404 }
+      )
+    }
 
-      for (const url of oldFiles) {
-        if (url) {
-          try {
-            // Extract just the path part from the stored location
-            const oldPath = url.split('documents/')[1]
-            if (oldPath) {
-              await supabase.storage
-                .from("documents")
-                .remove([oldPath])
-            }
-          } catch (error) {
-            console.error("Error deleting old file:", error)
+    // Delete old files if they exist
+    const deleteOldFile = async (url: string | null) => {
+      if (url) {
+        try {
+          const oldPath = url.split('documents/')[1]
+          if (oldPath) {
+            await supabase.storage
+              .from("documents")
+              .remove([oldPath])
           }
+        } catch (error) {
+          console.error("Error deleting old file:", error)
         }
       }
     }
@@ -71,29 +70,44 @@ export async function POST(request: NextRequest) {
         throw error
       }
 
-      // Return the storage path instead of public URL
       return `documents/${filePath}`
     }
 
-    // Upload both documents
-    const [driversLicenseId, merchantDocumentUrl] = await Promise.all([
-      uploadFile(driversLicense, "drivers-license"),
-      uploadFile(merchantDocument, "merchant-doc")
-    ])
+    let driversLicenseId = mechanic.driversLicenseId
+    let merchantDocumentUrl = mechanic.merchantDocumentUrl
+
+    // Handle drivers license upload
+    if (driversLicense) {
+      if (mechanic.driversLicenseId) {
+        await deleteOldFile(mechanic.driversLicenseId)
+      }
+      driversLicenseId = await uploadFile(driversLicense, "drivers-license")
+    }
+
+    // Handle merchant document upload
+    if (merchantDocument) {
+      if (mechanic.merchantDocumentUrl) {
+        await deleteOldFile(mechanic.merchantDocumentUrl)
+      }
+      merchantDocumentUrl = await uploadFile(merchantDocument, "merchant-doc")
+    }
 
     // Update mechanic profile with new document paths
     await prisma.mechanic.update({
       where: { userId },
       data: {
-        driversLicenseId,
-        merchantDocumentUrl
+        ...(driversLicenseId && { driversLicenseId }),
+        ...(merchantDocumentUrl && { merchantDocumentUrl })
       }
     })
+
+    const hasAllDocuments = Boolean(driversLicenseId && merchantDocumentUrl)
 
     return NextResponse.json({
       success: true,
       driversLicenseId,
-      merchantDocumentUrl
+      merchantDocumentUrl,
+      hasAllDocuments
     })
   } catch (error) {
     console.error("Error uploading mechanic documents:", error)

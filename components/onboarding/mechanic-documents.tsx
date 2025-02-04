@@ -5,175 +5,197 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
 import { updateMechanicDocumentsAction } from "@/app/actions/mechanic/update-mechanic-documents.action"
+import { HalfSheet } from "../ui/HalfSheet"
+import { X } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface MechanicDocumentsProps {
   formData: {
     firstName: string
     lastName: string
     email: string
+   
   }
 }
 
-export function MechanicDocuments({ formData }: MechanicDocumentsProps) {
+interface MechanicDocuments {
+  driversLicenseId: string
+  merchantDocumentUrl: string
+}
+
+export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
+  const router = useRouter()
+  const { user } = useUser()
+  const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
   const [driversLicense, setDriversLicense] = useState<File | null>(null)
   const [merchantDocument, setMerchantDocument] = useState<File | null>(null)
-  const { user } = useUser()
-  const { toast } = useToast()
-  const router = useRouter()
+  const [hasDriversLicense, setHasDriversLicense] = useState(false)
+  const [hasMerchantDocument, setHasMerchantDocument] = useState(false)
+  const [country, setCountry] = useState<"Puerto Rico" | "United States">("Puerto Rico")
 
-  const handleFileChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    type: "driversLicense" | "merchantDocument"
-  ) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    if (file.size > 5 * 1024 * 1024) {
+  const handleFileUpload = async (file: File | null, type: 'driversLicense' | 'merchantDocument') => {
+    if (!file || !user) {
       toast({
         title: "Error",
-        description: "File size must be less than 5MB",
-        variant: "destructive",
-      })
-      event.target.value = ""
-      return
-    }
-
-    if (type === "driversLicense") {
-      setDriversLicense(file)
-    } else {
-      setMerchantDocument(file)
-    }
-  }
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-
-    if (!user?.id || !driversLicense || !merchantDocument) {
-      toast({
-        title: "Error",
-        description: "Please upload both required documents",
+        description: "Please select a file to upload",
         variant: "destructive",
       })
       return
     }
+
+    setIsUploading(true)
 
     try {
-      setIsUploading(true)
+      // Only onboard if this is the first document being uploaded
+      if (!hasDriversLicense && !hasMerchantDocument) {
+        const onboardResult = await onboardUserAction({
+          ...formData,
+          role: "Mechanic" as const,
+        })
 
-      // First create the user as a mechanic
-      const userData = await onboardUserAction({
-        ...formData,
-        role: "Mechanic",
-      })
-
-      if (!userData.success) {
-        throw new Error(userData.error || "Failed to create user")
+        if (!onboardResult.success) {
+          throw new Error(onboardResult.error)
+        }
       }
 
-      // Upload both documents
-      const mechanicFormData = new FormData()
-      mechanicFormData.append("driversLicense", driversLicense)
-      mechanicFormData.append("merchantDocument", merchantDocument)
-      mechanicFormData.append("userId", user.id)
-      mechanicFormData.append("type", "document")
+      const documentFormData = new FormData()
+      if (type === 'driversLicense') {
+        documentFormData.append("driversLicense", file)
+      } else {
+        documentFormData.append("merchantDocument", file)
+      }
+      documentFormData.append("userId", user.id)
 
-      const response = await fetch("/api/upload/mechanic-documents", {
+      const uploadResponse = await fetch("/api/upload/mechanic-documents", {
         method: "POST",
-        body: mechanicFormData,
+        body: documentFormData,
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to upload documents")
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload document")
       }
 
-      const data = await response.json()
-
-      // Update mechanic profile with document URLs
-      const result = await updateMechanicDocumentsAction(user.id, {
-        driversLicenseId: data.driversLicenseId,
-        merchantDocumentUrl: data.merchantDocumentUrl,
-      })
-
-      if (!result || !result.success) {
-        throw new Error(result?.error || "Failed to update mechanic documents")
+      const result = await uploadResponse.json()
+      
+      if (result.driversLicenseId) {
+        setHasDriversLicense(true)
+      }
+      if (result.merchantDocumentUrl) {
+        setHasMerchantDocument(true)
       }
 
       toast({
         title: "Success",
-        description: "Account created and documents uploaded successfully.",
+        description: `${type === 'driversLicense' ? "Driver's License" : "Merchant Document"} uploaded successfully`,
       })
 
-      // Redirect to dashboard
-      router.push("/dashboard")
-      router.refresh()
+      // Only redirect if both documents are uploaded
+      if (result.hasAllDocuments) {
+        router.push("/dashboard")
+      }
     } catch (error) {
-      console.error("Error creating mechanic account:", error)
-      // toast({
-      //   title: "Error",
-      //   description: error instanceof Error ? error.message : "Failed to create account",
-      //   variant: "destructive",
-      // })
-
+      console.error("Error:", error)
+      toast({
+        title: "Error",
+        description: "Failed to upload document",
+        variant: "destructive",
+      })
     } finally {
       setIsUploading(false)
-      router.refresh()
     }
   }
 
-  return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Required Documents</CardTitle>
-        <CardDescription>
-          Please upload your driver&apos;s license and merchant document to complete your registration
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="driversLicense">Driver&apos;s License</Label>
-              <input
-                id="driversLicense"
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(e) => handleFileChange(e, "driversLicense")}
-                disabled={isUploading}
-                className="w-full"
-                required
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                Upload a clear photo or scan of your valid driver&apos;s license
-              </p>
-            </div>
+  const handleCloseClick = () => {
+    window.location.reload()
+  }
 
+  return (
+    <HalfSheet className="bg-background border-t rounded-t-xl p-6">
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold flex-1">Required Documents</h2>
+            <Button variant="ghost" className="absolute right-6 top-6 hover:bg-transparent" onClick={() => handleCloseClick()}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <p className="text-muted-foreground">
+            Please upload your driver's license and merchant document to complete your registration
+          </p>
+        </div>
+        <div className="space-y-6">
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <Select
+              value={country}
+              onValueChange={(value: "Puerto Rico" | "United States") => setCountry(value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select your country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Puerto Rico">Puerto Rico</SelectItem>
+                <SelectItem value="United States">United States</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="driversLicense">Driver's License</Label>
+            <input
+              id="driversLicense"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                setDriversLicense(file || null)
+                if (file) {
+                  handleFileUpload(file, 'driversLicense')
+                }
+              }}
+              disabled={isUploading || hasDriversLicense}
+              className="mt-2"
+            />
+            {hasDriversLicense && (
+              <p className="text-sm text-green-600 mt-1">✓ Driver's License uploaded</p>
+            )}
+          </div>
+
+          {country === "Puerto Rico" && (
             <div>
               <Label htmlFor="merchantDocument">Merchant Document</Label>
               <input
                 id="merchantDocument"
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(e) => handleFileChange(e, "merchantDocument")}
-                disabled={isUploading}
-                className="w-full"
-                required
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  setMerchantDocument(file || null)
+                  if (file) {
+                    handleFileUpload(file, 'merchantDocument')
+                  }
+                }}
+                disabled={isUploading || hasMerchantDocument}
+                className="mt-2"
               />
-              <p className="text-sm text-muted-foreground mt-1">
-                Upload your merchant certification or business registration document
-              </p>
+              {hasMerchantDocument && (
+                <p className="text-sm text-green-600 mt-1">✓ Merchant Document uploaded</p>
+              )}
             </div>
-          </div>
+          )}
+        </div>
 
-          <Button type="submit" disabled={isUploading || !driversLicense || !merchantDocument}>
-            {isUploading ? "Creating Account..." : "Create Account & Upload Documents"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        {(!hasDriversLicense || !hasMerchantDocument) && (
+          <p className="text-sm text-amber-600">
+            Please upload required documents to continue to your dashboard
+          </p>
+        )}
+      </div>
+    </HalfSheet>
   )
 }

@@ -11,12 +11,22 @@ import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
 import { checkUserRoleAction } from "@/app/actions/user/check-user-role.action"
 import { MechanicDocuments } from "@/components/onboarding/mechanic-documents"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function OnboardingPage() {
   const { user } = useUser()
   const router = useRouter()
   const { toast } = useToast()
   const [selectedRole, setSelectedRole] = useState<"Customer" | "Mechanic" | null>(null)
+  const [pendingRole, setPendingRole] = useState<"Customer" | "Mechanic" | null>(null)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
@@ -48,7 +58,24 @@ export default function OnboardingPage() {
     }
   }, [user])
 
-  const handleRoleSelection = async (role: "Customer" | "Mechanic") => {
+  const handleRoleSelection = (role: "Customer" | "Mechanic") => {
+    setPendingRole(role)
+    setShowConfirmDialog(true)
+  }
+
+  const confirmRoleSelection = () => {
+    if (pendingRole) {
+      setSelectedRole(pendingRole)
+      setShowConfirmDialog(false)
+    }
+  }
+
+  const cancelRoleSelection = () => {
+    setPendingRole(null)
+    setShowConfirmDialog(false)
+  }
+
+  const handleFormSubmission = async () => {
     if (isSubmitting) return
 
     // Check if formData is fully populated
@@ -65,12 +92,11 @@ export default function OnboardingPage() {
 
     try {
       setIsSubmitting(true)
-      setSelectedRole(role)
 
-      if (role === "Customer") {
+      if (selectedRole === "Customer") {
         const result = await onboardUserAction({
           ...formData,
-          role,
+          role: selectedRole,
         })
 
         if (result.redirect) {
@@ -108,9 +134,7 @@ export default function OnboardingPage() {
   }
 
   // If mechanic role is selected, show document upload form
-  if (selectedRole === "Mechanic") {
-    return <MechanicDocuments formData={formData} />
-  }
+
 
   return (
     <div className="container max-w-2xl mx-auto py-8">
@@ -161,7 +185,7 @@ export default function OnboardingPage() {
           <div>
             <Label>I am a...</Label>
             <RadioGroup
-              defaultValue={selectedRole || undefined}
+              value={selectedRole || undefined}
               onValueChange={(value) => handleRoleSelection(value as "Customer" | "Mechanic")}
               className="grid grid-cols-2 gap-4 mt-2"
               disabled={isSubmitting}
@@ -195,8 +219,32 @@ export default function OnboardingPage() {
               </div>
             </RadioGroup>
           </div>
+
+          <Button onClick={handleFormSubmission}>Submit</Button>
+
+          { selectedRole === "Mechanic" && (
+     <MechanicDocuments formData={formData} />
+  )}
         </div>
       </div>
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Role Selection</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to continue as a {pendingRole}? This choice will determine your experience on our platform.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelRoleSelection}>
+              Cancel
+            </Button>
+            <Button onClick={confirmRoleSelection}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

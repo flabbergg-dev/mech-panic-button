@@ -15,6 +15,8 @@ export const MechanicDashboard = () => {
     return <div>Loading...</div>
   }
 
+  
+
   const renderContent = () => {
     switch (activeTab) {
       case "home":
