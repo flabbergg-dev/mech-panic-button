@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { prisma } from "@/lib/prisma"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { auth } from "@clerk/nextjs/server"
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +9,8 @@ export async function POST(request: NextRequest) {
     const driversLicense = formData.get("driversLicense") as File | null
     const merchantDocument = formData.get("merchantDocument") as File | null
     const userId = formData.get("userId") as string
+    const { getToken } = await auth()
+    const token = await getToken({ template: process.env.NEXT_PUBLIC_SUPABASE_JWT_TEMPLATE! })
 
     if (!userId || (!driversLicense && !merchantDocument)) {
       return NextResponse.json(
@@ -20,6 +18,18 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}` || ""
+          }
+        }
+      }
+    )
 
     // Get current document paths if they exist
     const mechanic = await prisma.mechanic.findUnique({

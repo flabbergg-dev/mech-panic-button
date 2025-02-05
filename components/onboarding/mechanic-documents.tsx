@@ -11,7 +11,6 @@ import { updateMechanicDocumentsAction } from "@/app/actions/mechanic/update-mec
 import { HalfSheet } from "../ui/HalfSheet"
 import { X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
 interface MechanicDocumentsProps {
   formData: {
     firstName: string
@@ -76,7 +75,8 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
       })
 
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload document")
+        const errorData = await uploadResponse.json()
+        throw new Error(errorData.error || "Failed to upload document")
       }
 
       const result = await uploadResponse.json()
@@ -96,6 +96,10 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
       // Only redirect if both documents are uploaded
       if (result.hasAllDocuments) {
         router.push("/dashboard")
+      } else if (hasDriversLicense && country === "United States") {
+        router.push("/dashboard")
+      } else {
+        router.refresh()
       }
     } catch (error) {
       console.error("Error:", error)
