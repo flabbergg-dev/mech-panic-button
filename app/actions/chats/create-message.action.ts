@@ -14,7 +14,6 @@ export async function createMessageAction(userId: string, chatId: number, conten
         })
 
         return {
-            success: true,
             message: message,
         }
     } catch (error) {

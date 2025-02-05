@@ -60,10 +60,10 @@ const sections = [
     badge: "Pro"
   },
   { 
-    id: "preferences", 
-    icon: Settings2, 
+    id: "preferences",
+    icon: Settings2,
     label: "Preferences",
-    description: "Customize your app experience" 
+    description: "Customize your app experience"
   },
 ]
 

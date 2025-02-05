@@ -82,13 +82,17 @@ export const ServiceRequest = ({
               </div>
             )}
           </div>
-          <Button
-            className="border bg-white rounded-full w-full hover:bg-primary flex gap-4 text-black hover:text-primary-foreground group"
-            disabled={requestData.isScheduled}
-          >
+            <div
+            className={`border bg-white rounded-full w-full flex gap-4 text-black group ${
+              requestData.isScheduled
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-primary hover:text-primary-foreground"
+            }`}
+            // disabled={requestData.isScheduled}
+            >
             {requestData.isScheduled ? "Scheduled" : "Lookup Gig"}
             <ArrowRightIcon className="hidden group-hover:block ease-in-out duration-150 group-hover:translate-x-2 -translate-x-2" />
-          </Button>
+            </div>
         </Card>
       </button>
     </motion.div>

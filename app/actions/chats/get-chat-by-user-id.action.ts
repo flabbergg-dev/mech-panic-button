@@ -13,14 +13,12 @@ export async function getChatByUserIdAction(userId: string, mechanicId: string) 
             }
         })
         return {
-            success: true,
             chat,
         }
     }
     catch (error) {
         console.error("Error in getChatAction:", error)
         return {
-            success: false,
             error: error instanceof Error ? error.message : "Failed to fetch chat",
         }
     }

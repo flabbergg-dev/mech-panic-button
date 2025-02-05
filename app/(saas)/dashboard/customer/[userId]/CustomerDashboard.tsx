@@ -13,6 +13,7 @@ import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
 import BentoGrid from "@/components/BentoBoxes/BentoGrid"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import { useUserRole } from "@/hooks/use-user-role"
+import SettingsPage from "@/components/dashboard/settings/Settings"
 export default function CustomerDashboard() {
   const { user } = useUser()
   const { serviceRequests, mechanicLocation, serviceStatus } = useServiceRequestStore()
@@ -21,6 +22,7 @@ export default function CustomerDashboard() {
   const payment = params.get("payment")
   const [activeTab, setActiveTab] = useState(tab || "home")
   const userRole = useUserRole()
+  console.log('userRole', userRole)
   // Get the most recent/active service request
   const activeServiceRequest = serviceRequests[0]
 
@@ -30,7 +32,6 @@ export default function CustomerDashboard() {
 
 
   const renderContent = () => {
-    
     switch (activeTab) {
       case "home":
         return (
@@ -68,7 +69,7 @@ export default function CustomerDashboard() {
       case "settings":
         return (
         <Suspense fallback={<SkeletonBasic />}>
-          {/* TODO: add settings  for custome */}
+          <SettingsPage />
         </Suspense>
         )
       case "profile":
@@ -85,7 +86,7 @@ export default function CustomerDashboard() {
       <BottomNavigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        userRole={userRole!}
+        userRole={userRole.userRole!}
       />
     </div>
   )

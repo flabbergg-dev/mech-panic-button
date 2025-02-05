@@ -13,7 +13,6 @@ import { updateUserProfileAction } from "@/app/actions/user/update-user-profile.
 import { getUserProfileAction } from "@/app/actions/user/get-user-profile.action"
 import { useToast } from "@/hooks/use-toast"
 import { ProfileImageUpload } from "@/components/dashboard/settings/ProfileImageUpload"
-import { prisma } from "@/lib/prisma"
 
 export function PersonalInfoForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)

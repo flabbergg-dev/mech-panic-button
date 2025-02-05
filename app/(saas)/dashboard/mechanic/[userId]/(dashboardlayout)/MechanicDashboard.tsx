@@ -7,6 +7,10 @@ import { MechanicProfile } from "@/components/dashboard/MechanicDashboard/Mechan
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import SettingsPage from "@/components/dashboard/settings/Settings"
 
+interface MechanicDashboardProps {
+  token: string | null
+}
+
 export const MechanicDashboard = () => {
   const { user } = useUser()
   const [activeTab, setActiveTab] = useState("home")

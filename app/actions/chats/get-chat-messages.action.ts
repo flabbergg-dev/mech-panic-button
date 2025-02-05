@@ -2,25 +2,33 @@
 
 import { prisma } from "@/lib/prisma"
 
-export async function getChatMessages(
-  chatId: number,
-  authorId: string
-) {
-  const messages = await prisma.message.findMany({
-    where: {
-      chatId: chatId,
-      authorId: authorId
-    },
-    select: {
-      id: true,
-      chatId: true,
-      authorId: true,
-      content: true,
-    }
-  })
+export async function getChatMessages(chatId: number) {
+  try {
+    const messages = await prisma.message.findMany({
+      where: {
+        chatId: chatId
+      },
+      select: {
+        id: true,
+        chatId: true,
+        authorId: true,
+        content: true,
+      }
+    })
 
-  return {
-    success: true,
-    messages,
+    if (!messages) {
+      throw new Error("Messages not found")
+    }
+
+    return {
+      messages,
+    }
+  }
+  catch (error) {
+    console.error("Error in getChatMessagesAction:", error ?? "Unknown error")
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch messages",
+    }
   }
 }

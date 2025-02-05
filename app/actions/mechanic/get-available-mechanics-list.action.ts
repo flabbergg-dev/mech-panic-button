@@ -7,7 +7,7 @@ export async function getAvailableMechanicsListAction() {
         const mechanic = await prisma.mechanic.findMany({
             where: {
                 isAvailable: true
-            },  
+            },
             select: {
                 id: true,
                 userId: true,
@@ -23,8 +23,6 @@ export async function getAvailableMechanicsListAction() {
                 earnings: true,
                 user: true,
                 serviceRequests: true,
-                location: true,
-                serviceArea: true,
             },
         })
 
@@ -42,4 +40,4 @@ export async function getAvailableMechanicsListAction() {
         error: error instanceof Error ? error.message : "Failed to fetch mechanic",
         }
     }
-    }
+}
