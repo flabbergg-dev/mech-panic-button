@@ -24,11 +24,11 @@ export default async function TestOfferPage() {
   }
 
   // Get all service requests in REQUESTED status
-  
+
   let serviceRequests = await prisma.serviceRequest.findMany({
     where: {
-        status: ServiceStatus.REQUESTED 
-      
+        status: ServiceStatus.REQUESTED
+
     },
     include: {
       client: true
@@ -42,7 +42,6 @@ export default async function TestOfferPage() {
   const serviceOffer = await prisma.serviceOffer.findMany({
     where: {
       mechanicId: mechanic.id,
-     
     }
   })
 

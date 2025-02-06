@@ -1,4 +1,3 @@
-import { Chat } from '@/components/Chat/Chat'
 import { DashboardLayout } from '@/components/layouts/dashboard.layout'
 import React from 'react'
 
@@ -10,7 +9,6 @@ export default function PageLayout({children}: layoutProps) {
   return (
     <DashboardLayout>
         {children}
-        <Chat />
     </DashboardLayout>
   )
 }

@@ -4,10 +4,11 @@ import { useEffect, useState } from "react"
 
 import { format } from "date-fns"
 import { motion } from "framer-motion"
-import {
-  getServiceRequestById,
-  type ServiceRequestMock,
-} from "@/lib/mock/serviceRequests"
+// import {
+  // getServiceRequestById,
+  // type ServiceRequestMock,
+// } from "@/lib/mock/serviceRequests"
+import { getServiceRequestById } from "@/app/actions/service/request/getServiceRequestByIdAction"
 import { ArrowRightIcon } from "lucide-react"
 import { Button } from "../ui/button"
 import { Card } from "../ui/card"
@@ -21,18 +22,17 @@ export const ServiceRequest = ({
   isScheduled: boolean
 }) => {
   const { goToServiceRequest } = useMechanicNavigation()
-  const [requestData, setRequestData] = useState<
-    ServiceRequestMock | undefined
-  >()
+  const [requestData, setRequestData] = useState<any>(null)
 
   useEffect(() => {
     // Simulate async fetch
-    const fetchData = () => {
-      const data = getServiceRequestById(serviceRequestId)
+    const fetchData = async () => {
+      const data = await getServiceRequestById(serviceRequestId)
       setRequestData(data)
+      console.log(data)
     }
     fetchData()
-  }, [serviceRequestId])
+  }, [])
 
   if (!requestData) return null
 
@@ -46,12 +46,13 @@ export const ServiceRequest = ({
         className="w-full"
         onClick={() => {
           // Navigate to specific id service request page
-          goToServiceRequest(requestData.id.toString())
+          goToServiceRequest(requestData.id)
         }}
       >
         <Card className="p-4 space-y-4 bg-card">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">{requestData.clientName}</h3>
+            <h3 className="text-lg font-semibold">{requestData.serviceRequest.client.firstName}</h3>
+            {/* TODO: verif isScheduled */}
             {requestData.isScheduled && (
               <span className="text-xs font-medium text-primary px-2 py-1 bg-primary/10 rounded-full">
                 Scheduled

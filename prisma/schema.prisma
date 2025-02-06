@@ -77,7 +77,6 @@ model ServiceRequest {
   mechanicId       String?
   status           ServiceStatus
   location         Json
-  totalAmount      Float
   description      String?
   paymentHoldId    String?
   paymentId        String?
@@ -87,6 +86,7 @@ model ServiceRequest {
   serviceType      ServiceType    @default(DIAGNOSTIC)
   completionCode   String?
   mechanicLocation Json?
+  totalAmount      Float
   review           Review?
   offers           ServiceOffer[]
   client           User           @relation(fields: [clientId], references: [id])
@@ -233,7 +233,7 @@ model ServiceOffer {
   note             String?
   status           OfferStatus    @default(PENDING)
   expiresAt        DateTime?
-  location         Json?
+  location         Json
   mechanic         Mechanic       @relation(fields: [mechanicId], references: [id])
   serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id])
 }
@@ -250,8 +250,8 @@ enum ServiceStatus {
   IN_ROUTE
   SERVICING
   IN_PROGRESS
-  IN_COMPLETION
   COMPLETED
+  IN_COMPLETION
 }
 
 enum SubscriptionPlan {

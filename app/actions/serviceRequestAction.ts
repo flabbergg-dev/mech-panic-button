@@ -37,7 +37,7 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
     }
 
     // Convert string service type to enum if needed
-    const serviceType = typeof input.serviceType === 'string' 
+    const serviceType = typeof input.serviceType === 'string'
       ? input.serviceType as ServiceType
       : input.serviceType
 

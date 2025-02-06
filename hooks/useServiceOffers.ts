@@ -1,6 +1,6 @@
 'use client'
 
-import {  getServiceOffersForClient } from '@/app/actions/getServiceOffersAction'
+import {  getServiceOffersForClient } from '@/app/actions/service/offer/getServiceOffersAction'
 import { getServiceRequestsForClient } from '@/app/actions/getServiceRequestAction'
 import { useCallback, useEffect } from 'react'
 import { ServiceStatus } from '@prisma/client'
@@ -14,12 +14,12 @@ export function useServiceOffers(userId: string) {
 
     try {
       const serviceRequests = await getServiceRequestsForClient(userId)
-      
+
       const activeRequest = serviceRequests.find(
-        req => req.status !== ServiceStatus.COMPLETED 
+        req => req.status !== ServiceStatus.COMPLETED
       )
-      
-      const offersData = activeRequest 
+
+      const offersData = activeRequest
         ? await getServiceOffersForClient(activeRequest.id)
         : []
 

@@ -5,21 +5,37 @@ import { useUser } from "@clerk/nextjs"
 import { BalanceCard } from "@/components/cards/BalanceCard"
 import { ServiceRequest } from "@/components/service/ServiceRequest"
 import { Loader, User2Icon, UserCircle } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { Key, useEffect, useRef, useState } from "react"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PushNotificationButton } from "../../PushNotificationButton"
+import { getServiceRequestsAction } from "@/app/actions/service/request/getServiceRequestsAction"
+import { Loader as LoaderComp } from "@/components/loader"
 
 export const MechanicHome = () => {
   const { user } = useUser()
   const [isServiceRequestAvailable, setIsServiceRequestAvailable] = useState(false)
+  const [servicesRequests, setServicesRequests] = useState([] as any)
 
   useEffect(() => {
     setTimeout(() => {
       setIsServiceRequestAvailable(true)
     }, 3000)
-  }, [isServiceRequestAvailable])
+    const fetchData = async () => {
+      if (isServiceRequestAvailable === true) {
+        await getServiceRequestsAction()
+          .then((response) => {
+              setServicesRequests(response.serviceRequests)
+          })
+          .catch((error) => {
+            console.error("Error in fetching service requests:", error)
+          })
+      }
+    }
+    fetchData()
+
+  }, [isServiceRequestAvailable, servicesRequests])
 
   return (
     <div className="space-y-4">
@@ -75,15 +91,23 @@ export const MechanicHome = () => {
               Service Requests Available
             </h3>
             <div className="space-y-4 p-4">
-              <ServiceRequest serviceRequestId={"1"} isScheduled={false} />
+              {/* <ServiceRequest serviceRequestId={"1"} isScheduled={false} />
               <ServiceRequest serviceRequestId={"2"} isScheduled={false} />
               <ServiceRequest serviceRequestId={"3"} isScheduled={false} />
-              <ServiceRequest serviceRequestId={"4"} isScheduled={false} />
+              <ServiceRequest serviceRequestId={"4"} isScheduled={false} /> */}
+              {servicesRequests.length === 0 && (
+                <div className="flex items-center justify-center space-y-4">
+                  <Loader className="animate-spin" />
+                </div>
+              )}
+              {servicesRequests.map((serviceRequest: { id: string }) => (
+                <ServiceRequest key={serviceRequest.id} serviceRequestId={serviceRequest.id} isScheduled={false} />
+              ))}
             </div>
           </ScrollArea>
           <Separator className="w-full whitespace-nowrap rounded-md bg-primary" />
           <h3 className="text-md font-semibold mt-6">Scheduled Appointments</h3>
-          <ScrollArea className="w-full whitespace-nowrap rounded-md ">
+          {/* <ScrollArea className="w-full whitespace-nowrap rounded-md ">
             <div className="flex w-max space-x-4 px-4">
               <ServiceRequest serviceRequestId={"6"} isScheduled={true} />
               <ServiceRequest serviceRequestId={"7"} isScheduled={true} />
@@ -91,7 +115,7 @@ export const MechanicHome = () => {
               <ServiceRequest serviceRequestId={"9"} isScheduled={true} />
             </div>
             <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </ScrollArea> */}
         </div>
       )}
     </div>

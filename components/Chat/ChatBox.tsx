@@ -17,8 +17,11 @@ import { Separator } from "@/components/ui/separator"
 import { MessageCircle } from "lucide-react"
 import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action"
 import supabase from "@/utils/supabase/specialClient"
+import { useAuth } from '@clerk/clerk-react'
 
 export const ChatBox = () => {
+  const { userId, sessionId, getToken, isLoaded, isSignedIn } = useAuth()
+  
   const [isOpen, setIsOpen] = useState(false)
   // const supabase = createClient()
   // managing the chat identidier
@@ -43,67 +46,6 @@ export const ChatBox = () => {
   }[]>([])
   const { user: currentUser } = useUser()
   const channelRef = useRef<RealtimeChannel | null>(null)
-
-  const handleRealtimeInsert = (payload: any) => {
-    const { new: newMessage } = payload
-    // const { user: {id: userId}, chatId, content } = newMessage
-    console.log("New message: ", newMessage)
-    // console.log("User ID: ", userId)
-    // console.log("Chat ID: ", chatId)
-    // console.log("Content: ", content)
-    const message = {
-      ...newMessage,
-      // user: currentUser?.id,
-    }
-
-    setMessages((prevMessages: any) => [...prevMessages, message])
-    console.log("New message after being asigned: ", message)
-  }
-  const handleRealtimeUpdate = (payload: any) => {}
-  const handleRealtimeDelete = (payload: any) => {}
-
-  // const realTimeSubscription = () => {
-  //   const channel = supabase.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, (payload: { new: any }) => {
-  //     console.log('New message:', payload.new)
-  //     console.log('channel:', channel)
-  //   }).subscribe();
-  //   return channel;
-  //   // channel = supabase.channel("schema-db-changes").on(
-  //   //   'postgres_changes',
-  //   //   {
-  //   //     event: "*",
-  //   //     schema: "public",
-  //   //     table: "Message",
-  //   //   },
-  //   //   (payload: any) => {
-  //   //     // TODO: temporal fix
-  //   //     if (chatId !== null) {
-  //   //       fetchMessages(chatId)
-  //   //     }
-  //   //     console.log('Change received!', payload)
-  //   //     switch (payload.eventType) {
-  //   //       case "INSERT":
-  //   //         handleRealtimeInsert(payload)
-  //   //         break
-  //   //       case "UPDATE":
-  //   //         handleRealtimeUpdate(payload)
-  //   //         break
-  //   //       case "DELETE":
-  //   //         handleRealtimeDelete(payload)
-  //   //         break
-  //   //       default:
-  //   //         console.log("Unknown event type: ", payload.eventType)
-  //   //         break
-  //   //     }
-  //   //   }
-  //   // ).subscribe((status: string) => {
-  //   //   if (status === "SUBSCRIBED") {
-  //   //     console.log("Channel status: ", status)
-  //   //     channelRef.current = channel
-  //   //   }
-  //   // })
-  //   // return channel
-  // }
 
   // const createChat = async (userId: string, mechanicId: string) => {
   //   try {
@@ -171,17 +113,24 @@ export const ChatBox = () => {
     }
   }
 
-  useEffect(() => {
-    fetchChat()
-    channelRef.current = supabase.channel('realtime:public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, (payload: any) => {
-    setTimeout(async () => {
-      await fetchMessages(chatId!)
-    }, 2000)
+  const realTimeSubscription = async () => {
+    await fetchChat()
+    const token = await getToken()
+    // remove if dont work vvv
+    supabase.realtime.setAuth(token)
+    channelRef.current = supabase.channel('realtime:public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, async (payload: any) => {
+      setTimeout(async () => {
+        await fetchMessages(chatId!)
+      }, 2000)
     }).subscribe()
     return () => {
       channelRef.current?.unsubscribe()
     }
-  }, [currentUser, setChatId, channelRef])
+  }
+
+  useEffect(() => {
+    realTimeSubscription()
+  }, [setChatId, channelRef])
 
 
 

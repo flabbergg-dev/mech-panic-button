@@ -9,6 +9,7 @@ import { ServiceStatus, ServiceType } from "@prisma/client"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { createServiceRequestAction } from "@/app/actions/serviceRequestAction"
+import { toast } from "@/hooks/use-toast"
 
 const getUserLocation = (
   setUserCords: React.Dispatch<
@@ -82,7 +83,12 @@ export const MechPanicButton = ({ user, onRequestCreated }: MechPanicButtonProps
       }
 
       if (!finalLocation || !finalLocation.latitude || !finalLocation.longitude) {
-        throw new Error("Location not available")
+        toast({
+          title: "Location not available",
+          description: "Please provide your location to request service",
+          duration: 5000,
+        })
+        // throw new Error("Location not available")
       }
 
       console.log('Sending service request with:', {
