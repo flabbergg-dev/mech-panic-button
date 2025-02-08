@@ -9,3 +9,10 @@ export function cn(...inputs: ClassValue[]) {
 export function generatePinCode() {
   return Math.floor(Math.random() * 900000) + 100000;
 }
+
+export function formatCurrency(amount: number) {
+  return amount.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  })
+}
