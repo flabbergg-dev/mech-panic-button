@@ -99,16 +99,16 @@ export const ServiceRequestMap = ({
     try {
       const response = await fetch(
         `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-        `${mechanicLocation.longitude},${mechanicLocation.latitude};` +
-        `${customerLocation.longitude},${customerLocation.latitude}` +
-        `?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
-      )
+          `${mechanicLocation.longitude},${mechanicLocation.latitude};` +
+          `${customerLocation.longitude},${customerLocation.latitude}` +
+          `?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`
+      );
       const data = await response.json()
-      
+
       if (data.routes?.[0]) {
         const time = Math.round(data.routes[0].duration / 60) // Convert to minutes
         setEstimatedTime(time)
-        
+
         // Draw the route on the map
         if (map && data.routes[0].geometry) {
           if (map.getSource('route')) {
@@ -126,7 +126,7 @@ export const ServiceRequestMap = ({
                 geometry: data.routes[0].geometry
               }
             })
-            
+
             map.addLayer({
               id: 'route',
               type: 'line',

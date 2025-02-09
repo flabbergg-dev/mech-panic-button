@@ -5,6 +5,7 @@ import { ServiceRequestMap } from "@/components/MapBox/ServiceRequestMap"
 import { useUser } from "@clerk/nextjs"
 import { ServiceRequest } from "@prisma/client"
 import { useServiceRequestStore } from "@/store/serviceRequestStore"
+import { toast } from "@/hooks/use-toast"
 
 interface Location {
   latitude: number
@@ -31,29 +32,39 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
           })
         },
         (error) => {
-          console.error("Error getting location:", error)
+          setCustomerLocation({
+            latitude: 37.7749,
+            longitude: -122.4194,
+          });
+          setMechanicLocation({
+            latitude: 37.7749,
+            longitude: -122.4194,
+          });
+          toast({
+            title: "Error getting location",
+            description: "Please enable location services to see your location",
+          })
+          // console.error("Error getting location:", error)
         }
       )
     }
 
     // Subscribe to mechanic's location updates through your real-time service
     // This is just a placeholder - implement your actual real-time subscription
-    const unsubscribe = subscribeToMechanicLocation(serviceRequest.mechanicId as string, (location) => {
-      setMechanicLocation(location)
-    })
+    // const unsubscribe = subscribeToMechanicLocation(serviceRequest.mechanicId as string, (location) => {
+    //   setMechanicLocation(location)
+    // })
 
-    return () => {
-      unsubscribe()
-    }
-  }, [serviceRequest.mechanicId])
+    // return () => {
+    //   unsubscribe()
+    // }
+  }, [])
 
   // Show loading state if locations aren't ready
   if (!customerLocation || !mechanicLocation || !user) {
     return <div className="flex items-center justify-center h-[80vh]">Loading map...</div>
   }
 
-  // Only show the map to the customer who made the request
-  if (serviceRequest.clientId === user.id) {
     return (
       <ServiceRequestMap
         serviceRequest={serviceRequest}
@@ -63,9 +74,6 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
         isCustomerLocationVisible={true}
       />
     )
-  }
-
-  return null
 }
 
 // Placeholder function - implement your actual real-time subscription logic
