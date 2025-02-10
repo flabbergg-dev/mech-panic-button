@@ -5,7 +5,7 @@ import CustomerDashboard from "./CustomerDashboard"
 import { Navbar } from "@/components/navigation/client-navbar.navigation"
 
 export const metadata: Metadata = {
-  title: "Customer Dashboard",
+  title: "Customer Dashboard - Mech-Panic Button",
   description: "Manage your service requests and view your history",
 }
 

@@ -7,6 +7,7 @@ import { ServiceRequest } from "@prisma/client"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MapPin, Navigation } from "lucide-react"
+import { ChatBox } from "../Chat/ChatBox"
 
 // Define service request status types
 type ServiceRequestStatus = 
@@ -151,28 +152,29 @@ export const ServiceRequestMap = ({
   return (
     <div className="relative w-full h-[calc(100vh-4rem)]">
       <div id="map" className="w-full h-full" />
-      
+
       {/* Status Card */}
       <Card className="absolute bottom-4 left-4 right-4 p-4 bg-white/90 backdrop-blur">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {status === "PAYMENT_PENDING" && (
+              {/* {status === "PAYMENT_PENDING" && (
                 <>
                   <span className="text-yellow-500">Payment Pending</span>
                   <Button variant="default">Complete Payment</Button>
                 </>
-              )}
+              )} */}
               {status === "WAITING_MECHANIC" && (
                 <span className="text-blue-500">Waiting for mechanic to start...</span>
               )}
-              {status === "MECHANIC_EN_ROUTE" && (
-                <div className="flex items-center gap-2">
+              {status != "MECHANIC_EN_ROUTE" && (
+                <div className="flex items-center gap-2 pb-32">
                   <Navigation className="text-green-600 animate-pulse" />
                   <span className="text-green-600">
                     Mechanic is on the way
                     {estimatedTime && ` - ETA: ${estimatedTime} minutes`}
                   </span>
+                  <ChatBox />
                 </div>
               )}
               {status === "MECHANIC_ARRIVED" && (

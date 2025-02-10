@@ -26,6 +26,13 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
   try {
     const client = await clerkClient()
     const {userId} = await auth()
+    if (!userId) {
+      return {
+        success: false,
+        error: 'Unauthorized'
+      }
+    }
+    const clerkUser = await client.users.getUser(userId)
     // Validate input data
     const validatedData = onboardingSchema.parse(data)
 
@@ -49,11 +56,12 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
     // Create user profile in database
     const user = await prisma.user.create({
       data: {
-        id: userId,
+        id: clerkUser.id,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         email: validatedData.email,
         role: validatedData.role,
+        profileImage: clerkUser.imageUrl,
         documentsUrl: [],
         currentLocation: undefined,
        

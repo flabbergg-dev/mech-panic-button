@@ -34,7 +34,7 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
 
     // Get mechanic's current location
     const mechanic = await prisma.mechanic.findUnique({
-      where: { id: input.mechanicId },
+      where: { userId: input.mechanicId },
       select: { 
         isAvailable: true 
       }
