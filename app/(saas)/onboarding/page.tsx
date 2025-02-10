@@ -222,9 +222,9 @@ export default function OnboardingPage() {
 
           <Button onClick={handleFormSubmission}>Submit</Button>
 
-          { selectedRole === "Mechanic" && (
-     <MechanicDocuments formData={formData} />
-  )}
+          {selectedRole === "Mechanic" && (
+            <MechanicDocuments formData={formData} />
+          )}
         </div>
       </div>
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
