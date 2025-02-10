@@ -20,8 +20,8 @@ import supabase from "@/utils/supabase/specialClient"
 import { useAuth } from '@clerk/clerk-react'
 
 export const ChatBox = () => {
-  const { userId, sessionId, getToken, isLoaded, isSignedIn } = useAuth()
-  
+  const { userId } = useAuth()
+
   const [isOpen, setIsOpen] = useState(false)
   // const supabase = createClient()
   // managing the chat identidier
@@ -90,13 +90,14 @@ export const ChatBox = () => {
   }
 
   const fetchMessages = async (chatId: number) => {
-      const messages = await getChatMessages(1)
+      const messages = await getChatMessages(chatId)
       if (messages) {
         if(currentUser) {
           const userMessages = messages.messages!.filter((msg) => msg.authorId === currentUser!.id)
           const mechanicMessages = messages.messages!.filter((msg) => msg.authorId !== currentUser!.id)
           setUserMessages(userMessages)
           setMechanicMessages(mechanicMessages)
+          console.log("Messages: ", messages)
         }
       } else {
         console.error("Error fetching messages")
@@ -104,10 +105,15 @@ export const ChatBox = () => {
   }
 
   const fetchChat = async () => {
-    const chat = await getChatByUserIdAction("user_2sYodQzt0FymLjMOUQUFK4Q9d1D", "cb4c20b1-773d-4539-a181-ad001698d4d5")
+    const chat = await getChatByUserIdAction(
+      userId!,
+      "cfada8f4-f8b8-42fb-8b1e-0d549a447bca"
+    );
     if (chat.chat?.id) {
       setChatId(chat.chat.id)
-      await fetchMessages(chat.chat.id)
+      if(chatId) {
+        await fetchMessages(chatId!)
+      }
     } else {
       console.error("Error fetching chat")
     }
@@ -115,14 +121,13 @@ export const ChatBox = () => {
 
   const realTimeSubscription = async () => {
     await fetchChat()
-    const token = await getToken()
-    // remove if dont work vvv
-    supabase.realtime.setAuth(token)
+
     channelRef.current = supabase.channel('realtime:public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, async (payload: any) => {
       setTimeout(async () => {
         await fetchMessages(chatId!)
       }, 2000)
     }).subscribe()
+    console.log("Channel: ", channelRef.current)
     return () => {
       channelRef.current?.unsubscribe()
     }
@@ -130,12 +135,12 @@ export const ChatBox = () => {
 
   useEffect(() => {
     realTimeSubscription()
-  }, [setChatId, channelRef])
+  }, [chatId, channelRef])
 
 
 
   return (
-    <div className="absolute bottom-4 right-4">
+    <div className="">
       <Button
         onClick={() => setIsOpen(!isOpen)}
         className="rounded-full p-2 bg-slate-600 text-white"
@@ -143,7 +148,7 @@ export const ChatBox = () => {
         <MessageCircle size={24} />
       </Button>
 
-      <div className={`absolute bottom-16 right-4 bg-slate-600 text-white p-2 rounded-md duration-300 h-80 overflow-y-scroll w-[50dvw] md:w-[20dvw] border-2 hover:border-slate-400 transition-all ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}>
+      <div className={`absolute left-0 right-0 justify-center bg-slate-600 text-white p-2 rounded-md duration-300 h-auto overflow-y-scroll w-[70dvw] md:w-[20dvw] border-2 hover:border-slate-400 transition-all ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}>
         {!chatId && (
           <div className="flex flex-col justify-center items-center">
             <h1>

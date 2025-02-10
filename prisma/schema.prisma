@@ -34,6 +34,7 @@ model User {
   reviews                  Review[]
   serviceRequests          ServiceRequest[]
   Vehicle                  Vehicle[]
+  Chat                      Chat[]
 }
 
 model Mechanic {
@@ -57,6 +58,7 @@ model Mechanic {
   services            MechanicService[]
   ServiceOffer        ServiceOffer[]
   serviceRequests     ServiceRequest[]
+  Chat                Chat[]
 }
 
 model Vehicle {
@@ -118,6 +120,8 @@ model Chat {
   id         Int        @id @default(autoincrement())
   customerId String
   mechanicId String
+  user       User       @relation(fields: [customerId], references: [id])
+  mechanic   Mechanic   @relation(fields: [mechanicId], references: [id])
   users      ChatUser[]
   messages   Message[]
 

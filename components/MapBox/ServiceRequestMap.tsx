@@ -40,9 +40,15 @@ export const ServiceRequestMap = ({
   isMechanicLocationVisible,
   isCustomerLocationVisible,
 }: ServiceRequestMapProps) => {
-  const [map, setMap] = useState<mapboxgl.Map | null>(null)
-  const [status, setStatus] = useState<ServiceRequestStatus>("PAYMENT_PENDING")
-  const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
+  const [status, setStatus] = useState<ServiceRequestStatus>("PAYMENT_PENDING");
+  const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
+
+  // Validate Mapbox token
+  if (!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN) {
+    console.error("Mapbox access token not found");
+    return;
+  }
 
   // Initialize map
   useEffect(() => {
@@ -52,26 +58,26 @@ export const ServiceRequestMap = ({
         style: "mapbox://styles/mapbox/streets-v12",
         center: [customerLocation.longitude, customerLocation.latitude],
         zoom: 13,
-      })
+      });
 
-      setMap(newMap)
+      setMap(newMap);
 
       return () => {
         newMap.remove();
       };
     }
-  }, [])
+  }, []);
 
   // Update markers and route when locations change
   useEffect(() => {
-    if (!map) return
+    if (!map) return;
 
     // Add customer marker if visible
     if (isCustomerLocationVisible) {
       const customerMarker = new mapboxgl.Marker({ color: "#2563eb" })
         .setLngLat([customerLocation.longitude, customerLocation.latitude])
         .setPopup(new mapboxgl.Popup().setHTML("<h3>Your Location</h3>"))
-        .addTo(map)
+        .addTo(map);
 
       return () => {
         customerMarker.remove();
@@ -83,18 +89,25 @@ export const ServiceRequestMap = ({
       const mechanicMarker = new mapboxgl.Marker({ color: "#059669" })
         .setLngLat([mechanicLocation.longitude, mechanicLocation.latitude])
         .setPopup(new mapboxgl.Popup().setHTML("<h3>Mechanic Location</h3>"))
-        .addTo(map)
+        .addTo(map);
 
       // Get route and estimated time if mechanic is en route
       if (status === "MECHANIC_EN_ROUTE") {
-        fetchRouteAndTime()
+        fetchRouteAndTime();
       }
 
       return () => {
         mechanicMarker.remove();
       };
     }
-  }, [map, customerLocation, mechanicLocation, isMechanicLocationVisible, isCustomerLocationVisible, status])
+  }, [
+    map,
+    customerLocation,
+    mechanicLocation,
+    isMechanicLocationVisible,
+    isCustomerLocationVisible,
+    status,
+  ]);
 
   const fetchRouteAndTime = async () => {
     try {
@@ -102,52 +115,52 @@ export const ServiceRequestMap = ({
         `https://api.mapbox.com/directions/v5/mapbox/driving/` +
           `${mechanicLocation.longitude},${mechanicLocation.latitude};` +
           `${customerLocation.longitude},${customerLocation.latitude}` +
-          `?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`
+          `?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!}`
       );
-      const data = await response.json()
+      const data = await response.json();
 
       if (data.routes?.[0]) {
-        const time = Math.round(data.routes[0].duration / 60) // Convert to minutes
-        setEstimatedTime(time)
+        const time = Math.round(data.routes[0].duration / 60); // Convert to minutes
+        setEstimatedTime(time);
 
         // Draw the route on the map
         if (map && data.routes[0].geometry) {
-          if (map.getSource('route')) {
-            (map.getSource('route') as mapboxgl.GeoJSONSource).setData({
-              type: 'Feature',
+          if (map.getSource("route")) {
+            (map.getSource("route") as mapboxgl.GeoJSONSource).setData({
+              type: "Feature",
               properties: {},
-              geometry: data.routes[0].geometry
-            })
+              geometry: data.routes[0].geometry,
+            });
           } else {
-            map.addSource('route', {
-              type: 'geojson',
+            map.addSource("route", {
+              type: "geojson",
               data: {
-                type: 'Feature',
+                type: "Feature",
                 properties: {},
-                geometry: data.routes[0].geometry
-              }
-            })
+                geometry: data.routes[0].geometry,
+              },
+            });
 
             map.addLayer({
-              id: 'route',
-              type: 'line',
-              source: 'route',
+              id: "route",
+              type: "line",
+              source: "route",
               layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
+                "line-join": "round",
+                "line-cap": "round",
               },
               paint: {
-                'line-color': '#059669',
-                'line-width': 4
-              }
-            })
+                "line-color": "#059669",
+                "line-width": 4,
+              },
+            });
           }
         }
       }
     } catch (error) {
-      console.error('Error fetching route:', error)
+      console.error("Error fetching route:", error);
     }
-  }
+  };
 
   return (
     <div className="relative w-full h-[calc(100vh-4rem)]">
@@ -165,15 +178,19 @@ export const ServiceRequestMap = ({
                 </>
               )} */}
               {status === "WAITING_MECHANIC" && (
-                <span className="text-blue-500">Waiting for mechanic to start...</span>
+                <span className="text-blue-500">
+                  Waiting for mechanic to start...
+                </span>
               )}
               {status != "MECHANIC_EN_ROUTE" && (
-                <div className="flex items-center gap-2 pb-32">
-                  <Navigation className="text-green-600 animate-pulse" />
-                  <span className="text-green-600">
-                    Mechanic is on the way
-                    {estimatedTime && ` - ETA: ${estimatedTime} minutes`}
-                  </span>
+                <div className="flex items-center justify-between gap-12 pb-64 text-center relative">
+                  <div className="flex items-center gap-2">
+                    <Navigation className="text-green-600 animate-pulse" />
+                    <span className="text-green-600">
+                      Mechanic is on the way
+                      {estimatedTime && ` - ETA: ${estimatedTime} minutes`}
+                    </span>
+                  </div>
                   <ChatBox />
                 </div>
               )}
@@ -188,5 +205,5 @@ export const ServiceRequestMap = ({
         </div>
       </Card>
     </div>
-  )
+  );
 }
