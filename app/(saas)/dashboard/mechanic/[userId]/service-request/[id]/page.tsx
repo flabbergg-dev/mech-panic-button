@@ -1,17 +1,32 @@
-"use client"
-
-import { useParams } from "next/navigation"
+"use server"
 import { ServiceRequestDetails } from "@/components/service/ServiceRequestDetails"
+import { prisma } from "@/lib/prisma"
+import { notFound } from "next/navigation"
 
-export default function ServiceRequestPage() {
-  const params = useParams()
-  const userId = params.userId as string
-  const requestId = params.id as string
+type PageParams = {
+  userId: string
+  id: string
+}
+
+export default async function ServiceRequestPage({
+  params,
+}: {
+  params: Promise<PageParams>
+}) {
+  const { userId, id: requestId } = await params
+
+  const mechanic = await prisma.mechanic.findUnique({
+    where: { userId },
+    select: { id: true }
+  })
+
+  if (!mechanic) {
+    notFound()
+  }
 
   return (
-    <ServiceRequestDetails 
-      userId={userId}
-      requestId={requestId}
-    />
+    <div>
+      <ServiceRequestDetails mechanicId={mechanic.id} requestId={requestId} />
+    </div>
   )
 }

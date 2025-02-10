@@ -10,9 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createServiceOfferAction } from "@/app/actions/serviceOfferAction"
+import { getServiceRequestAction } from "@/app/actions/getServiceRequestAction"
+import { useToast } from "@/hooks/use-toast"
 
 interface ServiceRequestDetailsProps {
-  userId: string
+  mechanicId: string
   requestId: string
 }
 
@@ -20,36 +22,42 @@ type ServiceRequestWithClient = ServiceRequest & {
   client: User
 }
 
-export function ServiceRequestDetails({ userId, requestId }: ServiceRequestDetailsProps) {
+export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestDetailsProps) {
   const [request, setRequest] = useState<ServiceRequestWithClient | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [price, setPrice] = useState<string>("")
   const [note, setNote] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [mechanicLocation, setMechanicLocation] = useState<{latitude: number; longitude: number}>({
-    latitude: 0,
-    longitude: 0
-  })
+  const [mechanicLocation, setMechanicLocation] = useState<{latitude: number; longitude: number} | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const response = await fetch(`/api/service-requests/${requestId}`)
-        if (!response.ok) throw new Error("Failed to fetch request")
-        const data = await response.json()
-        setRequest(data)
-        console.info( "Request data:", data)
-        
-       
+        const result = await getServiceRequestAction(requestId)
+        if (result.success) {
+          setRequest(result.data)
+        } else {
+          toast({
+            title: "Error",
+            description: result.error,
+            variant: "destructive"
+          })
+        }
       } catch (error) {
         console.error("Error fetching request:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load service request",
+          variant: "destructive"
+        })
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchRequest()
-  }, [requestId])
+  }, [requestId, toast])
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -62,10 +70,15 @@ export function ServiceRequestDetails({ userId, requestId }: ServiceRequestDetai
         },
         (error) => {
           console.error("Error getting location:", error)
+          toast({
+            title: "Location Error",
+            description: "Unable to get your location. Please enable location services.",
+            variant: "destructive"
+          })
         }
       )
     }
-  }, [])
+  }, [toast])
 
   if (isLoading || !request) return <div>Loading...</div>
 
@@ -76,19 +89,65 @@ export function ServiceRequestDetails({ userId, requestId }: ServiceRequestDetai
       }
     : null
 
+  const handleServiceOffer = async () => {
+    if (!request || !price || !mechanicLocation) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields and enable location services",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      const result = await createServiceOfferAction({
+        mechanicId: mechanicId,
+        serviceRequestId: request.id,
+        price: parseFloat(price),
+        note: note || undefined,
+        location: {
+          latitude: mechanicLocation.latitude,
+          longitude: mechanicLocation.longitude
+        },
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
+      })
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Service offer submitted successfully",
+        })
+        // Optionally redirect or update UI
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to submit offer",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error creating service offer:", error)
+      toast({
+        title: "Error",
+        description: "Failed to submit offer",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="relative h-screen">
-      {/* Map Underlay */}
       {coordinates && (
         <MapboxMapComp
           userCords={coordinates}
         />
       )}
 
-      {/* Service Request Details HalfSheet */}
       <HalfSheet>
         <div className="p-4 space-y-6">
-          {/* Customer Info */}
           <div className="flex items-center space-x-4">
             <Avatar>
               <AvatarImage
@@ -104,7 +163,6 @@ export function ServiceRequestDetails({ userId, requestId }: ServiceRequestDetai
             </div>
           </div>
 
-          {/* Service Details */}
           <div className="space-y-4">
             <div className="space-y-4">
               <div>
@@ -140,7 +198,6 @@ export function ServiceRequestDetails({ userId, requestId }: ServiceRequestDetai
             </div>
           </div>
 
-          {/* Description */}
           {request?.description && (
             <div className="space-y-2">
               <h3 className="font-medium">Problem Description</h3>
@@ -148,37 +205,14 @@ export function ServiceRequestDetails({ userId, requestId }: ServiceRequestDetai
             </div>
           )}
 
-          {/* Action Buttons */}
           <div className="flex gap-4">
             <Button variant="outline" className="flex-1" onClick={() => window.history.back()}>
               Cancel
             </Button>
             <Button 
               className="flex-1"
-              onClick={async () => {
-                if (!request || !price) return
-
-                try {
-                  setIsSubmitting(true)
-                  const result = await createServiceOfferAction({
-                    mechanicId: userId,
-                    serviceRequestId: request.id,
-                    price: parseFloat(price),
-                    note: note || undefined,
-                    location: mechanicLocation,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
-                  })
-
-                  if (result.success) {
-                    // Handle success (e.g., show success message, redirect)
-                  }
-                } catch (error) {
-                  console.error("Error creating service offer:", error)
-                } finally {
-                  setIsSubmitting(false)
-                }
-              }}
-              disabled={isSubmitting || !price}
+              onClick={handleServiceOffer}
+              disabled={isSubmitting || !price || !mechanicLocation}
             >
               {isSubmitting ? "Submitting..." : "Submit Offer"}
             </Button>

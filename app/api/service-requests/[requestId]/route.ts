@@ -2,24 +2,29 @@ import { auth } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+type RouteParams = {
+  requestId: string
+}
+
 export async function GET(
   request: Request,
-  { params }: { params: { requestId: string } }
+  { params }: { params: Promise<RouteParams> }
 ) {
   try {
     const { userId } = await auth()
-
+    const resolvedParams = await params
+    
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    if (!params.requestId) { 
+    if (!resolvedParams.requestId) { 
       return new NextResponse("Invalid request ID", { status: 400 })
     }
     
     const serviceRequest = await prisma.serviceRequest.findUnique({
       where: {
-        id: params.requestId,
+        id: resolvedParams.requestId,
       },
       include: {
         client: true,
