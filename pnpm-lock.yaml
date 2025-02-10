@@ -65,6 +65,12 @@ importers:
       '@radix-ui/react-toast':
         specifier: ^1.2.4
         version: 1.2.6(@types/react-dom@19.0.2(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@stripe/connect-js':
+        specifier: ^3.3.20
+        version: 3.3.20
+      '@stripe/react-connect-js':
+        specifier: ^3.3.20
+        version: 3.3.20(@stripe/connect-js@3.3.20)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@stripe/stripe-js':
         specifier: ^5.6.0
         version: 5.6.0
@@ -1520,6 +1526,16 @@ packages:
     engines: {node: '>= 8.0.0'}
     peerDependencies:
       rollup: ^1.20.0||^2.0.0
+
+  '@stripe/connect-js@3.3.20':
+    resolution: {integrity: sha512-4GingsjdQDJomIMAmTWFJSBifLygc5xWCcYzdcL5nYiePBuHEfYwFKKq7tOO1SIR2jsuHpn6R18xKVijToblWQ==}
+
+  '@stripe/react-connect-js@3.3.20':
+    resolution: {integrity: sha512-OYRhW7Zm7zjsT5cSAa5nxnW202Rf2W4sUpKvdCbL5qRs/J9DvMYehI/pLpMNwgkJnVieWDXel2jkcRUBiHBnZg==}
+    peerDependencies:
+      '@stripe/connect-js': '>=3.3.20'
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
 
   '@stripe/stripe-js@5.6.0':
     resolution: {integrity: sha512-w8CEY73X/7tw2KKlL3iOk679V9bWseE4GzNz3zlaYxcTjmcmWOathRb0emgo/QQ3eoNzmq68+2Y2gxluAv3xGw==}
@@ -5112,6 +5128,14 @@ snapshots:
       estree-walker: 1.0.1
       picomatch: 2.3.1
       rollup: 2.79.2
+
+  '@stripe/connect-js@3.3.20': {}
+
+  '@stripe/react-connect-js@3.3.20(@stripe/connect-js@3.3.20)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@stripe/connect-js': 3.3.20
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
 
   '@stripe/stripe-js@5.6.0': {}
 
