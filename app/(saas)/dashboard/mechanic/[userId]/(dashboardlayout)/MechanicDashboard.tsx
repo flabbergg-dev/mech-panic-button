@@ -1,21 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { useUser } from "@clerk/nextjs"
 import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicHome"
 import { MechanicProfile } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import MechanicSettings from "@/components/dashboard/MechanicDashboard/MechanicSettings"
 
 export const MechanicDashboard = () => {
-  const { user } = useUser()
   const [activeTab, setActiveTab] = useState("home")
-
-  if (!user) {
-    return <div>Loading...</div>
-  }
-
-  
 
   const renderContent = () => {
     switch (activeTab) {

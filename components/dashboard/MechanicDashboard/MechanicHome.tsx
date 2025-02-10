@@ -1,9 +1,11 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Loader, UserCircle } from "lucide-react"
 import { ServiceStatus } from "@prisma/client"
+import { getActiveMechanicOfferAction } from "@/app/actions/getActiveMechanicOfferAction"
 
 import { BalanceCard } from "@/components/cards/BalanceCard"
 import { ServiceRequest } from "@/components/service/ServiceRequest"
@@ -19,13 +21,43 @@ type BookingWithService = BookingType & {
 
 export const MechanicHome = () => {
   const { user } = useUser()
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [serviceRequests, setServiceRequests] = useState<ServiceRequestType[]>([])
   const [scheduledBookings, setScheduledBookings] = useState<BookingWithService[]>([])
 
+
+
   useEffect(() => {
     const fetchData = async () => {
+      console.log("fetchData called, user:", user?.id)
       try {
+        // First check for active offers
+        if (!user?.id) {
+          console.log("No user ID available")
+          return
+        }
+
+        const activeOfferResult = await getActiveMechanicOfferAction(user.id)
+        console.log("Active offer check result:", activeOfferResult)
+
+        if (activeOfferResult.success && activeOfferResult.data) {
+          // Redirect to the active offer's service request
+          const redirectUrl = `/dashboard/mechanic/${user.id}/service-request/${activeOfferResult.data.serviceRequestId}`
+          console.log("Redirecting to:", redirectUrl)
+          
+          try {
+            // Force a hard navigation
+            window.location.href = redirectUrl
+          } catch (navError) {
+            console.error("Navigation error:", navError)
+            // Fallback to router.replace
+            router.replace(redirectUrl)
+          }
+          return
+        }
+
+        // If no active offer, proceed with fetching service requests
         const response = await fetch('/api/service-requests?status=REQUESTED')
         const data = await response.json()
         setServiceRequests(data)
@@ -41,7 +73,7 @@ export const MechanicHome = () => {
     }
 
     fetchData()
-  }, [])
+  }, [user, router])
 
   if (isLoading) {
     return (

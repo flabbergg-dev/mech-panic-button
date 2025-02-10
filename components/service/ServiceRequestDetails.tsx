@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ServiceRequest, User } from "@prisma/client"
+import { ServiceRequest, User, ServiceOffer } from "@prisma/client"
 import { MapboxMapComp } from "@/components/MapBox/MapboxMapComp"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createServiceOfferAction } from "@/app/actions/serviceOfferAction"
 import { getServiceRequestAction } from "@/app/actions/getServiceRequestAction"
+import { getMechanicServiceOfferAction } from "@/app/actions/getMechanicServiceOfferAction"
 import { useToast } from "@/hooks/use-toast"
 
 interface ServiceRequestDetailsProps {
@@ -22,8 +23,13 @@ type ServiceRequestWithClient = ServiceRequest & {
   client: User
 }
 
+type ServiceOfferWithRequest = ServiceOffer & {
+  serviceRequest: ServiceRequest
+}
+
 export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestDetailsProps) {
   const [request, setRequest] = useState<ServiceRequestWithClient | null>(null)
+  const [serviceOffer, setServiceOffer] = useState<ServiceOfferWithRequest | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [price, setPrice] = useState<string>("")
   const [note, setNote] = useState<string>("")
@@ -32,20 +38,35 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   const { toast } = useToast()
 
   useEffect(() => {
-    const fetchRequest = async () => {
+    const fetchData = async () => {
       try {
-        const result = await getServiceRequestAction(requestId)
-        if (result.success) {
-          setRequest(result.data)
+        const [requestResult, offerResult] = await Promise.all([
+          getServiceRequestAction(requestId),
+          getMechanicServiceOfferAction(mechanicId, requestId)
+        ])
+
+        if (requestResult.success) {
+          setRequest(requestResult.data)
         } else {
           toast({
             title: "Error",
-            description: result.error,
+            description: requestResult.error,
             variant: "destructive"
           })
         }
+
+        if (offerResult.success && offerResult.data) {
+          setServiceOffer(offerResult.data)
+          // If there's an existing offer, set the form values
+          if (offerResult.data.price) {
+            setPrice(offerResult.data.price.toString())
+          }
+          if (offerResult.data.note) {
+            setNote(offerResult.data.note)
+          }
+        }
       } catch (error) {
-        console.error("Error fetching request:", error)
+        console.error("Error fetching data:", error)
         toast({
           title: "Error",
           description: "Failed to load service request",
@@ -56,8 +77,8 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       }
     }
 
-    fetchRequest()
-  }, [requestId, toast])
+    fetchData()
+  }, [requestId, mechanicId, toast])
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -114,11 +135,16 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       })
 
       if (result.success) {
+        // Fetch the updated offer to get the full details
+        const offerResult = await getMechanicServiceOfferAction(mechanicId, requestId)
+        if (offerResult.success && offerResult.data) {
+          setServiceOffer(offerResult.data)
+        }
+        
         toast({
           title: "Success",
           description: "Service offer submitted successfully",
         })
-        // Optionally redirect or update UI
       } else {
         toast({
           title: "Error",
@@ -135,6 +161,23 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const getOfferStatusMessage = () => {
+    if (!serviceOffer) return null
+
+    switch (serviceOffer.status) {
+      case 'PENDING':
+        return "Waiting for client to accept your offer..."
+      case 'ACCEPTED':
+        return "Offer accepted! You can now proceed with the service."
+      case 'REJECTED':
+        return "Offer was rejected by the client."
+      case 'EXPIRED':
+        return "Offer has expired. You can submit a new offer."
+      default:
+        return null
     }
   }
 
@@ -164,30 +207,51 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           </div>
 
           <div className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="price">Your Offer Price</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="Enter your price"
-                  className="mt-1"
-                />
+            {serviceOffer ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-muted">
+                  <h3 className="font-medium mb-2">Your Offer</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Price</span>
+                      <span className="font-medium">${serviceOffer.price}</span>
+                    </div>
+                    {serviceOffer.note && (
+                      <div className="mt-2">
+                        <span className="text-sm text-muted-foreground">Note: {serviceOffer.note}</span>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <span className="text-sm font-medium text-primary">{getOfferStatusMessage()}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="note">Note (Optional)</Label>
-                <Textarea
-                  id="note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add any additional notes"
-                  className="mt-1"
-                />
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="price">Your Offer Price</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="Enter your price"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="note">Note (Optional)</Label>
+                  <Textarea
+                    id="note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Add any additional notes"
+                    className="mt-1"
+                  />
+                </div>
               </div>
-            </div>
-
+            )}
             <div className="flex justify-between">
               <span>Service Type</span>
               <span className="font-medium">{request?.serviceType}</span>
@@ -209,13 +273,15 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
             <Button variant="outline" className="flex-1" onClick={() => window.history.back()}>
               Cancel
             </Button>
-            <Button 
-              className="flex-1"
-              onClick={handleServiceOffer}
-              disabled={isSubmitting || !price || !mechanicLocation}
-            >
-              {isSubmitting ? "Submitting..." : "Submit Offer"}
-            </Button>
+            {!serviceOffer || serviceOffer.status === 'EXPIRED' ? (
+              <Button 
+                className="flex-1"
+                onClick={handleServiceOffer}
+                disabled={isSubmitting || !price || !mechanicLocation}
+              >
+                {isSubmitting ? "Submitting..." : "Submit Offer"}
+              </Button>
+            ) : null}
           </div>
         </div>
       </HalfSheet>
