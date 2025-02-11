@@ -4,6 +4,7 @@ import {
   ConnectAccountOnboarding,
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
+import { Button } from "../ui/button";
 
 export const StripeOnboarding = () => {
   const [accountCreatePending, setAccountCreatePending] = useState(false);
@@ -23,7 +24,7 @@ export const StripeOnboarding = () => {
         )}
         {!accountCreatePending && !connectedAccountId && (
           <div>
-            <button
+            <Button
               onClick={async () => {
                 setAccountCreatePending(true);
                 setError(false);
@@ -46,7 +47,7 @@ export const StripeOnboarding = () => {
               }}
             >
               Sign up
-            </button>
+            </Button>
           </div>
         )}
         {stripeConnectInstance && (
