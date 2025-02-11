@@ -13,6 +13,9 @@ import { createServiceOfferAction } from "@/app/actions/serviceOfferAction"
 import { getServiceRequestAction } from "@/app/actions/getServiceRequestAction"
 import { getMechanicServiceOfferAction } from "@/app/actions/getMechanicServiceOfferAction"
 import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/utils/supabase/client"
+import { getUserToken } from "@/app/actions/getUserToken"
+import { useRouter } from "next/navigation"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -36,48 +39,85 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [mechanicLocation, setMechanicLocation] = useState<{latitude: number; longitude: number} | null>(null)
   const { toast } = useToast()
+  const router = useRouter()
+  
+  const fetchData = async () => {
+    try {
+      const [requestResult, offerResult] = await Promise.all([
+        getServiceRequestAction(requestId),
+        getMechanicServiceOfferAction(mechanicId, requestId)
+      ])
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [requestResult, offerResult] = await Promise.all([
-          getServiceRequestAction(requestId),
-          getMechanicServiceOfferAction(mechanicId, requestId)
-        ])
-
-        if (requestResult.success) {
-          setRequest(requestResult.data)
-        } else {
-          toast({
-            title: "Error",
-            description: requestResult.error,
-            variant: "destructive"
-          })
-        }
-
-        if (offerResult.success && offerResult.data) {
-          setServiceOffer(offerResult.data)
-          // If there's an existing offer, set the form values
-          if (offerResult.data.price) {
-            setPrice(offerResult.data.price.toString())
-          }
-          if (offerResult.data.note) {
-            setNote(offerResult.data.note)
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error)
+      if (requestResult.success) {
+        setRequest(requestResult.data)
+      } else {
         toast({
           title: "Error",
-          description: "Failed to load service request",
+          description: requestResult.error,
           variant: "destructive"
         })
-      } finally {
-        setIsLoading(false)
       }
+
+      if (offerResult.success && offerResult.data) {
+        setServiceOffer(offerResult.data)
+        console.log(offerResult.data)
+        // If there's an existing offer, set the form values
+        if (offerResult.data.price) {
+          setPrice(offerResult.data.price.toString())
+        }
+        if (offerResult.data.note) {
+          setNote(offerResult.data.note)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load service request",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+
+  useEffect(() => {
+    fetchData()
+    
+    const getToken = async () => {
+      const token = await getUserToken()
+      if (!token) {
+        console.log("No token available")
+        return
+      }
+      supabase.realtime.setAuth(token)
+
+      const subscribeServiceRequestToChannel = supabase.channel(`service_request_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', filter: `id=eq.${requestId}`  }, payload => {
+        console.log('Request Received payload:', payload)
+        fetchData()
+
+      }).subscribe()
+
+      const subscribeServiceOfferToChannel = supabase.channel(`service_offer_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceOffer', filter: `serviceRequestId=eq.${requestId}`  }, payload => {
+        console.log('Offer Received payload:', payload)
+        fetchData()
+
+      }).subscribe()
+
+      const unsubscribeFromChannels = () => {
+        supabase.removeChannel(subscribeServiceRequestToChannel)
+        supabase.removeChannel(subscribeServiceOfferToChannel)
+      }
+
+      return unsubscribeFromChannels
     }
 
-    fetchData()
+    getToken()
+
+    console.log("Request:", request)
+    console.log("Service offer:", serviceOffer)
+
   }, [requestId, mechanicId, toast])
 
   useEffect(() => {
@@ -100,6 +140,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       )
     }
   }, [toast])
+
 
   if (isLoading || !request) return <div>Loading...</div>
 
@@ -170,15 +211,31 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     switch (serviceOffer.status) {
       case 'PENDING':
         return "Waiting for client to accept your offer..."
+      case 'DECLINED':
+        return "Offer was declined by the client."
       case 'ACCEPTED':
-        return "Offer accepted! You can now proceed with the service."
+        return `Offer accepted! ${request.status === "PAYMENT_AUTHORIZED" ? "Payment authorized." : "Payment pending."}`
       case 'REJECTED':
         return "Offer was rejected by the client."
       case 'EXPIRED':
-        return "Offer has expired. You can submit a new offer."
+        return "Offer has expired. You can cancel the service request."
       default:
         return null
     }
+  }
+
+  const goToMap = (request: ServiceRequestWithClient) => {
+    if (!request.location || typeof request.location !== 'object' || !('latitude' in request.location)) {
+      toast({
+        title: "Error",
+        description: "Location information is not available",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Navigate to the map route with the destination coordinates
+    router.push(`/dashboard/mechanic/${mechanicId}/map?destLat=${request.location.latitude}&destLng=${request.location.longitude}&requestId=${request.id}`)
   }
 
   return (
@@ -209,7 +266,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           <div className="space-y-4">
             {serviceOffer ? (
               <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-muted">
+                <div className={`p-4 rounded-lg  ${request.status === "PAYMENT_AUTHORIZED" ? "bg-green-950" : "bg-muted"}`}>
                   <h3 className="font-medium mb-2">Your Offer</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
@@ -222,7 +279,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
                       </div>
                     )}
                     <div className="mt-2">
-                      <span className="text-sm font-medium text-primary">{getOfferStatusMessage()}</span>
+                      <span className={`text-sm font-medium  transition-colors duration-200 ${request.status === "PAYMENT_AUTHORIZED" ? "text-green-500" : "text-muted-foreground"}`}>{getOfferStatusMessage()}</span>
                     </div>
                   </div>
                 </div>
@@ -270,10 +327,26 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           )}
 
           <div className="flex gap-4">
-            <Button variant="outline" className="flex-1" onClick={() => window.history.back()}>
-              Cancel
-            </Button>
-            {!serviceOffer || serviceOffer.status === 'EXPIRED' ? (
+
+            {/* Button to go back */}
+            {serviceOffer && serviceOffer.status === 'ACCEPTED' ? (
+              
+           null
+            ) : (
+              <Button variant="outline" className="flex-1" onClick={() => window.history.back()}>
+                Cancel
+              </Button>
+            )}
+            {/* Button to go to map with the location of the service request */}
+            {serviceOffer && serviceOffer.status === 'ACCEPTED' ? (
+              <Button variant="default" className="flex-1 disabled:opacity-50 bg-green-600 disabled:bg-gray-500" onClick={() => goToMap(request)}
+              disabled={request.status !== 'PAYMENT_AUTHORIZED' }
+              >
+                Go to Map
+              </Button>
+            ) : null}
+            {/* Button if there's no offer or offer is expired */}
+            {!serviceOffer ? (
               <Button 
                 className="flex-1"
                 onClick={handleServiceOffer}
