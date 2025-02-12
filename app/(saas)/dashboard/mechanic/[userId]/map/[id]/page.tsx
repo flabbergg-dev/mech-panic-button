@@ -343,12 +343,20 @@ export default function MechanicMapPage() {
         <ServiceCardLayout>
           <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-lg border border-border/50 transform transition-all duration-300 ease-in-out">
             <h2 className="text-xl font-semibold mb-2">{request.status === "SERVICING" ? "Service in Progress" : "Navigation"}</h2>
-            {estimatedTime && request.status === "IN_ROUTE" && (
+
+            {/* Estimated Time */}
+            {estimatedTime && request.status === "IN_ROUTE" ? (
               <p className="text-muted-foreground mb-4">
                 Estimated arrival time: {estimatedTime } minutes
+              </p> 
+            ) : estimatedTime === 0 && request.status === "IN_ROUTE" ? (
+              <p className="text-muted-foreground mb-4">
+                Estimated arrival time: Less than 1 minute
               </p>
-              
-            )}
+            ) : (
+              null
+            )
+          }
             
             <div className="space-y-4">
               { request.status === "PAYMENT_AUTHORIZED" && (

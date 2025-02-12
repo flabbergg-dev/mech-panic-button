@@ -74,8 +74,8 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
         expiresAt: input.expiresAt,
         status: OfferStatus.PENDING,
         location: { 
-          latitude: 17.443,
-          longitude: 78.443
+          latitude: input.location.latitude,
+          longitude: input.location.longitude
         },
       }
     })

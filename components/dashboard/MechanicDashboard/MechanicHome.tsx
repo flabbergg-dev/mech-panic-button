@@ -40,6 +40,10 @@ export const MechanicHome = () => {
       const activeOfferResult = await getActiveMechanicOfferAction(user.id)
       console.log("Active offer check result:", activeOfferResult)
 
+      if (activeOfferResult.success === undefined || activeOfferResult === undefined) {
+        return
+      }
+
       if (activeOfferResult.success && activeOfferResult.data && activeOfferResult.data.length > 0) {
         // Redirect to the active offer's service request
         const redirectUrl = `/dashboard/mechanic/${user.id}/service-request/${activeOfferResult.data[0].serviceRequestId}`
@@ -81,6 +85,7 @@ export const MechanicHome = () => {
       supabase.realtime.setAuth(token)
 
       const subscribeServiceRequestToChannel = supabase.channel(`service_request`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', }, payload => {
+
         console.log('Request Received payload:', payload)
         fetchData()
 
@@ -195,7 +200,7 @@ export const MechanicHome = () => {
             </div>
           )}
 
-          {scheduledBookings.length > 0 && (
+          {scheduledBookings.length === 0 && (
             <div>
               <Separator className="my-6" />
               <h3 className="text-lg font-semibold mb-4">Scheduled Services</h3>
