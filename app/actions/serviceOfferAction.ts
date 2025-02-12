@@ -57,7 +57,7 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
     })
 
     if (!serviceRequest) {
-      throw new Error("Service request not found")
+      throw new Error("Service request not found: #ERR07")
     }
 
     if (serviceRequest.status !== ServiceStatus.REQUESTED) {

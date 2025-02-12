@@ -15,7 +15,7 @@ import { getMechanicServiceOfferAction } from "@/app/actions/getMechanicServiceO
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/utils/supabase/client"
 import { getUserToken } from "@/app/actions/getUserToken"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -31,6 +31,8 @@ type ServiceOfferWithRequest = ServiceOffer & {
 }
 
 export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestDetailsProps) {
+  const params = useParams()
+  const {userId} = params
   const [request, setRequest] = useState<ServiceRequestWithClient | null>(null)
   const [serviceOffer, setServiceOffer] = useState<ServiceOfferWithRequest | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -53,7 +55,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       } else {
         toast({
           title: "Error",
-          description: requestResult.error,
+          description:` #ERR02: ${requestResult.error}`,
           variant: "destructive"
         })
       }
@@ -115,9 +117,6 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
     getToken()
 
-    console.log("Request:", request)
-    console.log("Service offer:", serviceOffer)
-
   }, [requestId, mechanicId, toast])
 
   useEffect(() => {
@@ -143,6 +142,20 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
 
   if (isLoading || !request) return <div>Loading...</div>
+
+  if (request.status === "COMPLETED") {
+    setTimeout(() => {
+      router.push(`/dashboard`)
+    }, 2000)
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold">Service Completed</h2>
+          <p className="text-muted-foreground mt-2">This service has already been completed.</p>
+        </div>
+      </div>
+    )
+  }
 
   const coordinates = request.location && typeof request.location === 'object' && 'latitude' in request.location
     ? {
@@ -214,7 +227,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       case 'DECLINED':
         return "Offer was declined by the client."
       case 'ACCEPTED':
-        return `Offer accepted! ${request.status === "PAYMENT_AUTHORIZED" ? "Payment authorized." : "Payment pending."}`
+        return `Offer accepted! ${request.status !== "ACCEPTED" && request.status !== "REQUESTED" ? "Payment authorized." : "Payment pending."}`
       case 'REJECTED':
         return "Offer was rejected by the client."
       case 'EXPIRED':
@@ -235,7 +248,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     }
 
     // Navigate to the map route with the destination coordinates
-    router.push(`/dashboard/mechanic/${mechanicId}/map?destLat=${request.location.latitude}&destLng=${request.location.longitude}&requestId=${request.id}`)
+    router.push(`/dashboard/mechanic/${userId}/map/${requestId}?destLat=${request.location.latitude}&destLng=${request.location.longitude}`)
   }
 
   return (
@@ -340,7 +353,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
             {/* Button to go to map with the location of the service request */}
             {serviceOffer && serviceOffer.status === 'ACCEPTED' ? (
               <Button variant="default" className="flex-1 disabled:opacity-50 bg-green-600 disabled:bg-gray-500" onClick={() => goToMap(request)}
-              disabled={request.status !== 'PAYMENT_AUTHORIZED' }
+              disabled={request.status === 'REQUESTED' || request.status === 'ACCEPTED'  }
               >
                 Go to Map
               </Button>

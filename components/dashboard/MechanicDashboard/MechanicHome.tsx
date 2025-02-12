@@ -14,6 +14,8 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PushNotificationButton } from "../../PushNotificationButton"
 import { ServiceRequest as ServiceRequestType, Booking as BookingType } from "@prisma/client"
+import { getUserToken } from "@/app/actions/getUserToken"
+import { supabase } from "@/utils/supabase/client"
 
 type BookingWithService = BookingType & {
   service: ServiceRequestType
@@ -26,51 +28,74 @@ export const MechanicHome = () => {
   const [serviceRequests, setServiceRequests] = useState<ServiceRequestType[]>([])
   const [scheduledBookings, setScheduledBookings] = useState<BookingWithService[]>([])
 
+  const fetchData = async () => {
+    console.log("fetchData called, user:", user?.id)
+    try {
+      // First check for active offers
+      if (!user?.id) {
+        console.log("No user ID available")
+        return
+      }
 
+      const activeOfferResult = await getActiveMechanicOfferAction(user.id)
+      console.log("Active offer check result:", activeOfferResult)
+
+      if (activeOfferResult.success && activeOfferResult.data && activeOfferResult.data.length > 0) {
+        // Redirect to the active offer's service request
+        const redirectUrl = `/dashboard/mechanic/${user.id}/service-request/${activeOfferResult.data[0].serviceRequestId}`
+        console.log("Redirecting to:", redirectUrl)
+        
+        try {
+          // Force a hard navigation
+          window.location.href = redirectUrl
+        } catch (navError) {
+          console.error("Navigation error:", navError)
+          // Fallback to router.replace
+          router.replace(redirectUrl)
+        }
+        return
+      }
+
+      // If no active offer, proceed with fetching service requests
+      const response = await fetch('/api/service-requests?status=REQUESTED')
+      const data = await response.json()
+      setServiceRequests(data)
+
+      const bookingsResponse = await fetch('/api/bookings')
+      const bookingsData = await bookingsResponse.json()
+      setScheduledBookings(bookingsData)
+      setIsLoading(false)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      console.log("fetchData called, user:", user?.id)
-      try {
-        // First check for active offers
-        if (!user?.id) {
-          console.log("No user ID available")
-          return
-        }
-
-        const activeOfferResult = await getActiveMechanicOfferAction(user.id)
-        console.log("Active offer check result:", activeOfferResult)
-
-        if (activeOfferResult.success && activeOfferResult.data && activeOfferResult.data.length > 0) {
-          // Redirect to the active offer's service request
-          const redirectUrl = `/dashboard/mechanic/${user.id}/service-request/${activeOfferResult.data[0].serviceRequestId}`
-          console.log("Redirecting to:", redirectUrl)
-          
-          try {
-            // Force a hard navigation
-            window.location.href = redirectUrl
-          } catch (navError) {
-            console.error("Navigation error:", navError)
-            // Fallback to router.replace
-            router.replace(redirectUrl)
-          }
-          return
-        }
-
-        // If no active offer, proceed with fetching service requests
-        const response = await fetch('/api/service-requests?status=REQUESTED')
-        const data = await response.json()
-        setServiceRequests(data)
-
-        const bookingsResponse = await fetch('/api/bookings')
-        const bookingsData = await bookingsResponse.json()
-        setScheduledBookings(bookingsData)
-        setIsLoading(false)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        setIsLoading(false)
+    const getToken = async () => {
+      const token = await getUserToken()
+      if (!token) {
+        console.log("No token available")
+        return
       }
+      supabase.realtime.setAuth(token)
+
+      const subscribeServiceRequestToChannel = supabase.channel(`service_request`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', }, payload => {
+        console.log('Request Received payload:', payload)
+        fetchData()
+
+      }).subscribe()
+
+
+
+      const unsubscribeFromChannels = () => {
+        supabase.removeChannel(subscribeServiceRequestToChannel)
+      }
+
+      return unsubscribeFromChannels
     }
+
+    getToken()
 
     fetchData()
   }, [user, router])

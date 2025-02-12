@@ -1,9 +1,11 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
+import { OfferStatus } from "@prisma/client"
 
 export async function getActiveMechanicOfferAction(userId: string | undefined) {
   try {
+
     if (!userId) return {
       success: false as const,
       error: "User not found"
@@ -20,27 +22,29 @@ export async function getActiveMechanicOfferAction(userId: string | undefined) {
         error: "Mechanic not found"
       }
     }
-    const activeOffer = await prisma.serviceOffer.findFirst({
+
+    // First check if any offers exist for this mechanic
+    const activeOffer = await prisma.serviceOffer.findMany({
       where: {
         mechanicId: mechanic.id,
-        status: {
-          in: ['PENDING', 'ACCEPTED']
-        },
-        expiresAt: {
-          gt: new Date()
-        },
+        OR: [
+          { status: OfferStatus.ACCEPTED },
+          { status: OfferStatus.PENDING }
+        ]
       },
       select: {
-        serviceRequestId: true
-      },
+        serviceRequestId: true,
+      }
     })
 
-    if (!activeOffer) {
+
+    if (activeOffer === null) {
       return {
         success: false as const,
         error: "No active offer found"
       }
-    }    
+    }
+
     return {
       success: true as const,
       data: activeOffer

@@ -41,7 +41,7 @@ export async function GET(
     })
 
     if (!serviceRequest) {
-      return new NextResponse("Service request not found", { status: 404 })
+      return new NextResponse("Service request not found: ERR09", { status: 404 })
     }
 
     return NextResponse.json(serviceRequest)

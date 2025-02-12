@@ -59,8 +59,7 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
         serviceRequest={serviceRequest}
         customerLocation={customerLocation}
         mechanicLocation={mechanicLocation}
-        isMechanicLocationVisible={serviceStatus !== "PAYMENT_PENDING"}
-        isCustomerLocationVisible={true}
+        showMechanicLocation={serviceStatus !== "PAYMENT_PENDING"}
       />
     )
   }

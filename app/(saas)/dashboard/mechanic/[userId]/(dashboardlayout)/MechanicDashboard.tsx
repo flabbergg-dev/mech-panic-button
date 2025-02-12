@@ -13,6 +13,8 @@ export const MechanicDashboard = () => {
     switch (activeTab) {
       case "home":
         return <MechanicHome />
+      case "map":
+        return <div>Map Component (Coming Soon)</div>
       case "settings":
         return <MechanicSettings />
       case "profile":
@@ -31,6 +33,7 @@ export const MechanicDashboard = () => {
       <BottomNavigation 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
+
       />
     </div>
   )
