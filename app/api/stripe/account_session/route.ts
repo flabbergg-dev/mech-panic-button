@@ -10,6 +10,10 @@ export async function POST(request: Request) {
         }
       });
 
+      if (!accountSession.client_secret) {
+        throw new Error('No client secret found in account session');
+      }
+
       return NextResponse.json({
         client_secret: accountSession.client_secret,
       });

@@ -5,13 +5,37 @@ import {
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
 import { Button } from "../ui/button";
-
+import {stripe} from '@/lib/stripe';
 export const StripeOnboarding = () => {
   const [accountCreatePending, setAccountCreatePending] = useState(false);
   const [onboardingExited, setOnboardingExited] = useState(false);
   const [error, setError] = useState(false);
   const [connectedAccountId, setConnectedAccountId] = useState();
   const stripeConnectInstance = useStripeConnect(connectedAccountId);
+
+  const handleOnClickEvent = async () => {
+    fetch("/api/stripe/account", {
+      method: "GET",
+    })
+      .then((response) => response.json())
+      .then((json) => {
+        setAccountCreatePending(false);
+        const { account, error } = json;
+
+        if (account) {
+          setConnectedAccountId(account);
+          console.log(account + "account");
+        }
+
+        console.log(account + "account out side");
+
+        if (error) {
+          console.error("Error creating account:", error);
+          setError(true);
+        }
+      });
+    // setConnectedAccountId(account.id);
+  }
 
   return (
     <div className="container">
@@ -28,22 +52,7 @@ export const StripeOnboarding = () => {
               onClick={async () => {
                 setAccountCreatePending(true);
                 setError(false);
-                fetch("/api/stripe/account", {
-                  method: "POST",
-                })
-                  .then((response) => console.log(response))
-                //   .then((json) => {
-                //     setAccountCreatePending(false);
-                //     const { account, error } = json;
-
-                //     if (account) {
-                //       setConnectedAccountId(account);
-                //     }
-
-                //     if (error) {
-                //       setError(true);
-                //     }
-                //   });
+                handleOnClickEvent();
               }}
             >
               Sign up

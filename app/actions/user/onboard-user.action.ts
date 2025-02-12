@@ -47,6 +47,7 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         redirect: '/dashboard'
       }
     }
+
     if (!userId) {
       return {
         success: false,
@@ -64,7 +65,6 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         profileImage: clerkUser.imageUrl,
         documentsUrl: [],
         currentLocation: undefined,
-       
       },
     })
 
@@ -78,6 +78,11 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
     // If user is a mechanic, create mechanic profile
     try {
       if (validatedData.role === "Mechanic") {
+
+      const response = await (await fetch(`/api/stripe/account`, {
+        method: 'GET',
+      })).json()
+
       await prisma.mechanic.create({
         data: {
           userId: user.id,
@@ -86,6 +91,16 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
           updatedAt: new Date(),
         },
       })
+
+      await prisma.user.update({
+        where: {
+          id: user.id
+        },
+        data: {
+          stripeCustomerId: response.account.id,
+        },
+      })
+
       }
     } catch (error) {
       console.error("Error creating mechanic profile:", error)
