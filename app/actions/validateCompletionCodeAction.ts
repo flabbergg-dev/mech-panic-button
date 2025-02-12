@@ -18,7 +18,7 @@ export async function validateCompletionCodeAction(requestId: string, enteredCod
     })
 
     if (!request) {
-      throw new Error('Service request not found')
+      throw new Error('Service request not found: #ERR08')
     }
 
     if (request.status !== ServiceStatus.IN_COMPLETION) {

@@ -1,7 +1,7 @@
 import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
+export async function GET(request: Request) {
     try {
       const account = await stripe.accounts.create({
         controller: {
@@ -25,6 +25,6 @@ export async function POST(req: Request) {
       return NextResponse.json({account: account.id});
     } catch (error) {
       console.error('An error occurred when calling the Stripe API to create an account:', error);
-      return NextResponse.json({error: (error as Error).message}, {status: 500});
+      return new NextResponse("Internal Error", { status: 500 })
     }
 }

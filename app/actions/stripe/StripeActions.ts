@@ -26,7 +26,7 @@ export async function createCheckoutSession({
   }
 
   try {
-    const apiKey = process.env.NEXT_PUBLIC_STRIPE_SECRET_KEY
+    const apiKey = process.env.STRIPE_SECRET_KEY
 
     if (!apiKey) {
       throw new Error("Stripe secret key is missing!")

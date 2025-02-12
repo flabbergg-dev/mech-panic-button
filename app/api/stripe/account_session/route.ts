@@ -1,23 +1,20 @@
 import {stripe} from '@/lib/stripe';
-
-export async function POST(req: { method: string; body: { account: any; }; }, res: { json: (arg0: { client_secret?: any; error?: any; }) => void; status: (arg0: number) => void; }) {
+import { NextResponse } from 'next/server';
+export async function POST(request: Request) {
     try {
+      const body = await request.json();
       const accountSession = await stripe.accountSessions.create({
-        account: req.body.account,
+        account: body.account,
         components: {
           account_onboarding: { enabled: true },
         }
       });
 
-      res.json({
+      return NextResponse.json({
         client_secret: accountSession.client_secret,
       });
     } catch (error) {
-      console.error(
-        "An error occurred when calling the Stripe API to create an account session",
-        error
-      );
-      res.status(500);
-      res.json({error: (error as Error).message});
-    }
+      console.error('An error occurred when calling the Stripe API to get session:', error);
+      return new NextResponse("Internal Error", { status: 500 })
+  }
 }

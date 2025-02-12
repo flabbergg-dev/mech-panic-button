@@ -5,16 +5,21 @@ import { ServiceStatus } from "@prisma/client"
 
 export async function verifyArrivalCodeAction(serviceRequestId: string, code: string) {
   try {
+    console.log('Verifying arrival code for request ID:', serviceRequestId)
+    
     const serviceRequest = await prisma.serviceRequest.findUnique({
       where: {
         id: serviceRequestId,
-        status: ServiceStatus.IN_ROUTE
+        status: ServiceStatus.IN_PROGRESS
+      },
+      select: {
+        arrivalCode: true
       }
     })
 
     if (!serviceRequest) {
-      return { success: false, error: "Service request not found" }
-    }
+      return { success: false, error: "Service request not found: ERR09" }
+    }     
 
     if (serviceRequest.arrivalCode !== code) {
       return { success: false, error: "Invalid code" }

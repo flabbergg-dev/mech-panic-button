@@ -4,16 +4,17 @@ import { ServiceStatus, OfferStatus, Prisma } from '@prisma/client'
 import { prisma } from "@/lib/prisma"
 
 
-type Location = {
-  latitude: number
-  longitude: number
-}
+
+
 type CreateServiceOfferInput = {
   mechanicId: string
   serviceRequestId: string
   price: number
   note?: string
-  location: Location
+  location: {
+    latitude: number
+    longitude: number
+  }
   expiresAt?: Date
 
 }
@@ -34,7 +35,7 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
 
     // Get mechanic's current location
     const mechanic = await prisma.mechanic.findUnique({
-      where: { userId: input.mechanicId },
+      where: { id: input.mechanicId },
       select: { 
         isAvailable: true 
       }
@@ -44,14 +45,9 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
       throw new Error("Mechanic not found")
     }
 
-    if (!input.location) {
-      throw new Error("Mechanic location not available")
-    }
-
-    // Parse and validate location
-    const location = input.location as Location
-    if (!location.latitude || !location.longitude) {
-      throw new Error("Invalid mechanic location")
+    if (!input.location || !input.location.latitude || !input.location.longitude || 
+        (input.location.latitude === 0 && input.location.longitude === 0)) {
+      throw new Error("Valid mechanic location is required")
     }
 
     // Verify service request exists and is in REQUESTED status
@@ -61,13 +57,13 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
     })
 
     if (!serviceRequest) {
-      throw new Error("Service request not found")
+      throw new Error("Service request not found: #ERR07")
     }
 
     if (serviceRequest.status !== ServiceStatus.REQUESTED) {
       throw new Error("Service request is not in REQUESTED status")
     }
-
+    
     // Create the offer with mechanic's current location
     const offer = await prisma.serviceOffer.create({
       data: {
@@ -89,6 +85,7 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
       data: offer
     }
   } catch (error) {
+    console.log(input)
     console.error("Error in createServiceOfferAction:", error)
     if (error instanceof Error) {
       return { success: false, error: error.message }
