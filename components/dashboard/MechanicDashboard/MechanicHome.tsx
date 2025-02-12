@@ -41,9 +41,9 @@ export const MechanicHome = () => {
         const activeOfferResult = await getActiveMechanicOfferAction(user.id)
         console.log("Active offer check result:", activeOfferResult)
 
-        if (activeOfferResult.success && activeOfferResult.data) {
+        if (activeOfferResult.success && activeOfferResult.data && activeOfferResult.data.length > 0) {
           // Redirect to the active offer's service request
-          const redirectUrl = `/dashboard/mechanic/${user.id}/service-request/${activeOfferResult.data.serviceRequestId}`
+          const redirectUrl = `/dashboard/mechanic/${user.id}/service-request/${activeOfferResult.data[0].serviceRequestId}`
           console.log("Redirecting to:", redirectUrl)
           
           try {
