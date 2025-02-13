@@ -18,6 +18,7 @@ import { ServiceRequest, User } from '@prisma/client'
 import { Loader } from '@/components/loader'
 import { PinInput } from '@/components/ui/PinInput'
 import { verifyCompletionCodeAction } from '@/app/actions/verifyCompletionCodeAction'
+import { updateMechanicLocation } from '@/app/actions/updateMechanicLocation'
 
 interface Location {
   latitude: number
@@ -26,6 +27,20 @@ interface Location {
 type ServiceRequestWithClient = ServiceRequest & {
   client: User
 }
+  /**
+   * Page for a mechanic to navigate to a client's location and complete a service request.
+   * 
+   * This page displays a map with the client's location and the mechanic's location.
+   * The mechanic can start the service request by clicking a button.
+   * Once the service request is started, the mechanic can click a button to indicate that they have arrived at the client's location.
+   * After arriving, the mechanic can enter a code provided by the client to complete the service request.
+   * If the code is valid, the service request is marked as completed.
+   * 
+   * @param {string} requestId - The ID of the service request.
+   * @param {string} destLat - The latitude of the client's location.
+   * @param {string} destLng - The longitude of the client's location.
+   * @returns {JSX.Element} The page.
+   */
 export default function MechanicMapPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -69,29 +84,56 @@ export default function MechanicMapPage() {
 
   
 
-  // Get mechanic's location
+  // Get mechanic's location and update database when IN_ROUTE
   useEffect(() => {
-    if (navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setMechanicLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          })
-        },
-        (error) => {
-          console.error("Error getting location:", error)
-          toast({
-            title: "Location Error",
-            description: "Unable to get your location. Please enable location services.",
-            variant: "destructive"
-          })
-        }
-      )
+    if (!navigator.geolocation || request?.status !== 'IN_ROUTE') return;
 
-      return () => navigator.geolocation.clearWatch(watchId)
-    }
-  }, [toast])
+    let lastUpdateTime = 0;
+    const UPDATE_INTERVAL = 10000; // 10 seconds in milliseconds
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
+        const currentTime = Date.now();
+        const newLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+
+        // Update local state
+        setMechanicLocation(newLocation);
+
+        // Update database every 10 seconds
+        if (currentTime - lastUpdateTime >= UPDATE_INTERVAL) {
+          try {
+            if (!requestId) return
+            const requestIdString = requestId.toString()
+            const result = await updateMechanicLocation(requestIdString, newLocation);
+            if (!result.success) {
+              throw new Error(result.error);
+            }
+            lastUpdateTime = currentTime;
+          } catch (error) {
+            console.error("Error updating mechanic location:", error);
+            toast({
+              title: "Update Error",
+              description: "Failed to update location in database",
+              variant: "destructive"
+            });
+          }
+        }
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        toast({
+          title: "Location Error",
+          description: "Unable to get your location. Please enable location services.",
+          variant: "destructive"
+        });
+      }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [request?.status, requestId, toast])
 
   useEffect(() => {
 
@@ -208,7 +250,7 @@ export default function MechanicMapPage() {
       setIsLoading(false)
     }
   }
-
+ 
   const handleEndService = async () => {
     try {
       setIsLoading(true)
@@ -284,8 +326,6 @@ export default function MechanicMapPage() {
     setEstimatedTime(duration)
   }
 
-
-
   if (!destLat || !destLng || !requestId) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -307,7 +347,7 @@ export default function MechanicMapPage() {
 
     setTimeout(() => {
       router.push(`/dashboard`)
-    }, 2000)
+    }, 1000)
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -318,6 +358,7 @@ export default function MechanicMapPage() {
       </div>
     )
   }
+  
   const customerLocation = {
     latitude: parseFloat(destLat),
     longitude: parseFloat(destLng)

@@ -21,6 +21,7 @@ import RequestMap from '@/components/MapBox/RequestMap'
 import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
+import { Loader } from '@/components/loader'
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -182,9 +183,7 @@ export function ClientDashboard() {
   }
 
   if (loading || !user) {
-    return <div className="flex justify-center items-center h-screen ">
-      <Loader2Icon className="animate-spin h-8 w-8" />
-    </div>
+    return <Loader title="Welcome Back!" />
   }
 
   if (error) {

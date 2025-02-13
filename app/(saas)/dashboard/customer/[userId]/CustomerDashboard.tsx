@@ -9,6 +9,7 @@ import { ClientDashboard } from "@/components/dashboard/ClientDashboard/ClientDa
 import { MapDashboard } from "@/components/dashboard/MapDashboard/MapDashboard"
 import { useServiceRequestStore } from "@/store/serviceRequestStore"
 import { useSearchParams } from "next/navigation"
+import { Loader } from "@/components/loader"
 
 export default function CustomerDashboard() {
   const { user } = useUser()
@@ -22,7 +23,7 @@ export default function CustomerDashboard() {
   const activeServiceRequest = serviceRequests[0]
 
   if (!user) {
-    return <div>Loading...</div>
+    return <Loader title="Loading Your Dashboard..." />
   }
 
 
