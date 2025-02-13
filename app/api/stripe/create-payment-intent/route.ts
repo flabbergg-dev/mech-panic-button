@@ -22,7 +22,9 @@ export async function POST(request: Request) {
                 quantity: 1,
             },
         ],
+        metadata: {},
         success_url: 'http://localhost:3000/onboarding/success?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: 'http://localhost:3000/onboarding/cancel',
         // embedded checkout
         // ui_mode: 'embedded',
         // return_url: 'http://localhost:3000/onboarding/return?session_id={CHECKOUT_SESSION_ID}',
@@ -32,15 +34,6 @@ export async function POST(request: Request) {
             // proration_behavior: 'none',
         },
         });
-
-        // Update the subscription id of the user in the database
-        // await prisma.user.update({
-        //     where: { id: stripeSubscriptionId },
-        //     data: {
-        //     stripeSubscriptionId: session.id,
-        //     stripeSubscriptionPlan: 'BASIC',
-        //     },
-        // })
 
         return NextResponse.json({
             session: session.id,

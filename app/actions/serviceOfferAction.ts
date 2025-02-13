@@ -73,10 +73,10 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
         note: input.note,
         expiresAt: input.expiresAt,
         status: OfferStatus.PENDING,
-        location: {
+        location: { 
           latitude: input.location.latitude,
           longitude: input.location.longitude
-        }
+        },
       }
     })
 

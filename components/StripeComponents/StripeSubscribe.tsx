@@ -1,5 +1,10 @@
 import React, { useState } from 'react'
 import { Button } from '../ui/button';
+import { loadStripe } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
 
 export const StripeSubscribe = () => {
   const [error, setError] = useState(false);
@@ -7,6 +12,7 @@ export const StripeSubscribe = () => {
   const [sessionId, setSessionId] = useState();
 
   const handleOnClickEvent = async () => {
+    try {
     fetch("/api/stripe/subscriptionPlans/basic", {
       method: "POST",
     })
@@ -18,12 +24,24 @@ export const StripeSubscribe = () => {
           setSessionId(session);
           console.log(session + "session");
         }
-
+        
         if (error) {
           console.error("Error creating account:", error);
           setError(true);
         }
       });
+      const stripe = await stripePromise;
+      if (sessionId) {
+        const response = await stripe!.redirectToCheckout({
+          sessionId: sessionId,
+        });
+
+        console.log(response + "response");
+      }
+    } catch (error) {
+      console.error("Error creating account:", error);
+      setError(true);
+    }
   }
 
   return (

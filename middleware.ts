@@ -27,12 +27,12 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const path = req.nextUrl.pathname
-  console.log('Middleware - Path:', path)
-  console.log('Middleware - User ID:', userId)
+  // console.log('Middleware - Path:', path)
+  // console.log('Middleware - User ID:', userId)
 
   // If it's a protected route and user is not authenticated, redirect to sign in
   if (isProtectedRoute(req) && !userId) {
-    console.log('Middleware - Redirecting to sign in')
+    // console.log('Middleware - Redirecting to sign in')
     return redirectToSignIn()
   }
   // Handle protected routes and dashboard redirection for authenticated users
@@ -43,18 +43,18 @@ export default clerkMiddleware(async (auth, req) => {
       const user = await clerk.users.getUser(userId)
       const role = user.publicMetadata.role as string | undefined
 
-      console.log('Middleware - User Role:', role)
-      console.log('Middleware - Full Metadata:', user.publicMetadata)
+      // console.log('Middleware - User Role:', role)
+      // console.log('Middleware - Full Metadata:', user.publicMetadata)
 
       // If no role is set and not on onboarding page, redirect to onboarding
       if (!role && !path.includes('/onboarding')) {
-        console.log('Middleware - No role, redirecting to onboarding')
+    //  console.log('Middleware - No role, redirecting to onboarding')
         return NextResponse.redirect(new URL('/onboarding', req.url))
       }
 
       // If role is set and on onboarding page, redirect to dashboard
       if (role && path.includes('/onboarding')) {
-        console.log('Middleware - Has role, redirecting from onboarding to dashboard')
+        // console.log('Middleware - Has role, redirecting from onboarding to dashboard')
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
 
@@ -62,20 +62,20 @@ export default clerkMiddleware(async (auth, req) => {
       const isMechanicPath = path.includes('/mechanic')
       const isCustomerPath = path.includes('/customer')
 
-      console.log('Middleware - Path checks:', {
-        isMechanicPath,
-        isCustomerPath,
-        currentRole: role
-      })
+      // console.log('Middleware - Path checks:', {
+      //   isMechanicPath,
+      //   isCustomerPath,
+      //   currentRole: role
+      // })
 
       // Strict role-based access control
       if (role === 'Customer' && isMechanicPath) {
-        console.log('Middleware - Customer attempting to access mechanic path')
+        // console.log('Middleware - Customer attempting to access mechanic path')
         return NextResponse.redirect(new URL(`/dashboard/customer/${userId}`, req.url))
       }
 
       if (role === 'Mechanic' && isCustomerPath) {
-        console.log('Middleware - Mechanic attempting to access customer path')
+        // console.log('Middleware - Mechanic attempting to access customer path')
         return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
       }
 
@@ -103,7 +103,7 @@ export default clerkMiddleware(async (auth, req) => {
         }
 
         if (dashboardUserId && dashboardUserId !== userId) {
-          console.log('Middleware - User attempting to access another users dashboard')
+          // console.log('Middleware - User attempting to access another users dashboard')
           if (role === 'Mechanic') {
             return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
           } else if (role === 'Customer') {
@@ -113,7 +113,7 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
     } catch (error) {
-      console.error('Error in middleware:', error)
+      // console.error('Error in middleware:', error)
       return NextResponse.next()
     }
   }

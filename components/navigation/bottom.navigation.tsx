@@ -10,6 +10,7 @@ import {
   ClipboardListIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
 interface BottomNavigationProps {
   activeTab: string
@@ -28,6 +29,13 @@ export const BottomNavigation = ({
   showRequests = false,
   disabledTabs = [],
 }: BottomNavigationProps) => {
+  const router = useRouter()
+
+  const handleTabChange = (tab: string) => {
+    router.push(`?view=${tab}`)
+    onTabChange(tab)
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 max-w-md mx-auto rounded-t-3xl z-50">
       <div className="flex justify-around items-center h-16 max-w-md mx-auto px-4">
@@ -35,7 +43,7 @@ export const BottomNavigation = ({
           id="home"
           icon={<HomeIcon className="h-6 w-6" />}
           isActive={activeTab === "home"}
-          onClick={() => onTabChange("home")}
+          onClick={() => handleTabChange("home")}
           disabled={disabledTabs.includes("home")}
         />
 
@@ -44,7 +52,7 @@ export const BottomNavigation = ({
             id="map"
             icon={<MapIcon className="h-6 w-6" />}
             isActive={activeTab === "map"}
-            onClick={() => onTabChange("map")}
+            onClick={() => handleTabChange("map")}
             disabled={disabledTabs.includes("map")}
           />
         )}
@@ -54,7 +62,7 @@ export const BottomNavigation = ({
             id="requests"
             icon={<ClipboardListIcon className="h-6 w-6" />}
             isActive={activeTab === "requests"}
-            onClick={() => onTabChange("requests")}
+            onClick={() => handleTabChange("requests")}
             disabled={disabledTabs.includes("requests")}
           />
         )}
@@ -63,7 +71,7 @@ export const BottomNavigation = ({
           id="history"
           icon={<HistoryIcon className="h-6 w-6" />}
           isActive={activeTab === "history"}
-          onClick={() => onTabChange("history")}
+          onClick={() => handleTabChange("history")}
           disabled={disabledTabs.includes("history")}
         />
 
@@ -71,7 +79,7 @@ export const BottomNavigation = ({
           id="settings"
           icon={<SettingsIcon className="h-6 w-6" />}
           isActive={activeTab === "settings"}
-          onClick={() => onTabChange("settings")}
+          onClick={() => handleTabChange("settings")}
           disabled={disabledTabs.includes("settings")}
         />
 
@@ -79,7 +87,7 @@ export const BottomNavigation = ({
           id="profile"
           icon={<UserIcon className="h-6 w-6" />}
           isActive={activeTab === "profile"}
-          onClick={() => onTabChange("profile")}
+          onClick={() => handleTabChange("profile")}
           disabled={disabledTabs.includes("profile")}
         />
       </div>

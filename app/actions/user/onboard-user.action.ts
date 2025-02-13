@@ -92,15 +92,15 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         },
       })
 
-      await prisma.user.update({
-        where: {
-          id: user.id
-        },
-        data: {
-          stripeCustomerId: response.account.id,
-          stripeSubscriptionStatus: response.account.charges_enabled ? "ACTIVE" : "INACTIVE",
-        },
-      })
+      // await prisma.user.update({
+      //   where: {
+      //     id: user.id
+      //   },
+      //   data: {
+      //     stripeCustomerId: response.account.id,
+      //     stripeSubscriptionStatus: response.account.charges_enabled ? "ACTIVE" : "INACTIVE",
+      //   },
+      // })
 
       }
     } catch (error) {

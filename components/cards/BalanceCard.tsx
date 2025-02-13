@@ -19,7 +19,7 @@ export const BalanceCard = () => {
       transition={{ duration: 0.3 }}
     >
       <Card
-        className="text-white p-6 rounded-xl shadow-lg bg-cover bg-center bg-no-repeat"
+        className="text-white p-6 rounded-xl shadow-lg bg-cover bg-center bg-no-repeat max-w-md mx-auto"
         style={{ backgroundImage: "url('/card.png')" }}
       >
         <div className="flex items-center flex-col  justify-between">
@@ -38,9 +38,9 @@ export const BalanceCard = () => {
             )}
           </div>
           {showBalance ? (
-            <span className="text-2xl">$1,000.00</span>
+            <span className="text-2xl font-roboto-regular font-semibold">$1,000.00</span>
           ) : (
-            <span className="text-2xl">****</span>
+            <span className="text-2xl font-roboto-regular">****</span>
           )}
         </div>
       </Card>

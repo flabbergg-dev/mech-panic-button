@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/utils/supabase/client"
 import { getUserToken } from "@/app/actions/getUserToken"
 import { useParams, useRouter } from "next/navigation"
+import { Loader } from "../loader"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -36,6 +37,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   const [request, setRequest] = useState<ServiceRequestWithClient | null>(null)
   const [serviceOffer, setServiceOffer] = useState<ServiceOfferWithRequest | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [price, setPrice] = useState<string>("")
   const [note, setNote] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -54,10 +56,14 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         setRequest(requestResult.data)
       } else {
         toast({
-          title: "Error",
-          description:` #ERR02: ${requestResult.error}`,
+          title: "Request not found",
+          description:` Request was cancelled by the client. Returning to dashboard...`,
           variant: "destructive"
         })
+        setIsRedirecting(true)
+        setTimeout(() => {
+          router.push(`/dashboard/mechanic`)
+        }, 2000)
       }
 
       if (offerResult.success && offerResult.data) {
@@ -73,11 +79,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       }
     } catch (error) {
       console.error("Error fetching data:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load service request",
-        variant: "destructive"
-      })
+     
     } finally {
       setIsLoading(false)
     }
@@ -141,7 +143,8 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   }, [toast])
 
 
-  if (isLoading || !request) return <div>Loading...</div>
+  if (isLoading || !request) return <Loader title="Loading Request..." />
+  if (isRedirecting) return <Loader title="Redirecting to dashboard..." />
 
   if (request.status === "COMPLETED") {
     setTimeout(() => {
@@ -346,7 +349,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
               
            null
             ) : (
-              <Button variant="outline" className="flex-1" onClick={() => window.history.back()}>
+              <Button variant={serviceOffer && (serviceOffer.status === 'EXPIRED' || serviceOffer.status === 'REJECTED' || serviceOffer.status === 'DECLINED') ? "destructive" : "outline"} className={"flex-1"} onClick={() => window.history.back()}>
                 Cancel
               </Button>
             )}

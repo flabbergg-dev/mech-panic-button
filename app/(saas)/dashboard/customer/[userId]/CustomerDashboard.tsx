@@ -8,6 +8,7 @@ import { SkeletonBasic } from "@/components/Skeletons/SkeletonBasic"
 import { MapContainer } from "@/components/dashboard/MapDashboard/MapContainer"
 import { useServiceRequestStore } from "@/store/serviceRequestStore"
 import { useSearchParams } from "next/navigation"
+import { Loader } from "@/components/loader"
 import { RippleComp } from "@/components/Animated/RippleComp"
 import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
 import BentoGrid from "@/components/BentoBoxes/BentoGrid"
@@ -26,7 +27,7 @@ export default function CustomerDashboard() {
   console.log('userRole', userRole)
   // Get the most recent/active service request
   if (!user) {
-    return <div>Loading...</div>
+    return <Loader title="Loading Your Dashboard..." />
   }
 
   const renderContent = () => {

@@ -54,7 +54,7 @@ export function UserAvatar() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile" className="cursor-pointer">
+          <Link href="?view=profile" className="cursor-pointer">
             Profile
           </Link>
         </DropdownMenuItem>

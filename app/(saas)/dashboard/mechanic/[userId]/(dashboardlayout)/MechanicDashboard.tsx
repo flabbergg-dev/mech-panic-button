@@ -1,30 +1,34 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicHome"
-import { MechanicProfile } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
+import { MechanicProfileView } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
+import { MechanicHistory } from "@/components/dashboard/MechanicDashboard/MechanicHistory"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
+import { useSearchParams } from "next/navigation"
 import SettingsPage from "@/components/dashboard/settings/Settings"
 
-interface MechanicDashboardProps {
-  token: string | null
-}
-
 export const MechanicDashboard = () => {
-  const [activeTab, setActiveTab] = useState("home")
+  const params = useSearchParams()
+  const tab = params.get("view") || "home"
+  const [activeTab, setActiveTab] = useState(tab)
+
+  useEffect(() => {
+    setActiveTab(tab)
+  }, [tab])
 
   const renderContent = () => {
     switch (activeTab) {
       case "home":
         return <MechanicHome />
       case "map":
-        return <div>Map Component (Coming Soon)</div>
+        return <div className="p-4 font-michroma-sans text-center text-2xl text-muted-foreground ">Map Component (Only Available while on service request)</div>
       case "settings":
         return <SettingsPage />
       case "profile":
-        return <MechanicProfile />
+        return <MechanicProfileView />
       case "history":
-        return <div>History Component (Coming Soon)</div>
+        return <MechanicHistory />
       default:
         return <MechanicHome />
     }

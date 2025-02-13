@@ -3,7 +3,7 @@
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Loader, UserCircle } from "lucide-react"
+import { UserCircle } from "lucide-react"
 import { ServiceStatus } from "@prisma/client"
 import { getActiveMechanicOfferAction } from "@/app/actions/getActiveMechanicOfferAction"
 
@@ -16,6 +16,9 @@ import { PushNotificationButton } from "../../PushNotificationButton"
 import { ServiceRequest as ServiceRequestType, Booking as BookingType } from "@prisma/client"
 import { getUserToken } from "@/app/actions/getUserToken"
 import { supabase } from "@/utils/supabase/client"
+import { cn } from "@/lib/utils"
+import { Card } from "@/components/ui/card"
+import { Loader } from "@/components/loader"
 
 type BookingWithService = BookingType & {
   service: ServiceRequestType
@@ -39,6 +42,10 @@ export const MechanicHome = () => {
 
       const activeOfferResult = await getActiveMechanicOfferAction(user.id)
       console.log("Active offer check result:", activeOfferResult)
+
+      if (activeOfferResult.success === undefined || activeOfferResult === undefined) {
+        return
+      }
 
       if (activeOfferResult.success && activeOfferResult.data && activeOfferResult.data.length > 0) {
         // Redirect to the active offer's service request
@@ -81,6 +88,7 @@ export const MechanicHome = () => {
       supabase.realtime.setAuth(token)
 
       const subscribeServiceRequestToChannel = supabase.channel(`service_request`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', }, payload => {
+
         console.log('Request Received payload:', payload)
         fetchData()
 
@@ -100,69 +108,33 @@ export const MechanicHome = () => {
     fetchData()
   }, [user, router])
 
+  
+  if (!user) {
+      return <Loader title="Searching on the toolbox..." />
+  }
+
   if (isLoading) {
-    return (
-      <div className="flex flex-col space-y-4 p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold">
-            Hello,{" "}
-            {user?.firstName
-              ? user.firstName.concat(" ", user.lastName ?? "")
-              : "there"}
-            !
-          </h1>
-          <div className="flex items-center space-x-4">
-            <PushNotificationButton />
-            <Avatar>
-              <AvatarImage
-                src={(user?.publicMetadata["avatar"] as string) ?? ""}
-                alt={user?.firstName ?? "User"}
-              />
-              <AvatarFallback>
-                {user?.firstName?.charAt(0)}
-                {user?.lastName?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-        <Separator className="bg-card/20" />
-        
-      </div>
-    )
+    return <Loader title="Looking under the hood for service requests..." />
   }
 
   return (
     <div className="flex flex-col space-y-4 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">
-          Hello,{" "}
-          {user?.firstName
-            ? user.firstName.concat(" ", user.lastName ?? "")
-            : "there"}
-          !
-        </h1>
-        <div className="flex items-center space-x-4">
-          <PushNotificationButton />
-          <Avatar>
-            <AvatarImage
-              src={(user?.publicMetadata["avatar"] as string) ?? ""}
-              alt={user?.firstName ?? "User"}
-            />
-            <AvatarFallback>
-              <UserCircle />
-            </AvatarFallback>
-          </Avatar>
-        </div>
+      <div className="relative z-10 w-full max-w-md mx-auto">
+              <Card className="p-6 shadow-lg bg-card/80 backdrop-blur border border-card/10">
+                <h1 className="text-2xl font-bold mb-4 text-center">
+                  Welcome, {user.firstName}!
+                </h1>
+                <p className="text-muted-foreground mb-6 text-center">
+                  Ready to assist today?
+                </p>
+               
+              </Card>
+            </div>
       </div>
-
-      <BalanceCard />
-
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-8 space-y-4">
-          <Loader className="animate-spin w-8 h-8" />
-          <p className="text-sm text-muted-foreground">Loading service requests...</p>
-        </div>
-      ) : serviceRequests.length === 0 && scheduledBookings.length === 0 ? (
+          <BalanceCard />
+      
+      { serviceRequests.length === 0 && scheduledBookings.length === 0 ? (
         <div className="flex flex-col items-center justify-center space-y-4 py-8">
           <img
             src="/icons/car.svg"
@@ -181,7 +153,7 @@ export const MechanicHome = () => {
           {serviceRequests.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Available Requests</h3>
-              <ScrollArea className="h-[calc(40vh-2rem)] w-full rounded-md">
+              <ScrollArea className={cn("h-[80dvh]w-full rounded-md ", scheduledBookings.length > 0 && "h-[calc(40vh-2rem)]")}>
                 <div className="space-y-4 pr-4">
                   {serviceRequests.map((request) => (
                     <ServiceRequest

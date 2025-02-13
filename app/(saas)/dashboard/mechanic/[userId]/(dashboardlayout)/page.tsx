@@ -1,6 +1,8 @@
 import { type Metadata } from "next"
 import { Suspense } from "react"
 import { MechanicDashboard } from "./MechanicDashboard"
+import { Navbar } from "@/components/navigation/mechanic-navbar.navigation"
+import { Loader } from "@/components/loader"
 
 export const metadata: Metadata = {
   title: "Mechanic Dashboard - Mech Panic",
@@ -9,7 +11,8 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div>Loading dashboard...</div>}>
+    <Suspense fallback={<Loader title="Loading Your Dashboard..." />}>
+      <Navbar />
       <MechanicDashboard />
     </Suspense>
   )
