@@ -1,9 +1,12 @@
 import { prisma } from '@/lib/prisma';
 import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
-export async function POST(request: Request) {
-    try {
+import { headers } from 'next/headers';
 
+export async function POST() {
+    try {
+        const headersList = await headers()
+        const origin = headersList.get('origin')
         // Calculate one month from now
         const now = new Date(); // Current date and time
         const oneMonthFromNow = new Date(now.setMonth(now.getMonth() + 1)); // Add one month
@@ -22,10 +25,9 @@ export async function POST(request: Request) {
                 quantity: 1,
             },
         ],
-        success_url: 'http://localhost:3000/onboarding/success?session_id={CHECKOUT_SESSION_ID}',
-        // embedded checkout
-        // ui_mode: 'embedded',
-        // return_url: 'http://localhost:3000/onboarding/return?session_id={CHECKOUT_SESSION_ID}',
+        return_url: `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+        // automatic_tax: {enabled: true},
+        ui_mode: 'embedded',
         subscription_data: {
             billing_cycle_anchor: billingCycleAnchor, // Set the billing cycle anchor to one month from now
             // enable bottom line for first free month off
@@ -44,7 +46,9 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             session: session.id,
+            sessionSecret: session.client_secret,
         });
+        // return NextResponse.redirect(session.url!, 303)
     }
     catch (error) {
         console.error('An error occurred when calling the Stripe API to create a subscription:', error);

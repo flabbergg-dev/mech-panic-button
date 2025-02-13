@@ -15,7 +15,7 @@ export const StripeOnboarding = () => {
   const stripeConnectInstance = useStripeConnect(connectedAccountId);
 
   const handleOnClickEvent = async () => {
-    fetch("/api/stripe/account", {
+    await fetch("/api/stripe/account", {
       method: "GET",
     })
       .then((response) => response.json())
@@ -60,11 +60,13 @@ export const StripeOnboarding = () => {
           </div>
         )}
         {stripeConnectInstance && (
-          <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
-            <ConnectAccountOnboarding
-              onExit={() => setOnboardingExited(true)}
-            />
-          </ConnectComponentsProvider>
+          <div className="absolute top-0 left-0 right-0 bottom-0 h-[]">
+            <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+              <ConnectAccountOnboarding
+                onExit={() => setOnboardingExited(true)}
+              />
+            </ConnectComponentsProvider>
+          </div>
         )}
         {error && <p className="error">Something went wrong!</p>}
         {(connectedAccountId || accountCreatePending || onboardingExited) && (

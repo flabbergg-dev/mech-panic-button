@@ -202,8 +202,10 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
           </p>
         )}
       </div>
-      <StripeSubscribe />
-      <StripeOnboarding />
+      <div className="flex justify-around items-center w-full mt-6">
+        <StripeSubscribe />
+        <StripeOnboarding />
+      </div>
     </HalfSheet>
   )
 }
