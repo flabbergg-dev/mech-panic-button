@@ -133,9 +133,6 @@ export default function OnboardingPage() {
     }))
   }
 
-  // If mechanic role is selected, show document upload form
-
-
   return (
     <div className="container max-w-2xl mx-auto py-8">
       <div className="space-y-8">
@@ -186,7 +183,9 @@ export default function OnboardingPage() {
             <Label>I am a...</Label>
             <RadioGroup
               value={selectedRole || undefined}
-              onValueChange={(value) => handleRoleSelection(value as "Customer" | "Mechanic")}
+              onValueChange={(value) =>
+                handleRoleSelection(value as "Customer" | "Mechanic")
+              }
               className="grid grid-cols-2 gap-4 mt-2"
               disabled={isSubmitting}
             >
@@ -223,6 +222,7 @@ export default function OnboardingPage() {
           <Button onClick={handleFormSubmission}>Submit</Button>
 
           {selectedRole === "Mechanic" && (
+            // If mechanic role is selected, show document upload form
             <MechanicDocuments formData={formData} />
           )}
         </div>
@@ -232,19 +232,18 @@ export default function OnboardingPage() {
           <DialogHeader>
             <DialogTitle>Confirm Role Selection</DialogTitle>
             <DialogDescription>
-              Are you sure you want to continue as a {pendingRole}? This choice will determine your experience on our platform.
+              Are you sure you want to continue as a {pendingRole}? This choice
+              will determine your experience on our platform.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={cancelRoleSelection}>
               Cancel
             </Button>
-            <Button onClick={confirmRoleSelection}>
-              Confirm
-            </Button>
+            <Button onClick={confirmRoleSelection}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

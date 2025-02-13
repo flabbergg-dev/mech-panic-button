@@ -6,6 +6,7 @@ import {
 } from "@stripe/react-connect-js";
 import { Button } from "../ui/button";
 import {stripe} from '@/lib/stripe';
+import { updateStripeCustomerId } from "@/app/actions/user/update-stripe-customer-id";
 export const StripeOnboarding = () => {
   const [accountCreatePending, setAccountCreatePending] = useState(false);
   const [onboardingExited, setOnboardingExited] = useState(false);
@@ -24,7 +25,6 @@ export const StripeOnboarding = () => {
 
         if (account) {
           setConnectedAccountId(account);
-          console.log(account + "account");
         }
 
         console.log(account + "account out side");
@@ -34,14 +34,14 @@ export const StripeOnboarding = () => {
           setError(true);
         }
       });
-    // setConnectedAccountId(account.id);
+
+      if(connectedAccountId){
+        updateStripeCustomerId("userId", connectedAccountId)
+      }
   }
 
   return (
     <div className="container">
-      <div className="banner">
-        <h2>Digital Sunsets L.L.C.</h2>
-      </div>
       <div className="content">
         {connectedAccountId && !stripeConnectInstance && (
           <h2>Add information to start accepting money</h2>
@@ -81,19 +81,6 @@ export const StripeOnboarding = () => {
             )}
           </div>
         )}
-        <div className="info-callout">
-          <p>
-            This is a sample app for Connect onboarding using the Account
-            Onboarding embedded component.{" "}
-            <a
-              href="https://docs.stripe.com/connect/onboarding/quickstart?connect-onboarding-surface=embedded"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View docs
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );

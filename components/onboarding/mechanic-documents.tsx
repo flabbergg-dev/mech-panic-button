@@ -11,13 +11,14 @@ import { updateMechanicDocumentsAction } from "@/app/actions/mechanic/update-mec
 import { HalfSheet } from "../ui/HalfSheet"
 import { X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { StripeOnboarding } from "../StripeOnboarding/StripeOnboarding"
+import { StripeOnboarding } from "../StripeComponents/StripeOnboarding"
+import { StripeSubscribe } from "../StripeComponents/StripeSubscribe"
 interface MechanicDocumentsProps {
   formData: {
     firstName: string
     lastName: string
     email: string
-   
+
   }
 }
 
@@ -201,6 +202,7 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
           </p>
         )}
       </div>
+      <StripeSubscribe />
       <StripeOnboarding />
     </HalfSheet>
   )

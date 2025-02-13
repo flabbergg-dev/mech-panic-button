@@ -98,6 +98,7 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         },
         data: {
           stripeCustomerId: response.account.id,
+          stripeSubscriptionStatus: response.account.charges_enabled ? "ACTIVE" : "INACTIVE",
         },
       })
 
