@@ -8,18 +8,16 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
 import { updateMechanicDocumentsAction } from "@/app/actions/mechanic/update-mechanic-documents.action"
-import { HalfSheet } from "../ui/HalfSheet"
 import { X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { StripeOnboarding } from "../StripeComponents/StripeOnboarding"
-import { StripeSubscribe } from "../StripeComponents/StripeSubscribe"
+
 interface MechanicDocumentsProps {
   formData: {
-    firstName: string
-    lastName: string
-    email: string
-
-  }
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  stripeAccountId: any;
 }
 
 interface MechanicDocuments {
@@ -27,111 +25,129 @@ interface MechanicDocuments {
   merchantDocumentUrl: string
 }
 
-export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
-  const router = useRouter()
-  const { user } = useUser()
-  const { toast } = useToast()
-  const [isUploading, setIsUploading] = useState(false)
-  const [driversLicense, setDriversLicense] = useState<File | null>(null)
-  const [merchantDocument, setMerchantDocument] = useState<File | null>(null)
-  const [hasDriversLicense, setHasDriversLicense] = useState(false)
-  const [hasMerchantDocument, setHasMerchantDocument] = useState(false)
-  const [country, setCountry] = useState<"Puerto Rico" | "United States">("Puerto Rico")
+export const MechanicDocuments = ({
+  formData,
+  stripeAccountId,
+}: MechanicDocumentsProps) => {
+  const router = useRouter();
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const [driversLicense, setDriversLicense] = useState<File | null>(null);
+  const [merchantDocument, setMerchantDocument] = useState<File | null>(null);
+  const [hasDriversLicense, setHasDriversLicense] = useState(false);
+  const [hasMerchantDocument, setHasMerchantDocument] = useState(false);
+  const [country, setCountry] = useState<"Puerto Rico" | "United States">(
+    "Puerto Rico"
+  );
 
-  const handleFileUpload = async (file: File | null, type: 'driversLicense' | 'merchantDocument') => {
+  const handleFileUpload = async (
+    file: File | null,
+    type: "driversLicense" | "merchantDocument"
+  ) => {
     if (!file || !user) {
       toast({
         title: "Error",
         description: "Please select a file to upload",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsUploading(true)
+    setIsUploading(true);
 
     try {
       // Only onboard if this is the first document being uploaded
-      if (!hasDriversLicense && !hasMerchantDocument) {
+      if(!stripeAccountId) {
+      // if (!hasDriversLicense && !hasMerchantDocument && !stripeAccountId) {
         const onboardResult = await onboardUserAction({
           ...formData,
           role: "Mechanic" as const,
-        })
+          stripeAccountId: stripeAccountId,
+        });
 
         if (!onboardResult.success) {
-          throw new Error(onboardResult.error)
+          throw new Error(onboardResult.error);
         }
       }
 
-      const documentFormData = new FormData()
-      if (type === 'driversLicense') {
-        documentFormData.append("driversLicense", file)
+      const documentFormData = new FormData();
+      if (type === "driversLicense") {
+        documentFormData.append("driversLicense", file);
       } else {
-        documentFormData.append("merchantDocument", file)
+        documentFormData.append("merchantDocument", file);
       }
-      documentFormData.append("userId", user.id)
+      documentFormData.append("userId", user.id);
 
-      const uploadResponse = await fetch("/api/upload/mechanic-documents", {
-        method: "POST",
-        body: documentFormData,
-      })
+      // const uploadResponse = await fetch("/api/upload/mechanic-documents", {
+      //   method: "POST",
+      //   body: documentFormData,
+      // });
 
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json()
-        throw new Error(errorData.error || "Failed to upload document")
-      }
+      // if (!uploadResponse.ok) {
+      //   const errorData = await uploadResponse.json();
+      //   throw new Error(errorData.error || "Failed to upload document");
+      // }
 
-      const result = await uploadResponse.json()
-      
-      if (result.driversLicenseId) {
-        setHasDriversLicense(true)
-      }
-      if (result.merchantDocumentUrl) {
-        setHasMerchantDocument(true)
-      }
+      // const result = await uploadResponse.json();
+
+      // if (result.driversLicenseId) {
+      //   setHasDriversLicense(true);
+      // }
+      // if (result.merchantDocumentUrl) {
+      //   setHasMerchantDocument(true);
+      // }
 
       toast({
         title: "Success",
-        description: `${type === 'driversLicense' ? "Driver's License" : "Merchant Document"} uploaded successfully`,
-      })
+        description: `${type === "driversLicense" ? "Driver's License" : "Merchant Document"} uploaded successfully`,
+      });
 
       // Only redirect if both documents are uploaded
-      if (result.hasAllDocuments) {
-        router.push("/dashboard")
+      if(stripeAccountId) {
+      // if (result.hasAllDocuments) {
+        router.push("/dashboard");
       } else if (hasDriversLicense && country === "United States") {
-        router.push("/dashboard")
+        router.push("/dashboard");
       } else {
-        router.refresh()
+        router.refresh();
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
       toast({
         title: "Error",
         description: "Failed to upload document",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
 
   const handleCloseClick = () => {
-    window.location.reload()
-  }
+    window.location.reload();
+  };
 
   return (
-    <HalfSheet className="bg-background border-t rounded-t-xl p-6">
+    <>
       <div className="space-y-4">
         <div>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold flex-1">Required Documents</h2>
-            <Button variant="ghost" className="absolute right-6 top-6 hover:bg-transparent" onClick={() => handleCloseClick()}>
+            <h2 className="text-2xl font-semibold flex-1">
+              Required Documents
+            </h2>
+            <Button
+              variant="ghost"
+              className="absolute right-6 top-6 hover:bg-transparent"
+              onClick={() => handleCloseClick()}
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
 
           <p className="text-muted-foreground">
-            Please upload your driver's license and merchant document to complete your registration
+            Please upload your driver's license and merchant document to
+            complete your registration
           </p>
         </div>
         <div className="space-y-6">
@@ -139,7 +155,9 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
             <Label htmlFor="country">Country</Label>
             <Select
               value={country}
-              onValueChange={(value: "Puerto Rico" | "United States") => setCountry(value)}
+              onValueChange={(value: "Puerto Rico" | "United States") =>
+                setCountry(value)
+              }
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select your country" />
@@ -158,17 +176,19 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
               onChange={(e) => {
-                const file = e.target.files?.[0]
-                setDriversLicense(file || null)
+                const file = e.target.files?.[0];
+                setDriversLicense(file || null);
                 if (file) {
-                  handleFileUpload(file, 'driversLicense')
+                  handleFileUpload(file, "driversLicense");
                 }
               }}
               disabled={isUploading || hasDriversLicense}
               className="mt-2"
             />
             {hasDriversLicense && (
-              <p className="text-sm text-green-600 mt-1">✓ Driver's License uploaded</p>
+              <p className="text-sm text-green-600 mt-1">
+                ✓ Driver's License uploaded
+              </p>
             )}
           </div>
 
@@ -180,17 +200,19 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  setMerchantDocument(file || null)
+                  const file = e.target.files?.[0];
+                  setMerchantDocument(file || null);
                   if (file) {
-                    handleFileUpload(file, 'merchantDocument')
+                    handleFileUpload(file, "merchantDocument");
                   }
                 }}
                 disabled={isUploading || hasMerchantDocument}
                 className="mt-2"
               />
               {hasMerchantDocument && (
-                <p className="text-sm text-green-600 mt-1">✓ Merchant Document uploaded</p>
+                <p className="text-sm text-green-600 mt-1">
+                  ✓ Merchant Document uploaded
+                </p>
               )}
             </div>
           )}
@@ -202,10 +224,6 @@ export const MechanicDocuments = ({ formData }: MechanicDocumentsProps) => {
           </p>
         )}
       </div>
-      <div className="flex justify-around items-center w-full mt-6">
-        <StripeSubscribe />
-        <StripeOnboarding />
-      </div>
-    </HalfSheet>
-  )
-}
+    </>
+  );
+};

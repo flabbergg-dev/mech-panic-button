@@ -1,18 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useStripeConnect } from "@/hooks/useStripeConnect";
 import {
   ConnectAccountOnboarding,
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
 import { Button } from "../ui/button";
-import {stripe} from '@/lib/stripe';
-import { updateStripeCustomerId } from "@/app/actions/user/update-stripe-customer-id";
-export const StripeOnboarding = () => {
+import { toast } from "@/hooks/use-toast";
+
+type StripeOnboardingProps = {
+  setCurrentStep: (step: "documents" | "StripeAccountSetup") => void;
+  stripeAccountId: string | null;
+  setStripeAccountId: (stripeAccountId: string) => void;
+};
+
+export const StripeOnboarding = ({setCurrentStep, stripeAccountId, setStripeAccountId} : StripeOnboardingProps) => {
   const [accountCreatePending, setAccountCreatePending] = useState(false);
   const [onboardingExited, setOnboardingExited] = useState(false);
   const [error, setError] = useState(false);
-  const [connectedAccountId, setConnectedAccountId] = useState();
-  const stripeConnectInstance = useStripeConnect(connectedAccountId);
+  const [tempLocation, setTempLocation] = useState("");
+  const stripeConnectInstance = useStripeConnect(stripeAccountId);
 
   const handleOnClickEvent = async () => {
     await fetch("/api/stripe/account", {
@@ -24,29 +30,30 @@ export const StripeOnboarding = () => {
         const { account, error } = json;
 
         if (account) {
-          setConnectedAccountId(account);
+          setTempLocation(account);
         }
-
-        console.log(account + "account out side");
 
         if (error) {
           console.error("Error creating account:", error);
           setError(true);
         }
       });
-
-      if(connectedAccountId){
-        updateStripeCustomerId("userId", connectedAccountId)
-      }
   }
 
+  const handleExit = () => {
+    if (tempLocation && onboardingExited) {
+      setOnboardingExited(true);
+      setStripeAccountId(tempLocation);
+    }
+  };
+
   return (
-    <div className="container">
+    <div className="container h-[35dvh]">
       <div className="content">
-        {connectedAccountId && !stripeConnectInstance && (
+        {stripeAccountId && !stripeConnectInstance && (
           <h2>Add information to start accepting money</h2>
         )}
-        {!accountCreatePending && !connectedAccountId && (
+        {!accountCreatePending && !stripeAccountId && (
           <div>
             <Button
               onClick={async () => {
@@ -60,21 +67,19 @@ export const StripeOnboarding = () => {
           </div>
         )}
         {stripeConnectInstance && (
-          <div className="absolute top-0 left-0 right-0 bottom-0 h-[]">
+          <div className="absolute top-0 left-0 right-0 bottom-0 h[35dvh]-">
             <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
-              <ConnectAccountOnboarding
-                onExit={() => setOnboardingExited(true)}
-              />
+              <ConnectAccountOnboarding onExit={() => handleExit()} />
             </ConnectComponentsProvider>
           </div>
         )}
         {error && <p className="error">Something went wrong!</p>}
-        {(connectedAccountId || accountCreatePending || onboardingExited) && (
+        {(stripeAccountId || accountCreatePending || onboardingExited) && (
           <div className="dev-callout">
-            {connectedAccountId && (
+            {stripeAccountId && (
               <p>
                 Your connected account ID is:{" "}
-                <code className="bold">{connectedAccountId}</code>
+                <code className="bold">{stripeAccountId}</code>
               </p>
             )}
             {accountCreatePending && <p>Creating a connected account...</p>}
@@ -82,7 +87,7 @@ export const StripeOnboarding = () => {
               <p>The Account Onboarding component has exited</p>
             )}
           </div>
-        )}
+        )}{" "}
       </div>
     </div>
   );
