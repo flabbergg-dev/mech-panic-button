@@ -17,6 +17,7 @@ interface MechanicOnboardingProps {
 
 export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, stripeAccountId, setStripeAccountId}: MechanicOnboardingProps) => {
 
+  // TODO: verify logic so that the embedded works again
     useEffect(() => {
       if (stripeAccountId  != null) {
         setCurrentStep("documents");
@@ -25,23 +26,32 @@ export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, strip
       }
     }, [stripeAccountId, setCurrentStep, currentStep]);
 
-    const renderedContent = React.useMemo(() => (
-      <HalfSheet className="bg-background border-t rounded-t-xl p-6">
-        {currentStep === "StripeAccountSetup" && (
-          <StripeOnboarding
-            setCurrentStep={setCurrentStep}
-            stripeAccountId={stripeAccountId}
-            setStripeAccountId={setStripeAccountId}
-          />
-        )}
-        {currentStep === "documents" && (
-          <MechanicDocuments
-            formData={formData}
-            stripeAccountId={stripeAccountId}
-          />
-        )}
-      </HalfSheet>
-    ), [currentStep, formData, stripeAccountId, setCurrentStep, setStripeAccountId]);
+    const renderedContent = React.useMemo(
+      () => (
+        <HalfSheet className="bg-background border-t rounded-t-xl p-6">
+          {currentStep === "StripeAccountSetup" && (
+            <StripeOnboarding
+              setCurrentStep={setCurrentStep}
+              stripeAccountId={stripeAccountId}
+              setStripeAccountId={setStripeAccountId}
+            />
+          )}
+          {currentStep === "documents" && (
+            <MechanicDocuments
+              formData={formData}
+              stripeAccountId={stripeAccountId}
+            />
+          )}
+        </HalfSheet>
+      ),
+      [
+        currentStep,
+        formData,
+        stripeAccountId,
+        setCurrentStep,
+        setStripeAccountId,
+      ]
+    );
 
     return renderedContent;
 }

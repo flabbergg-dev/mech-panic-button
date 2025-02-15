@@ -22,6 +22,8 @@ export async function GET(request: Request) {
         country: "US",
       });
 
+      console.log('Account created:', account.id);
+
       return NextResponse.json({account: account.id});
     } catch (error) {
       console.error('An error occurred when calling the Stripe API to create an account:', error);

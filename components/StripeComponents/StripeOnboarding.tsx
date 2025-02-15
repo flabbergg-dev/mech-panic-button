@@ -5,20 +5,20 @@ import {
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
 import { Button } from "../ui/button";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 type StripeOnboardingProps = {
-  setCurrentStep: (step: "documents" | "StripeAccountSetup") => void;
   stripeAccountId: string | null;
   setStripeAccountId: (stripeAccountId: string) => void;
+  setCurrentStep: (step: "documents" | "StripeAccountSetup") => void;
 };
 
-export const StripeOnboarding = ({setCurrentStep, stripeAccountId, setStripeAccountId} : StripeOnboardingProps) => {
+export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurrentStep} : StripeOnboardingProps) => {
   const [accountCreatePending, setAccountCreatePending] = useState(false);
   const [onboardingExited, setOnboardingExited] = useState(false);
   const [error, setError] = useState(false);
-  const [tempLocation, setTempLocation] = useState("");
   const stripeConnectInstance = useStripeConnect(stripeAccountId);
+  const { toast } = useToast();
 
   const handleOnClickEvent = async () => {
     await fetch("/api/stripe/account", {
@@ -30,20 +30,30 @@ export const StripeOnboarding = ({setCurrentStep, stripeAccountId, setStripeAcco
         const { account, error } = json;
 
         if (account) {
-          setTempLocation(account);
+          setStripeAccountId(account);
         }
 
         if (error) {
           console.error("Error creating account:", error);
           setError(true);
+          toast({
+            title: "Error",
+            description: "An error occurred while creating your account",
+            variant: "destructive",
+          });
         }
       });
   }
 
   const handleExit = () => {
-    if (tempLocation && onboardingExited) {
+    if (stripeAccountId) {
       setOnboardingExited(true);
-      setStripeAccountId(tempLocation);
+      setCurrentStep("documents");
+      console.log("Stripe account created:", stripeAccountId);
+      toast({
+        title: "Success",
+        description: "Your account has been created",
+      })
     }
   };
 
@@ -67,7 +77,7 @@ export const StripeOnboarding = ({setCurrentStep, stripeAccountId, setStripeAcco
           </div>
         )}
         {stripeConnectInstance && (
-          <div className="absolute top-0 left-0 right-0 bottom-0 h[35dvh]-">
+          <div className="absolute top-0 left-0 right-0 bottom-0 h-[35dvh]">
             <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
               <ConnectAccountOnboarding onExit={() => handleExit()} />
             </ConnectComponentsProvider>

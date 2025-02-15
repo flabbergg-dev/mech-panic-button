@@ -58,7 +58,7 @@ export const MechanicDocuments = ({
 
     try {
       // Only onboard if this is the first document being uploaded
-      if(!stripeAccountId) {
+      if(stripeAccountId) {
       // if (!hasDriversLicense && !hasMerchantDocument && !stripeAccountId) {
         const onboardResult = await onboardUserAction({
           ...formData,

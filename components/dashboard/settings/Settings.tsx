@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   User,
   Briefcase,
@@ -23,8 +23,11 @@ import { MechanicInfoForm } from "./MechanicInfo"
 import { PushNotificationButton } from "@/components/PushNotificationButton"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { PersonalInfoForm } from "./PersonalInfo"
+import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
+import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
+import { getStripeCustomerId } from "@/app/actions/user/get-stripe-customer-id"
 
-const sections = [
+const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
   { 
     id: "personal", 
     icon: User, 
@@ -68,10 +71,47 @@ const sections = [
 ]
 
 const SettingsPage = () => {
-  const [activeSection, setActiveSection] = useState("personal")
+  const [activeSection, setActiveSection] = useState<"personal" | "billing" | "notifications" | "preferences" | "professional" | "security">("personal")
   const path = usePathname()
   const isMechanic = path.includes("mechanic")
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const isSubscribed = useIsUserSubscribed()
+  const [stripeConnectId, setStripeConnectId] = useState<string | null>(null)
+
+  // get customer data from stripe
+  const fetchData = async () => {
+    fetch(`/api/stripe/account/${stripeConnectId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
+  const fetchStripeConnectId = async () => {
+    const response = await getStripeCustomerId()
+
+    if (response) {
+      setStripeConnectId(response.stripeCustomerId)
+      console.log("Stripe Connect ID: ", response.stripeCustomerId)
+    } else {
+      console.error("Error fetching Stripe Connect ID")
+    }
+  }
+
+  useEffect(() => {
+    fetchStripeConnectId()
+    if(isSubscribed === true) {
+      fetchData()
+    }
+  }, [isSubscribed, stripeConnectId])
 
   const renderSection = () => {
     switch (activeSection) {
@@ -106,6 +146,29 @@ const SettingsPage = () => {
                 </div>
                 <MechanicInfoForm />
               </motion.div>
+            )}
+          </motion.div>
+        )
+      case "billing":
+        return (
+          <motion.div>
+            {isSubscribed ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="flex flex-col space-y-1.5">
+                <h2 className="text-2xl font-semibold tracking-tight">Subscribe to Pro</h2>
+                <p className="text-sm text-muted-foreground">
+                  Unlock premium features and support the app
+                </p>
+              </div>
+              <StripeSubscribe />
+            </motion.div>
+            ) : (
+            <>
+            </>
             )}
           </motion.div>
         )
