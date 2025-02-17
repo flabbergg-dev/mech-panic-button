@@ -2,9 +2,12 @@ import { prisma } from '@/lib/prisma';
 import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { currentUser } from '@clerk/nextjs/server'
+import { updateStripesubscriptionId } from '@/app/actions/user/update-stripe-subscription-id';
 
 export async function POST() {
     try {
+        const user = await currentUser()
         const headersList = await headers()
         const origin = headersList.get('origin')
         // Calculate one month from now
@@ -25,7 +28,7 @@ export async function POST() {
                 quantity: 1,
             },
         ],
-        return_url: `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+        return_url: `${origin}/dashboard/mechanic/${user!.id}?session_id={CHECKOUT_SESSION_ID}`,
         // automatic_tax: {enabled: true},
         ui_mode: 'embedded',
         subscription_data: {
@@ -36,13 +39,7 @@ export async function POST() {
         });
 
         // Update the subscription id of the user in the database
-        // await prisma.user.update({
-        //     where: { id: stripeSubscriptionId },
-        //     data: {
-        //     stripeSubscriptionId: session.id,
-        //     stripeSubscriptionPlan: 'BASIC',
-        //     },
-        // })
+        await updateStripesubscriptionId(user!.id, session.id!)
 
         return NextResponse.json({
             session: session.id,
