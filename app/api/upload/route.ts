@@ -21,30 +21,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    const fileExt = file.name.split(".").pop()?.toLowerCase() || 'png'
+    const sanitizedUserId = userId.replace(/[^a-zA-Z0-9]/g, '')
+    const fileName = `${type}-${Date.now()}.${fileExt}`
+    const folder = type === "profile" ? "profile" : "documents"
+    const filePath = `users/${sanitizedUserId}/${folder}/${fileName}`
+
     // Get current file path if it exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { profileImage: true }
     })
 
-    const bucket = type === "profile" ? "images" : "documents"
+    const bucket: "documents" | "images" = type === "profile" ? "images" : "documents"
 
     // Delete old file if it exists
     if (user?.profileImage) {
-      const oldPath = new URL(user.profileImage).pathname.split('/').pop()
-      if (oldPath) {
-        await supabase.storage
-          .from(bucket)
-          .remove([`${userId}/${oldPath}`])
+      try {
+        const oldUrl = new URL(user.profileImage)
+        const oldPath = oldUrl.pathname.split('/images/').pop()
+        if (oldPath) {
+          await supabase.storage
+            .from(bucket)
+            .remove([oldPath])
+        }
+      } catch (error) {
+        console.error("Error deleting old file:", error)
       }
     }
-
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    const fileExt = file.name.split(".").pop()
-    const fileName = `${Date.now()}.${fileExt}`
-    const filePath = `${userId}/${fileName}`
 
     const { data, error } = await supabase.storage
       .from(bucket)
