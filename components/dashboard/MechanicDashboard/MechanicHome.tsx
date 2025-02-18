@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
 import { Loader } from "@/components/loader"
 import { getStripeCustomerId } from "@/app/actions/user/get-stripe-customer-id";
+import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed";
 
 type BookingWithService = BookingType & {
   service: ServiceRequestType
@@ -33,6 +34,7 @@ export const MechanicHome = () => {
   const [scheduledBookings, setScheduledBookings] = useState<BookingWithService[]>([])
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
   const [currentAvailableBalance, setCurrentAvailableBalance] = useState(0)
+  const isSubscribed = useIsUserSubscribed();
 
   const fetchData = async () => {
     console.log("fetchData called, user:", user?.id)
@@ -213,7 +215,7 @@ export const MechanicHome = () => {
             </div>
           )}
 
-          {scheduledBookings.length > 0 && (
+          {isSubscribed && scheduledBookings.length > 0 && (
             <div>
               <Separator className="my-6" />
               <h3 className="text-lg font-semibold mb-4">Scheduled Services</h3>

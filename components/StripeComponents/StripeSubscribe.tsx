@@ -3,7 +3,6 @@ import { Button } from '../ui/button';
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '../ui/card';
-import { updateStripesubscriptionId } from '@/app/actions/user/update-stripe-subscription-id';
 import { useAuth } from '@clerk/nextjs';
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -25,8 +24,6 @@ export const StripeSubscribe = () => {
 
         if (session) {
           setSessionId(session);
-          await updateStripesubscriptionId(userId!, sessionId!);
-          console.log(session + "session");
         }
 
         if (sessionSecret) {
@@ -56,7 +53,6 @@ export const StripeSubscribe = () => {
 
           if (session) {
             setSessionId(session);
-            await updateStripesubscriptionId(userId!, sessionId!);
             console.log(session + "session");
           }
 

@@ -24,7 +24,6 @@ export default function CustomerDashboard() {
   const payment = params.get("payment")
   const [activeTab, setActiveTab] = useState(tab || "home")
   const userRole = useUserRole()
-  console.log('userRole', userRole)
   // Get the most recent/active service request
   if (!user) {
     return <Loader title="Loading Your Dashboard..." />
@@ -37,12 +36,12 @@ export default function CustomerDashboard() {
           <>
             <div className="flex items-center justify-center min-h-screen">
               <RippleComp>
-                <MechPanicButton user={user} />
+                <MechPanicButton user={user} setActiveTab={setActiveTab} />
               </RippleComp>
             </div>
             <BentoGrid user={user} />
           </>
-        )
+        );
       case "map":
         return <MapContainer user={user} />;
       case "settings":

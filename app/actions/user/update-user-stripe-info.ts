@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 
-export async function updateStripesubscriptionId(userId: string, stripesubscriptionId: string) {
+export async function updateUserStripeInfo(userId: string, stripesubscriptionId: string, stripeSubscriptionStatus: string) {
   if (!userId) {
     return {
       success: false,
@@ -15,6 +15,7 @@ export async function updateStripesubscriptionId(userId: string, stripesubscript
       where: { id: userId },
       data: {
         stripeSubscriptionId: stripesubscriptionId,
+        stripeSubscriptionStatus: stripeSubscriptionStatus as 'ACTIVE' | 'CANCELED' | 'UNPAID' | 'PAST_DUE',
       },
     })
 

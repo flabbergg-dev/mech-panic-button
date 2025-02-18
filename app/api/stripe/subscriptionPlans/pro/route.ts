@@ -2,7 +2,7 @@ import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { currentUser } from '@clerk/nextjs/server'
-import { updateStripesubscriptionId } from '@/app/actions/user/update-stripe-subscription-id';
+import { updateUserStripeInfo } from '@/app/actions/user/update-user-stripe-info';
 
 export async function POST(request: Request) {
     try {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         });
 
         // Update the subscription id of the user in the database
-        await updateStripesubscriptionId(user!.id, session.id!)
+        await updateUserStripeInfo(user!.id, session.id!, session.status!)
 
         return NextResponse.json({
             session: session.id,

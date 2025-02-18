@@ -34,11 +34,12 @@ const getUserLocation = (
 }
 
 type MechPanicButtonProps = {
-  user: any
-  onRequestCreated?: () => void
-}
+  user: any;
+  onRequestCreated?: () => void;
+  setActiveTab?: (tab: string) => void;
+};
 
-export const MechPanicButton = ({ user, onRequestCreated }: MechPanicButtonProps) => {
+export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPanicButtonProps) => {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
   const [isServiceTypeModalOpen, setIsServiceTypeModalOpen] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -107,6 +108,12 @@ export const MechPanicButton = ({ user, onRequestCreated }: MechPanicButtonProps
         serviceType: selectedService,
         status: ServiceStatus.REQUESTED
       })
+
+      setTimeout(() => {
+        if (setActiveTab) {
+          setActiveTab("map")
+        }
+      }, 3000)
 
       console.log('Service request result:', result);
 
