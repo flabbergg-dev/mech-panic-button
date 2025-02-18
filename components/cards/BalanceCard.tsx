@@ -5,12 +5,16 @@ import { motion } from "framer-motion"
 import { EyeClosed, EyeIcon } from "lucide-react"
 import { Card } from "../ui/card"
 
-export const BalanceCard = () => {
-  const [showBalance, setShowBalance] = useState(false)
+interface BalanceCardProps {
+  currentAvailableBalance: number
+}
+
+export const BalanceCard = ({ currentAvailableBalance } : BalanceCardProps) => {
+  const [showBalance, setShowBalance] = useState(false);
 
   const handleShowBalance = () => {
-    setShowBalance(!showBalance)
-  }
+    setShowBalance(!showBalance);
+  };
 
   return (
     <motion.div
@@ -38,12 +42,14 @@ export const BalanceCard = () => {
             )}
           </div>
           {showBalance ? (
-            <span className="text-2xl font-roboto-regular font-semibold">$1,000.00</span>
+            <span className="text-2xl font-roboto-regular font-semibold">
+              ${currentAvailableBalance}
+            </span>
           ) : (
             <span className="text-2xl font-roboto-regular">****</span>
           )}
         </div>
       </Card>
     </motion.div>
-  )
-}
+  );
+};

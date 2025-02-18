@@ -5,8 +5,8 @@ import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicH
 import { MechanicProfileView } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { MechanicHistory } from "@/components/dashboard/MechanicDashboard/MechanicHistory"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
-import MechanicSettings from "@/components/dashboard/MechanicDashboard/MechanicSettings"
 import { useSearchParams } from "next/navigation"
+import SettingsPage from "@/components/dashboard/settings/Settings"
 
 export const MechanicDashboard = () => {
   const params = useSearchParams()
@@ -24,7 +24,7 @@ export const MechanicDashboard = () => {
       case "map":
         return <div className="p-4 font-michroma-sans text-center text-2xl text-muted-foreground ">Map Component (Only Available while on service request)</div>
       case "settings":
-        return <MechanicSettings />
+        return <SettingsPage />
       case "profile":
         return <MechanicProfileView />
       case "history":

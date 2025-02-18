@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       })
     );
 
-    return new NextResponse(JSON.stringify({ 
+    return new NextResponse(JSON.stringify({
       message: 'Test notification sent successfully',
       results 
     }), {

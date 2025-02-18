@@ -128,7 +128,6 @@ export class PrismaUserRepository implements IUserRepository {
           stripeCustomerId: true,
           stripeSubscriptionId: true,
           currentLocation: true,
-         
           stripeSubscriptionPlan: true,
           stripeSubscriptionStatus: true,
           documentsUrl: true,
@@ -160,6 +159,12 @@ export class PrismaUserRepository implements IUserRepository {
         dob,
         ...userData
       } = data
+
+      interface ServicesOfferedType {
+        serviceName: string
+        description: string
+        price: number
+      }
 
       // Handle date conversion
       const dobDate = dob ? new Date(dob) : null
@@ -227,6 +232,7 @@ export class PrismaUserRepository implements IUserRepository {
             bannerImage: uploadedDocs.bannerImage || null,
             driversLicenseId: driversLicenseId || null,
             merchantDocumentUrl: merchantDocumentUrl || null,
+            updatedAt: new Date(),
           },
           update: {
             // Update the Mechanic record if one already exists

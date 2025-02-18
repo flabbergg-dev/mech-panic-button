@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, lazy } from "react"
 import { ServiceRequest } from "@prisma/client"
 import { Card } from "@/components/ui/card"
 import { Navigation, MapPin } from "lucide-react"
-import { Map } from "./Map"
+const Map = lazy(() => import("./Map"));
 
 interface Location {
   latitude: number
@@ -89,5 +89,5 @@ export const ServiceRequestMap = ({
         </div>
       </Card>
     </div>
-  )
+  );
 }

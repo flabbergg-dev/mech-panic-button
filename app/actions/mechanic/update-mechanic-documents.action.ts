@@ -41,6 +41,7 @@ export async function updateMechanicDocumentsAction(
         merchantDocumentUrl: documents.merchantDocumentUrl,
         servicesOffered: [],
         isAvailable: false,
+        updatedAt: new Date(),
       },
       update: {
         driversLicenseId: documents.driversLicenseId,

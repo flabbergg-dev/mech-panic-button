@@ -20,7 +20,7 @@
 MechPanic is a Progressive Web App that connects vehicle owners with certified mechanics. Whether you need emergency roadside assistance or want to schedule routine maintenance, MechPanic makes it easy to find and book reliable mechanic services.
 
 ## Features
-
+ 
 - **Emergency Services**
 
   - Real-time mechanic tracking

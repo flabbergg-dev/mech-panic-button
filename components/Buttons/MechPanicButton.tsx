@@ -9,6 +9,7 @@ import { ServiceStatus, ServiceType } from "@prisma/client"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { createServiceRequestAction } from "@/app/actions/serviceRequestAction"
+import { toast } from "@/hooks/use-toast"
 
 const getUserLocation = (
   setUserCords: React.Dispatch<
@@ -33,11 +34,12 @@ const getUserLocation = (
 }
 
 type MechPanicButtonProps = {
-  user: any
-  onRequestCreated?: () => void
-}
+  user: any;
+  onRequestCreated?: () => void;
+  setActiveTab?: (tab: string) => void;
+};
 
-export const MechPanicButton = ({ user, onRequestCreated }: MechPanicButtonProps) => {
+export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPanicButtonProps) => {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
   const [isServiceTypeModalOpen, setIsServiceTypeModalOpen] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -82,7 +84,12 @@ export const MechPanicButton = ({ user, onRequestCreated }: MechPanicButtonProps
       }
 
       if (!finalLocation || !finalLocation.latitude || !finalLocation.longitude) {
-        throw new Error("Location not available")
+        toast({
+          title: "Location not available",
+          description: "Please provide your location to request service",
+          duration: 5000,
+        })
+        // throw new Error("Location not available")
       }
 
       console.log('Sending service request with:', {
@@ -101,6 +108,12 @@ export const MechPanicButton = ({ user, onRequestCreated }: MechPanicButtonProps
         serviceType: selectedService,
         status: ServiceStatus.REQUESTED
       })
+
+      setTimeout(() => {
+        if (setActiveTab) {
+          setActiveTab("map")
+        }
+      }, 3000)
 
       console.log('Service request result:', result);
 

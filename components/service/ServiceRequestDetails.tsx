@@ -17,6 +17,9 @@ import { supabase } from "@/utils/supabase/client"
 import { getUserToken } from "@/app/actions/getUserToken"
 import { useParams, useRouter } from "next/navigation"
 import { Loader } from "../loader"
+import { updateMechanicLocation } from "@/app/actions/updateMechanicLocation"
+import { updateUserCurrentLocation } from "@/app/actions/user/update-user-current-location"
+import { deleteServiceOfferAction } from "@/app/actions/service/offer/deleteServiceOfferAction"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -63,7 +66,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         setIsRedirecting(true)
         setTimeout(() => {
           router.push(`/dashboard/mechanic`)
-        }, 2000)
+        }, 5000)
       }
 
       if (offerResult.success && offerResult.data) {
@@ -194,10 +197,21 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       if (result.success) {
         // Fetch the updated offer to get the full details
         const offerResult = await getMechanicServiceOfferAction(mechanicId, requestId)
-        if (offerResult.success && offerResult.data) {
+        if (offerResult.success && offerResult.data) { 
           setServiceOffer(offerResult.data)
         }
-        
+
+        // TODO: merge this function with updateCurrentMechanicLocation function location
+
+        const response = await updateMechanicLocation(mechanicId, mechanicLocation)
+        const userResponse = await updateUserCurrentLocation({ userId: userId as string, newLocation: {
+          latitude: mechanicLocation.latitude,
+          longitude: mechanicLocation.longitude
+        } })
+
+        console.log('response', response)
+        console.log('userResponse', userResponse)
+
         toast({
           title: "Success",
           description: "Service offer submitted successfully",
@@ -214,6 +228,27 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       toast({
         title: "Error",
         description: "Failed to submit offer",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCancelServiceOffer = async () => {
+    if (!serviceOffer) return
+
+    try {
+      const response = await deleteServiceOfferAction(serviceOffer.id)
+      setTimeout(() => {
+        window.history.back();
+      }, 2000)
+      console.log('response', response)
+    } catch (error) {
+      console.error("Error cancelling service offer:", error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel offer",
         variant: "destructive"
       })
     } finally {
@@ -256,11 +291,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
   return (
     <div className="relative h-screen">
-      {coordinates && (
-        <MapboxMapComp
-          userCords={coordinates}
-        />
-      )}
+      {coordinates && <MapboxMapComp userCords={coordinates} />}
 
       <HalfSheet>
         <div className="p-4 space-y-6">
@@ -275,14 +306,18 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
               </AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="text-xl font-semibold">{request?.client?.firstName || "Customer"}</h2>
+              <h2 className="text-xl font-semibold">
+                {request?.client?.firstName || "Customer"}
+              </h2>
             </div>
           </div>
 
           <div className="space-y-4">
             {serviceOffer ? (
               <div className="space-y-4">
-                <div className={`p-4 rounded-lg  ${request.status === "PAYMENT_AUTHORIZED" ? "bg-green-950" : "bg-muted"}`}>
+                <div
+                  className={`p-4 rounded-lg  ${request.status === "PAYMENT_AUTHORIZED" ? "bg-green-950" : "bg-muted"}`}
+                >
                   <h3 className="font-medium mb-2">Your Offer</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
@@ -291,11 +326,17 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
                     </div>
                     {serviceOffer.note && (
                       <div className="mt-2">
-                        <span className="text-sm text-muted-foreground">Note: {serviceOffer.note}</span>
+                        <span className="text-sm text-muted-foreground">
+                          Note: {serviceOffer.note}
+                        </span>
                       </div>
                     )}
                     <div className="mt-2">
-                      <span className={`text-sm font-medium  transition-colors duration-200 ${request.status === "PAYMENT_AUTHORIZED" ? "text-green-500" : "text-muted-foreground"}`}>{getOfferStatusMessage()}</span>
+                      <span
+                        className={`text-sm font-medium  transition-colors duration-200 ${request.status === "PAYMENT_AUTHORIZED" ? "text-green-500" : "text-muted-foreground"}`}
+                      >
+                        {getOfferStatusMessage()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -343,27 +384,40 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           )}
 
           <div className="flex gap-4">
-
             {/* Button to go back */}
-            {serviceOffer && serviceOffer.status === 'ACCEPTED' ? (
-              
-           null
-            ) : (
-              <Button variant={serviceOffer && (serviceOffer.status === 'EXPIRED' || serviceOffer.status === 'REJECTED' || serviceOffer.status === 'DECLINED') ? "destructive" : "outline"} className={"flex-1"} onClick={() => window.history.back()}>
+            {serviceOffer && serviceOffer.status === "ACCEPTED" ? null : (
+              <Button
+                variant={
+                  serviceOffer &&
+                  (serviceOffer.status === "EXPIRED" ||
+                    serviceOffer.status === "REJECTED" ||
+                    serviceOffer.status === "DECLINED")
+                    ? "destructive"
+                    : "outline"
+                }
+                className={"flex-1"}
+                onClick={serviceOffer ? handleCancelServiceOffer : () => router.back()}
+              >
                 Cancel
               </Button>
             )}
             {/* Button to go to map with the location of the service request */}
-            {serviceOffer && serviceOffer.status === 'ACCEPTED' ? (
-              <Button variant="default" className="flex-1 disabled:opacity-50 bg-green-600 disabled:bg-gray-500" onClick={() => goToMap(request)}
-              disabled={request.status === 'REQUESTED' || request.status === 'ACCEPTED'  }
+            {serviceOffer && serviceOffer.status === "ACCEPTED" ? (
+              <Button
+                variant="default"
+                className="flex-1 disabled:opacity-50 bg-green-600 disabled:bg-gray-500"
+                onClick={() => goToMap(request)}
+                disabled={
+                  request.status === "REQUESTED" ||
+                  request.status === "ACCEPTED"
+                }
               >
                 Go to Map
               </Button>
             ) : null}
             {/* Button if there's no offer or offer is expired */}
             {!serviceOffer ? (
-              <Button 
+              <Button
                 className="flex-1"
                 onClick={handleServiceOffer}
                 disabled={isSubmitting || !price || !mechanicLocation}
@@ -375,5 +429,5 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         </div>
       </HalfSheet>
     </div>
-  )
+  );
 }

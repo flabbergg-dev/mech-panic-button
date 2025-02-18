@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
 import { checkUserRoleAction } from "@/app/actions/user/check-user-role.action"
-import { MechanicDocuments } from "@/components/onboarding/mechanic-documents"
 import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -19,6 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { MechanicOnboarding } from "@/components/onboarding/mechanic-onboarding"
+
+// TODO: 
+// - Add param on page  to  catch the redirect of stripe
+// - Add stripe onboarding
 
 export default function OnboardingPage() {
   const { user } = useUser()
@@ -33,7 +37,11 @@ export default function OnboardingPage() {
     lastName: "",
     email: "",
   })
-  
+  const [currentStep, setCurrentStep] = useState<
+    "StripeAccountSetup" | "documents"
+  >("StripeAccountSetup");
+  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
+
   // verify if the user is already a customer or mechanic
   useEffect(() => {
     const checkRole = async () => {
@@ -42,7 +50,7 @@ export default function OnboardingPage() {
         router.push('/dashboard')
       }
     }
-    
+
     if (user) {
       checkRole()
     }
@@ -133,9 +141,6 @@ export default function OnboardingPage() {
     }))
   }
 
-  // If mechanic role is selected, show document upload form
-
-
   return (
     <div className="container max-w-2xl mx-auto py-8">
       <div className="space-y-8">
@@ -186,7 +191,9 @@ export default function OnboardingPage() {
             <Label>I am a...</Label>
             <RadioGroup
               value={selectedRole || undefined}
-              onValueChange={(value) => handleRoleSelection(value as "Customer" | "Mechanic")}
+              onValueChange={(value) =>
+                handleRoleSelection(value as "Customer" | "Mechanic")
+              }
               className="grid grid-cols-2 gap-4 mt-2"
               disabled={isSubmitting}
             >
@@ -222,9 +229,16 @@ export default function OnboardingPage() {
 
           <Button onClick={handleFormSubmission}>Submit</Button>
 
-          { selectedRole === "Mechanic" && (
-     <MechanicDocuments formData={formData} />
-  )}
+          {selectedRole === "Mechanic" && (
+            // If mechanic role is selected, show document upload form
+            <MechanicOnboarding
+              formData={formData}
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+              stripeAccountId={stripeAccountId}
+              setStripeAccountId={setStripeAccountId}
+            />
+          )}
         </div>
       </div>
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
@@ -232,19 +246,18 @@ export default function OnboardingPage() {
           <DialogHeader>
             <DialogTitle>Confirm Role Selection</DialogTitle>
             <DialogDescription>
-              Are you sure you want to continue as a {pendingRole}? This choice will determine your experience on our platform.
+              Are you sure you want to continue as a {pendingRole}? This choice
+              will determine your experience on our platform.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={cancelRoleSelection}>
               Cancel
             </Button>
-            <Button onClick={confirmRoleSelection}>
-              Confirm
-            </Button>
+            <Button onClick={confirmRoleSelection}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

@@ -11,6 +11,7 @@ const onboardingSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   role: z.enum(["Customer", "Mechanic"]),
+  stripeAccountId: z.string().optional(),
 })
 
 type OnboardingData = z.infer<typeof onboardingSchema>
@@ -47,6 +48,7 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         redirect: '/dashboard'
       }
     }
+
     if (!userId) {
       return {
         success: false,
@@ -56,15 +58,15 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
     // Create user profile in database
     const user = await prisma.user.create({
       data: {
-        id: clerkUser.id,
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        email: validatedData.email,
-        role: validatedData.role,
-        profileImage: clerkUser.imageUrl,
-        documentsUrl: [],
-        currentLocation: undefined,
-       
+      id: clerkUser.id,
+      firstName: validatedData.firstName,
+      lastName: validatedData.lastName,
+      email: validatedData.email,
+      role: validatedData.role,
+      profileImage: clerkUser.imageUrl,
+      documentsUrl: [],
+      currentLocation: undefined,
+      stripeCustomerId: validatedData.stripeAccountId || null,
       },
     })
 
@@ -76,14 +78,25 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
     })
 
     // If user is a mechanic, create mechanic profile
-    if (validatedData.role === "Mechanic") {
+    try {
+      if (validatedData.role === "Mechanic") {
+
       await prisma.mechanic.create({
         data: {
           userId: user.id,
           servicesOffered: [],
           isAvailable: false,
+          updatedAt: new Date(),
         },
       })
+
+      }
+    } catch (error) {
+      console.error("Error creating mechanic profile:", error)
+      return {
+      success: false,
+      error: "Failed to create mechanic profile",
+      }
     }
 
     revalidatePath('/dashboard')

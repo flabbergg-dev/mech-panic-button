@@ -27,7 +27,10 @@ export async function getAllUsersAction() {
         throw new Error("Users not found")
         }
 
-        return users
+        return {
+            success: true,
+            data: users,
+        }
     } catch (error) {
         console.error("Error in getAllUsersAction:", error)
         return {

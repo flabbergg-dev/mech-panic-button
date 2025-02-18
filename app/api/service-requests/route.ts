@@ -17,8 +17,8 @@ export async function GET(request: Request) {
     if (!status || !Object.values(ServiceStatus).includes(status)) {
       return new NextResponse("Invalid status parameter", { status: 400 })
     }
-    
-    
+
+
     const serviceRequests = await prisma.serviceRequest.findMany({
       where: {
         status: status,

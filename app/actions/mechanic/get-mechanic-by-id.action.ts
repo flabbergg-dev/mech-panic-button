@@ -4,8 +4,6 @@ import { prisma } from "@/lib/prisma"
 
 export async function getMechanicByIdAction(userId: string) {
     try {
-        console.log("Fetching mechanic profile for ID:", userId)
-
         const mechanic = await prisma.mechanic.findUnique({
             where: { userId: userId },
             select: {
@@ -20,12 +18,14 @@ export async function getMechanicByIdAction(userId: string) {
                 merchantDocumentUrl: true,
                 earnings: true,
                 user: true,
-                serviceRequests: true
+                serviceRequests: true,
+                availability: true,
+                location: true,
+                serviceArea: true,
+                createdAt: true,
+                updatedAt: true,
             }
         })
-
-        console.log("Database result:", mechanic)
-
         if (!mechanic) {
         console.error("Mechanic not found:", userId)
         throw new Error("Mechanic not found")
@@ -33,7 +33,7 @@ export async function getMechanicByIdAction(userId: string) {
 
         return {
         success: true,
-        data: mechanic,
+        mechanic,
         }
     } catch (error) {
         console.error("Error in getMechanicByIdAction:", error)
