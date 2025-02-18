@@ -22,7 +22,7 @@ interface MapProps {
   onRouteCalculated?: (duration: number) => void
 }
 
-export const Map = ({ center, markers, showRoute, onRouteCalculated }: MapProps) => {
+const Map = ({ center, markers, showRoute, onRouteCalculated }: MapProps) => {
   const [map, setMap] = useState<mapboxgl.Map | null>(null)
 
   useEffect(() => {
@@ -133,3 +133,5 @@ export const Map = ({ center, markers, showRoute, onRouteCalculated }: MapProps)
     <div id="map" className="w-full h-full" />
   )
 }
+
+export default Map;

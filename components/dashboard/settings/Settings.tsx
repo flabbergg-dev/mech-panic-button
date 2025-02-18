@@ -77,6 +77,9 @@ const SettingsPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const isSubscribed = useIsUserSubscribed()
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null)
+  const [currentAvailableBalance, setCurrentAvailableBalance] = useState<
+    number | null
+  >(null);
 
   // get customer data from stripe
   const fetchData = async () => {
@@ -106,10 +109,68 @@ const SettingsPage = () => {
     }
   }
 
+  const handleSubscriptionCancel = async () => {
+    fetch(`/api/stripe/subscriptionPlans/cancel-subscription`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
+  const handleWithdrawFunds = async () => {
+    fetch(`/api/stripe/connect-withdraw-funds`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        // TODO: add amount to withdraw
+        amount: 400,
+        destination: stripeConnectId,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
+  const fetchBalance = async () => {
+    fetch(`/api/stripe/connect-balance-funds`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        destinationAccount: stripeConnectId,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+        setCurrentAvailableBalance(data.balance);
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+  }
+
   useEffect(() => {
     fetchStripeConnectId()
     if(isSubscribed === true) {
       fetchData()
+      fetchBalance()
     }
   }, [isSubscribed, stripeConnectId])
 
@@ -151,27 +212,87 @@ const SettingsPage = () => {
         )
       case "billing":
         return (
-          <motion.div>
-            {isSubscribed ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="flex flex-col space-y-1.5">
-                <h2 className="text-2xl font-semibold tracking-tight">Subscribe to Pro</h2>
-                <p className="text-sm text-muted-foreground">
-                  Unlock premium features and support the app
-                </p>
-              </div>
-              <StripeSubscribe />
-            </motion.div>
+          <div>
+            {!isSubscribed ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="flex flex-col space-y-1.5">
+                  <h2 className="text-2xl font-semibold tracking-tight">
+                    Subscribe to Pro
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Unlock premium features and support the app
+                  </p>
+                </div>
+                <StripeSubscribe />
+              </motion.div>
             ) : (
-            <>
-            </>
+              <motion.div>
+                <div className="flex flex-col items-start justify-start space-y-4">
+                  <h2 className="text-2xl font-semibold tracking-tight">
+                    Billing Information
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your subscription and payment methods
+                  </p>
+                </div>
+                <div className="pt-4 flex md:flex-row flex-col">
+                  <div className="flex flex-col justify-between items-center border-2 rounded-md p-4">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex justify-between items-center">
+                        <p>subscription:</p>
+                        <p>Pro</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p>Status:</p>
+                        <p>active</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p>your next payment is:</p>
+                        <p>April 1st, 2022</p>
+                      </div>
+                    </div>
+                    <div className="w-full pt-4">
+                      <Button
+                        className="w-full"
+                        onClick={() => handleSubscriptionCancel()}
+                      >
+                        Cancel Subscription
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-between items-center border-2 rounded-md p-4 mt-4 md:mt-0 md:ml-4">
+                    <div>
+                      <p>Invoice History:</p>
+                      <Button className="w-full">View Invoices</Button>
+                    </div>
+                    {/* TODO: Change to modal where they choose amount to withdraw */}
+                    <div className="flex gap-16">
+                      <p>
+                        Total:
+                      </p>
+                      <p>
+                        {currentAvailableBalance}
+                      </p>
+                    </div>
+                    <div>
+                      <p>Withdraw</p>
+                      <Button
+                        className="w-full"
+                        onClick={() => handleWithdrawFunds()}
+                      >
+                        Withdraw Funds
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             )}
-          </motion.div>
-        )
+          </div>
+        );
       default:
         return (
           <motion.div

@@ -17,6 +17,8 @@ import { supabase } from "@/utils/supabase/client"
 import { getUserToken } from "@/app/actions/getUserToken"
 import { useParams, useRouter } from "next/navigation"
 import { Loader } from "../loader"
+import { updateMechanicLocation } from "@/app/actions/updateMechanicLocation"
+import { updateUserCurrentLocation } from "@/app/actions/user/update-user-current-location"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -197,7 +199,15 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         if (offerResult.success && offerResult.data) {
           setServiceOffer(offerResult.data)
         }
+
+        // TODO: merge this function with updateCurrentMechanicLocation function location
         
+        const response = await updateMechanicLocation(mechanicId, mechanicLocation)
+        const userResponse = await updateUserCurrentLocation({ userId: userId as string, newLocation: mechanicLocation })
+
+        console.log('response', response)
+        console.log('userResponse', userResponse)
+
         toast({
           title: "Success",
           description: "Service offer submitted successfully",
