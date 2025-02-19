@@ -20,6 +20,7 @@ import { Loader } from "../loader"
 import { updateMechanicLocation } from "@/app/actions/updateMechanicLocation"
 import { updateUserCurrentLocation } from "@/app/actions/user/update-user-current-location"
 import { deleteServiceOfferAction } from "@/app/actions/service/offer/deleteServiceOfferAction"
+import { useEmailNotification } from "@/hooks/useEmailNotification"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -47,6 +48,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   const [mechanicLocation, setMechanicLocation] = useState<{latitude: number; longitude: number} | null>(null)
   const { toast } = useToast()
   const router = useRouter()
+  const {sendEmail} = useEmailNotification()
   
   const fetchData = async () => {
     try {
@@ -203,7 +205,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
         // TODO: merge this function with updateCurrentMechanicLocation function location
 
-        const response = await updateMechanicLocation(mechanicId, mechanicLocation)
+        const response = await updateMechanicLocation(requestId, mechanicLocation)
         const userResponse = await updateUserCurrentLocation({ userId: userId as string, newLocation: {
           latitude: mechanicLocation.latitude,
           longitude: mechanicLocation.longitude
@@ -216,6 +218,12 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           title: "Success",
           description: "Service offer submitted successfully",
         })
+        await sendEmail({
+          to: request.client.email,
+          subject: 'Service Offer Submitted',
+          message: `Your service offer for ${request.serviceType} has been submitted.`,
+          userName: request.client.firstName
+        }) 
       } else {
         toast({
           title: "Error",
@@ -232,6 +240,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       })
     } finally {
       setIsSubmitting(false)
+     
     }
   }
 

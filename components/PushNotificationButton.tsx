@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { useEmailNotification } from '@/hooks/useEmailNotification';
 
 export function PushNotificationButton({ className }: { className?: string }) {
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
@@ -16,6 +17,7 @@ export function PushNotificationButton({ className }: { className?: string }) {
   const [loading, setLoading] = useState(true);
   const { isSignedIn, user } = useUser();
   const [error, setError] = useState<string | null>(null);
+  const { sendEmail } = useEmailNotification()
 
   useEffect(() => {
     async function registerServiceWorker() {
@@ -78,6 +80,9 @@ export function PushNotificationButton({ className }: { className?: string }) {
     try {
       setIsEmailEnabled(!isEmailEnabled);
       // You can add an API call here to update user preferences in your database
+      sendEmail({to:"fernando.aponte@digital-sunsets.com", subject:"Test email", message:"This is a test email", userName:"Fernando Aponte"})
+      .then(() => console.log('Email sent successfully'))
+      .catch((err) => console.error('Error sending email:', err));
     } catch (err) {
       console.error('Error toggling email notifications:', err);
       setIsEmailEnabled(!isEmailEnabled); // Revert on error
@@ -123,7 +128,6 @@ export function PushNotificationButton({ className }: { className?: string }) {
              
             ) : ( <Mail className="h-4 w-4" />
             )}
-            {/* <span className="text-sm">Email Notifications</span> */}
           </div>
         </button> 
         </TooltipTrigger>
