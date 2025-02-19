@@ -164,7 +164,7 @@ export function MechanicInfoForm() {
                 {...register("merchantDocumentUrl")}
               />
               <p className="text-sm text-muted-foreground">
-                Look for this in your Interal 
+                Look for this in your Internal Revenue Service 
               </p>
             </div>
           </div>

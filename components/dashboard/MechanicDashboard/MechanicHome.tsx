@@ -13,7 +13,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // import { PushNotificationButton } from "../../PushNotificationButton"
-import { ServiceRequest as ServiceRequestType, Booking as BookingType } from "@prisma/client"
+import { ServiceRequest as ServiceRequestType, Booking as BookingType, SubscriptionPlan } from "@prisma/client"
 import { getUserToken } from "@/app/actions/getUserToken"
 import { supabase } from "@/utils/supabase/client"
 import { cn } from "@/lib/utils"
@@ -34,7 +34,7 @@ export const MechanicHome = () => {
   const [scheduledBookings, setScheduledBookings] = useState<BookingWithService[]>([])
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
   const [currentAvailableBalance, setCurrentAvailableBalance] = useState(0)
-  const isSubscribed = useIsUserSubscribed();
+  const {isSubscribed, subscriptionPlan} = useIsUserSubscribed();
 
   const fetchData = async () => {
     console.log("fetchData called, user:", user?.id)
@@ -215,7 +215,7 @@ export const MechanicHome = () => {
             </div>
           )}
 
-          {isSubscribed && scheduledBookings.length > 0 && (
+          {isSubscribed &&  subscriptionPlan && subscriptionPlan === SubscriptionPlan.PRO && scheduledBookings.length > 0 && (
             <div>
               <Separator className="my-6" />
               <h3 className="text-lg font-semibold mb-4">Scheduled Services</h3>

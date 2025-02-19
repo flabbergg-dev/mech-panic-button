@@ -15,12 +15,20 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export async function subscribeToPushNotifications() {
   try {
+    // Check if running on iOS Safari
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    if (isSafari && isIOS) {
+      throw new Error('Push notifications are not supported in Safari on iOS. Please use a different browser or install the app to your home screen.');
+    }
+
     if (!('serviceWorker' in navigator)) {
-      throw new Error('Service Worker is not supported');
+      throw new Error('Service Worker not supported in this browser');
     }
     
     if (!('Notification' in window)) {
-      throw new Error('Notifications are not supported');
+      throw new Error('Notifications are not supported in this browser');
     }
 
     const permission = await Notification.requestPermission();

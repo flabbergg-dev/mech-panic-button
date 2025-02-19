@@ -74,6 +74,10 @@ export default function RootLayout({
             card: "bg-background ",
             logoImage: "size-[184px] object-contain pb-8",
             otpCodeFieldInput: "bg-foreground text-text",
+            alternativeMethodsBlockButton: "bg-white border border-solid border-gray-200 hover:bg-transparent hover:border-black text-gray-500 hover:text-white hover:bg-gray-800 hover:border-primary",
+            alternativeMethodsBlockButtonText: "font-semibold",
+            alternativeMethodsBlockButtonIcon: "text-gray-400",
+            alternativeMethodsBlockButtonIconHover: "text-white",
 
           },
         }}

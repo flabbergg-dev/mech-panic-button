@@ -72,7 +72,7 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
                 handleOnClickEvent();
               }}
             >
-              Sign up
+              Start Onboarding
             </Button>
           </div>
         )}

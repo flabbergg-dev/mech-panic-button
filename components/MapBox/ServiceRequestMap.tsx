@@ -24,7 +24,7 @@ export const ServiceRequestMap = ({
   serviceRequest,
   customerLocation,
   mechanicLocation,
-  showMechanicLocation = false,
+  showMechanicLocation = true,
   showRoute = false,
   onRouteCalculated,
 }: ServiceRequestMapProps) => {
