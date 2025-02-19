@@ -13,9 +13,11 @@ import { useEmailNotification } from '@/hooks/useEmailNotification';
 
 export function PushNotificationButton({ className }: { className?: string }) {
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
-  const [isEmailEnabled, setIsEmailEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const { isSignedIn, user } = useUser();
+  // TODO: get user email notifications state
+  // const [isEmailEnabled, setIsEmailEnabled] = useState(user?.emailNotificationsEnabled);
+  const [isEmailEnabled, setIsEmailEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { sendEmail } = useEmailNotification()
 
