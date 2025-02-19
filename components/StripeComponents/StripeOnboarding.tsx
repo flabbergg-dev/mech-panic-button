@@ -23,7 +23,7 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
   const handleOnClickEvent = async () => {
     setAccountCreatePending(true);
     setError(false);
-
+    // fix this fetch call
     await fetch("/api/stripe/account", {
       method: "POST",
     })
