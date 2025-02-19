@@ -200,11 +200,19 @@ export default function MechanicMapPage() {
       if (!request?.client.email) return
       // Send email notification to client
       await sendEmail({
-        to: 'fernando.aponte@digital-sunsets.com',
+        to: request?.client.email,
         subject: "Mechanic En Route",
         message: `Your mechanic is on their way to your location. Estimated arrival time: ${estimatedTime ? Math.ceil(estimatedTime / 60) : 'calculating...'} minutes.`,
         userName: request?.client.firstName
-      });
+      }, false)
+      .then((result) => {
+        if (result.skipped) {
+          console.log('Email notification skipped - notifications disabled');
+        } else if (result.sent) {
+          console.log('Email sent successfully');
+        }
+      })
+      .catch((err) => console.error('Error sending email:', err));
       
     } catch (error) {
       toast({

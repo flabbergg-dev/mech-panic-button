@@ -24,7 +24,7 @@ model User {
   currentLocation          Json?
   stripeSubscriptionPlan   SubscriptionPlan?
   stripeSubscriptionStatus SubscriptionStatus?
-  
+  notificationsEmailEnabled Boolean @default(true)
   documentsUrl             String[]
   bookings                 Booking[]
   ChatUser                 ChatUser[]
