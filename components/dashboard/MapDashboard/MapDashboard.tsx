@@ -62,10 +62,9 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
 
   console.log('customerLocation', customerLocation)
   console.log('mechanicLocation', mechanicLocation)
-  console.log('user', user)
 
   // Show loading state if locations aren't ready
-  if (!customerLocation || !mechanicLocation || !user) {
+  if (!customerLocation || !user) {
     return <div className="flex items-center justify-center h-[80vh]">Loading map...</div>
   }
 
@@ -73,7 +72,7 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
       <ServiceRequestMap
         serviceRequest={serviceRequest}
         customerLocation={customerLocation}
-        mechanicLocation={mechanicLocation}
+        mechanicLocation={mechanicLocation!}
         showMechanicLocation={serviceStatus !== "PAYMENT_PENDING"}
       />
     )

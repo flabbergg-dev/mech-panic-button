@@ -197,7 +197,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       if (result.success) {
         // Fetch the updated offer to get the full details
         const offerResult = await getMechanicServiceOfferAction(mechanicId, requestId)
-        if (offerResult.success && offerResult.data) { 
+        if (offerResult.success && offerResult.data) {
           setServiceOffer(offerResult.data)
         }
 

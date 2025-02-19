@@ -7,6 +7,7 @@ import { useState, Suspense, useEffect } from "react"
 import { SkeletonBasic } from "@/components/Skeletons/SkeletonBasic"
 import { MapContainer } from "@/components/dashboard/MapDashboard/MapContainer"
 import { useServiceRequestStore } from "@/store/serviceRequestStore"
+
 import { useSearchParams } from "next/navigation"
 import { Loader } from "@/components/loader"
 import { RippleComp } from "@/components/Animated/RippleComp"
@@ -15,6 +16,7 @@ import BentoGrid from "@/components/BentoBoxes/BentoGrid"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import { useUserRole } from "@/hooks/use-user-role"
 import SettingsPage from "@/components/dashboard/settings/Settings"
+import { MapDashboard } from "@/components/dashboard/MapDashboard/MapDashboard"
 
 export default function CustomerDashboard() {
   const { user } = useUser()
@@ -25,6 +27,7 @@ export default function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState(tab || "home")
   const userRole = useUserRole()
   // Get the most recent/active service request
+  const activeServiceRequest = serviceRequests[0];
   if (!user) {
     return <Loader title="Loading Your Dashboard..." />
   }
@@ -43,7 +46,32 @@ export default function CustomerDashboard() {
           </>
         );
       case "map":
-        return <MapContainer user={user} />;
+        return activeServiceRequest ? (
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <h3 className="font-semibold">
+                Service Status: {serviceStatus || "Waiting for mechanic"}
+              </h3>
+            </div>
+            {/* <MapContainer user={user} /> */}
+            <MapDashboard serviceRequest={activeServiceRequest} />
+            {serviceStatus === "en_route" && (
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <p>
+                  Mechanic is on the way! Estimated arrival time:{" "}
+                  {/* Add ETA calculation */}
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 text-center">
+            <h3 className="text-lg font-semibold">No active service request</h3>
+            <p className="text-muted-foreground">
+              Accept a service offer to see mechanic location
+            </p>
+          </div>
+        );
       case "settings":
         return (
         <Suspense fallback={<SkeletonBasic />}>
