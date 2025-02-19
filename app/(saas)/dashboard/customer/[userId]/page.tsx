@@ -1,8 +1,8 @@
 import { type Metadata } from "next"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
-import CustomerDashboard from "./CustomerDashboard"
 import { Navbar } from "@/components/navigation/client-navbar.navigation"
+import { ClientDashboard } from "@/components/dashboard/ClientDashboard/ClientDashboard";
 
 export const metadata: Metadata = {
   title: "Customer Dashboard - Mech-Panic Button",
@@ -15,12 +15,10 @@ export default async function Page() {
     redirect('/sign-in')
   }
 
-
-
   return (
   <>
-   <Navbar/>
-   <CustomerDashboard />
+  <Navbar/>
+  <ClientDashboard />
   </>
 
 )

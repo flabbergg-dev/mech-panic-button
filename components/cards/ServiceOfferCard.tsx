@@ -5,6 +5,7 @@ import { handleServiceOfferAction } from '@/app/actions/serviceOfferAction'
 import { loadStripe } from '@stripe/stripe-js'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
+import { getStripeCustomerId } from '@/app/actions/user/get-stripe-customer-id'
 
 interface Location {
   latitude: number
@@ -13,6 +14,7 @@ interface Location {
 
 interface ServiceOfferCardProps {
   serviceRequestId: string
+  mechanicId: string
   mechanicName: string
   mechanicRating?: number
   price: number
@@ -32,6 +34,7 @@ interface ServiceOfferCardProps {
 
 export function ServiceOfferCard({
   serviceRequestId,
+  mechanicId,
   mechanicName,
   mechanicRating,
   price,
@@ -47,65 +50,6 @@ export function ServiceOfferCard({
   const [estimatedTime, setEstimatedTime] = React.useState<string | null>(null)
   const [firstName, lastName] = mechanicName.split(' ')
 
-  const calculateEstimatedTime = React.useCallback(async () => {
-
-    // Validate coordinates
-    if (!customerLocation?.latitude || !customerLocation?.longitude) {
-      console.error('Invalid customer location coordinates')
-      setEstimatedTime("N/A")
-      return
-    }
-    if (!mechanicLocation?.latitude || !mechanicLocation?.longitude) {
-      console.error('Invalid mechanic location coordinates')
-      setEstimatedTime("N/A")
-      return
-    }
-
-    // Validate Mapbox token
-    if (!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN) {
-      console.error('Mapbox access token not found')
-      setEstimatedTime("N/A")
-      return
-    }
-
-    try {
-      const mechanicCoords = mechanicLocation && `${mechanicLocation.longitude},${mechanicLocation.latitude}`
-      const customerCoords = customerLocation && `${customerLocation.longitude},${customerLocation.latitude}`
-
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${mechanicCoords};${customerCoords}`
-      const query = await fetch(
-        `${url}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`,
-        { 
-          method: "GET",
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
-      )
-      
-      if (!query.ok) {
-        throw new Error(`Mapbox API error: ${query.statusText}`)
-      }
-
-      const json = await query.json()
-      
-      if (json.routes?.[0]?.duration) {
-        const durationMinutes = Math.round(json.routes[0].duration / 60)
-        setEstimatedTime(`${durationMinutes} min`)
-      } else {
-        console.error('No valid route found in Mapbox response:', json)
-        setEstimatedTime("N/A")
-      }
-    } catch (error) {
-      console.error('Error calculating distance:', error)
-      setEstimatedTime("N/A")
-    }
-  }, [mechanicLocation, customerLocation])
-
-  React.useEffect(() => {
-    calculateEstimatedTime()
-  }, [calculateEstimatedTime])
-
   const handleOffer = async (accepted: boolean) => {
     try {
       setIsLoading(true)
@@ -116,26 +60,29 @@ export function ServiceOfferCard({
       }
 
       if (accepted) {
-        const response = await fetch('/api/create-payment-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            serviceRequestId,
-            amount: price,
-            userId
-          }),
-        })
-
-        const session = await response.json()
-        
-        if (!session.success) {
-          throw new Error('Failed to create payment session')
+        const stripeConnectId = await getStripeCustomerId(mechanicId);
+        if (!stripeConnectId) {
+          throw new Error('Mechanic does not have a stripe account')
+        } else {
+          const response = await fetch('/api/create-payment-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              serviceRequestId,
+              amount: price,
+              userId,
+              stripeConnectId
+            }),
+          })
+          const session = await response.json()
+          if (!session.success) {
+            throw new Error('Failed to create payment session')
+          }
+          const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+          await stripe?.redirectToCheckout({ sessionId: session.sessionId })
         }
-
-        const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
-        await stripe?.redirectToCheckout({ sessionId: session.sessionId })
       }
 
       if (onOfferHandled) {

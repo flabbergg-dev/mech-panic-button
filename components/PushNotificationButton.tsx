@@ -4,20 +4,34 @@ import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '@/utils/pushNotifications';
 import { useUser } from '@clerk/nextjs';
-import { Bell, BellOff } from 'lucide-react';
+import { Bell, BellOff, Mail, MailOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 export function PushNotificationButton({ className }: { className?: string }) {
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+  const [isEmailEnabled, setIsEmailEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function registerServiceWorker() {
       try {
+        // Check if running on iOS Safari
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        
+        if (isSafari && isIOS) {
+          setError('Push notifications are not available on iOS Safari. Email notifications will be used instead.');
+          setLoading(false);
+          return;
+        }
+
         if (!('serviceWorker' in navigator)) {
-          setError('Service Worker not supported');
+          setError('Push notifications are not supported in this browser. Email notifications will be used instead.');
           setLoading(false);
           return;
         }
@@ -26,76 +40,99 @@ export function PushNotificationButton({ className }: { className?: string }) {
         console.log('Service Worker registered:', registration);
 
         const subscription = await registration.pushManager.getSubscription();
-        setIsSubscribed(!!subscription);
+        setIsPushSubscribed(!!subscription);
         setLoading(false);
       } catch (err) {
-        console.error('Service Worker registration failed:', err);
-        setError('Failed to register Service Worker');
+        console.error('Error registering service worker:', err);
+        setError('Failed to setup push notifications. Email notifications will be used instead.');
         setLoading(false);
       }
     }
 
     if (isSignedIn) {
       registerServiceWorker();
-    } else {
-      setLoading(false);
     }
   }, [isSignedIn]);
 
-  const handleSubscribe = async () => {
+  const togglePushNotifications = async () => {
     try {
-      await subscribeToPushNotifications();
-      setIsSubscribed(true);
-    } catch (error) {
-      console.error('Failed to subscribe to notifications:', error);
+      setLoading(true);
+      setError(null);
+
+      if (isPushSubscribed) {
+        await unsubscribeFromPushNotifications();
+        setIsPushSubscribed(false);
+      } else {
+        await subscribeToPushNotifications();
+        setIsPushSubscribed(true);
+      }
+    } catch (err: any) {
+      console.error('Error toggling notifications:', err);
+      setError(err.message || 'Failed to toggle notifications');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUnsubscribe = async () => {
+  const toggleEmailNotifications = async () => {
     try {
-      await unsubscribeFromPushNotifications();
-      setIsSubscribed(false);
-    } catch (error) {
-      console.error('Failed to unsubscribe from notifications:', error);
+      setIsEmailEnabled(!isEmailEnabled);
+      // You can add an API call here to update user preferences in your database
+    } catch (err) {
+      console.error('Error toggling email notifications:', err);
+      setIsEmailEnabled(!isEmailEnabled); // Revert on error
     }
   };
 
-  // Show loading state
-  if (loading) {
-    return (
-      <Button variant="ghost" size="icon" className={cn("relative", className)} disabled>
-        <span className="animate-pulse">Loading...</span>
-      </Button>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <Button variant="ghost" size="icon" className={cn("relative", className)} disabled>
-        <span className="text-xs text-red-500">{error}</span>
-      </Button>
-    );
-  }
-
-  // Don't render if not signed in
-  if (!isSignedIn) {
-    return null;
-  }
+  if (!isSignedIn) return null;
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
-      className={cn("relative hover:bg-background/80", className)}
-      title={isSubscribed ? "Disable notifications" : "Enable notifications"}
-    >
-      {isSubscribed ? (
-        <Bell className="h-5 w-5 transition-transform hover:scale-110" />
-      ) : (
-        <BellOff className="h-5 w-5 transition-transform hover:scale-110" />
-      )}
-    </Button>
+    <div className={cn("space-y-4", className)}>
+      <div className="flex flex-row gap-2">
+
+        
+       {!error && ( <div className="flex items-center justify-between py-2">
+        <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          
+          <button 
+           onClick={togglePushNotifications}
+           disabled={loading || !!error}
+          className="flex items-center justify-between w-full py-2 hover:opacity-80 transition-opacity">
+          {isPushSubscribed ?  <Bell className="h-4 w-4" />:   <BellOff className="h-4 w-4" />}
+          
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+          <p>{isPushSubscribed ? 'Disable' : 'Enable'} push notifications</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+        </div>)}
+        <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+        <button 
+          onClick={toggleEmailNotifications}
+          className="flex items-center justify-between w-full py-2 hover:opacity-80 transition-opacity"
+        >
+          <div className="flex items-center gap-2">
+            {isEmailEnabled ? (
+              <MailOpen className="h-4 w-4" />
+             
+            ) : ( <Mail className="h-4 w-4" />
+            )}
+            {/* <span className="text-sm">Email Notifications</span> */}
+          </div>
+        </button> 
+        </TooltipTrigger>
+          <TooltipContent>
+          <p>{isEmailEnabled ? 'Disable' : 'Enable'} email notifications</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+      </div>
+    </div>
   );
 }

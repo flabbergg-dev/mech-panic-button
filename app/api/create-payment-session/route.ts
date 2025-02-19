@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   try {
-    const { serviceRequestId, amount, userId } = await request.json()
+    const { serviceRequestId, amount, userId, stripeConnectId } = await request.json()
 
     // Create a PaymentIntent with manual capture
     const paymentIntent = await stripe.paymentIntents.create({
@@ -27,6 +27,10 @@ export async function POST(request: Request) {
       mode: 'payment',
       payment_intent_data: {
         capture_method: 'manual',
+        application_fee_amount: 10, // 10% fee
+        transfer_data: {
+          destination: stripeConnectId,
+        },
       },
       line_items: [
         {
@@ -41,14 +45,12 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: new URL(
-        `/dashboard/customer/${userId}`,
-        process.env.NEXT_PUBLIC_APP_URL
-      ).toString() + '?' + new URLSearchParams({
-        tab: 'map',
-        payment: 'authorized'
-      }).toString(),
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/customer/${userId}`,
+      success_url: process.env.NEXT_PUBLIC_APP_URL + `/dashboard/customer/${userId}`,
+      // ).toString() + '?' + new URLSearchParams({
+      //   tab: 'map',
+      //   payment: 'authorized'
+      // }).toString(),
+      cancel_url: process.env.NEXT_PUBLIC_APP_URL + `/dashboard/customer/${userId}`,
       metadata: {
         serviceRequestId,
       },

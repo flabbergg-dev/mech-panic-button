@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 
 import { ModalMapComp } from "@/components/MapBox/ModalMapComp"
 import { Modal } from "@/components/Modal/Modal"
-import { CheckIcon, ChevronRightIcon, WrenchIcon } from "lucide-react"
+import { CheckIcon, ChevronRightIcon, Loader2, WrenchIcon } from "lucide-react"
 import { ServiceStatus, ServiceType } from "@prisma/client"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -298,6 +298,7 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
             onClick={handleServiceRequest}
             disabled={isSubmitting}
           >
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isSubmitting ? "Requesting..." : "Request Service"}
           </Button>
         </div>

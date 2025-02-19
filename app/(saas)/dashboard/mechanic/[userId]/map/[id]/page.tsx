@@ -6,7 +6,7 @@ import { ServiceRequestMap } from '@/components/MapBox/ServiceRequestMap'
 import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/hooks/use-toast'
+import { useEmailNotification } from '@/hooks/useEmailNotification'
 import { updateServiceRequestStatusAction } from '@/app/actions/updateServiceRequestStatusAction'
 import { Loader2Icon, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,7 @@ import { Loader } from '@/components/loader'
 import { PinInput } from '@/components/ui/PinInput'
 import { verifyCompletionCodeAction } from '@/app/actions/verifyCompletionCodeAction'
 import { updateMechanicLocation } from '@/app/actions/updateMechanicLocation'
+import { useToast } from '@/hooks/use-toast'
 
 interface Location {
   latitude: number
@@ -48,6 +49,7 @@ export default function MechanicMapPage() {
   const destLat = searchParams.get('destLat')
   const destLng = searchParams.get('destLng')
   const { toast } = useToast()
+  const { sendEmail } = useEmailNotification();
   const [isLoading, setIsLoading] = useState(false)
   const [showRoute, setShowRoute] = useState(false)
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
@@ -194,6 +196,15 @@ export default function MechanicMapPage() {
         title: "Success",
         description: "You're now on your way to the client",
       })
+
+      if (!request?.client.email) return
+      // Send email notification to client
+      await sendEmail({
+        to: 'fernando.aponte@digital-sunsets.com',
+        subject: "Mechanic En Route",
+        message: `Your mechanic is on their way to your location. Estimated arrival time: ${estimatedTime ? Math.ceil(estimatedTime / 60) : 'calculating...'} minutes.`,
+        userName: request?.client.firstName
+      });
       
     } catch (error) {
       toast({
@@ -353,8 +364,7 @@ export default function MechanicMapPage() {
         <div className="text-center">
           <h2 className="text-xl font-semibold">Service Completed</h2>
           <p className="text-muted-foreground mt-2">This service has already been completed.</p>
-
-                </div>
+        </div>
       </div>
     )
   }
@@ -364,7 +374,6 @@ export default function MechanicMapPage() {
     longitude: parseFloat(destLng)
   }
 
-  
   return (
     <div className="relative min-h-screen">
       {/* Map */}

@@ -21,8 +21,11 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
   const { toast } = useToast();
 
   const handleOnClickEvent = async () => {
+    setAccountCreatePending(true);
+    setError(false);
+
     await fetch("/api/stripe/account", {
-      method: "GET",
+      method: "POST",
     })
       .then((response) => response.json())
       .then((json) => {
@@ -66,13 +69,11 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
         {!accountCreatePending && !stripeAccountId && (
           <div>
             <Button
-              onClick={async () => {
-                setAccountCreatePending(true);
-                setError(false);
+              onClick={() => {
                 handleOnClickEvent();
               }}
             >
-              Sign up
+              Start Onboarding
             </Button>
           </div>
         )}

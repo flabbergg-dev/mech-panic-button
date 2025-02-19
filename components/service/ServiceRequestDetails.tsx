@@ -258,7 +258,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
   const getOfferStatusMessage = () => {
     if (!serviceOffer) return null
-
+    // TODO: Add payment failed clause aswell
     switch (serviceOffer.status) {
       case 'PENDING':
         return "Waiting for client to accept your offer..."

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { ServiceRequestMap } from "@/components/MapBox/ServiceRequestMap"
 import { useUser } from "@clerk/nextjs"
-import { ServiceRequest } from "@prisma/client"
+import { ServiceRequest, ServiceStatus } from "@prisma/client"
 import { useServiceRequestStore } from "@/store/serviceRequestStore"
 import { toast } from "@/hooks/use-toast"
 
@@ -73,7 +73,7 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
         serviceRequest={serviceRequest}
         customerLocation={customerLocation}
         mechanicLocation={mechanicLocation!}
-        showMechanicLocation={serviceStatus !== "PAYMENT_PENDING"}
+        showMechanicLocation={serviceStatus !== ServiceStatus.PAYMENT_AUTHORIZED}
       />
     )
 }
