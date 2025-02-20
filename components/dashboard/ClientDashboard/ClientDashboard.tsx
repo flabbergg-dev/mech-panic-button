@@ -13,7 +13,7 @@ import { Loader2Icon } from "lucide-react"
 import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
-import { toast } from '@/hooks/use-toast'
+// import { toast } from '@/hooks/use-toast'
 import { motion } from 'framer-motion';
 import { ServiceStatus, ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
@@ -21,10 +21,8 @@ import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
 import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
-import { getUserToken } from "@/app/actions/getUserToken";
-import { supabase } from "@/utils/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useServiceRequestStore } from "@/store/serviceRequestStore";
+// import { useServiceRequestStore } from "@/store/serviceRequestStore";
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -32,8 +30,8 @@ export function ClientDashboard() {
   const [customerLocation, setCustomerLocation] = useState<{latitude: number; longitude: number} | null>(null)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
   const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  const { serviceRequests, serviceStatus } = useServiceRequestStore();
-  const activeServiceRequest = serviceRequests[0];
+  // const { serviceRequests, serviceStatus } = useServiceRequestStore();
+  // const activeServiceRequest = serviceRequests[0];
   const {toast} = useToast();
 
   // Get customer location
@@ -102,8 +100,8 @@ export function ClientDashboard() {
   const { requests, offers, loading, error, refetch } = useServiceOffers(user?.id || '')
 
   // Check if there's an active request
-  const activeRequest = requests.find((request: ServiceRequest) => 
-    request.status !== ServiceStatus.COMPLETED  
+  const activeRequest = requests.find((request: ServiceRequest) =>
+    request.status !== ServiceStatus.COMPLETED
   )
 
   // Get mechanic's location updates when in route
@@ -185,63 +183,6 @@ export function ClientDashboard() {
       setIsVerifyingCode(false)
     }
   }
-
-    const fetchData = async () => {
-      try {
-        if (!activeRequest) return;
-
-        // setIsLoading(true);
-        // const result = await getServiceRequestAction(requestId.toString());
-        // if (result.success && result.data) {
-        //   setRequest(result.data);
-        // }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: `#ERR01 : ${error}`,
-          variant: "destructive",
-        });
-      }
-    };
-
-    useEffect(() => {
-      fetchData();
-      // Starts listening for the service request after the arrival code is generated
-      const getToken = async () => {
-        const token = await getUserToken();
-        if (!token) {
-          console.log("No token available");
-          return;
-        }
-        supabase.realtime.setAuth(token);
-
-        const subscribeServiceRequestToChannel = supabase
-          .channel(`service_request_${activeRequest!.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "ServiceRequest",
-              filter: `id=eq.${activeRequest!.id}`,
-            },
-            (payload) => {
-              console.log("Request Received payload:", payload);
-              fetchData();
-            }
-          )
-          .subscribe();
-
-        const unsubscribeFromChannels = () => {
-          supabase.removeChannel(subscribeServiceRequestToChannel);
-        };
-
-        return unsubscribeFromChannels;
-      };
-
-      getToken();
-    }, []);
 
   if (loading || !user) {
     return <div className="flex justify-center items-center h-screen ">

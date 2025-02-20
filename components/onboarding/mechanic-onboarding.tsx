@@ -17,15 +17,6 @@ interface MechanicOnboardingProps {
 
 export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, stripeAccountId, setStripeAccountId}: MechanicOnboardingProps) => {
 
-  // TODO: verify logic so that the embedded works again
-    useEffect(() => {
-      if (stripeAccountId  != null) {
-        setCurrentStep("documents");
-        console.log("stripeAccountId:  " + stripeAccountId);
-        console.log("currentStep:  " + currentStep);
-      }
-    }, [stripeAccountId, setCurrentStep, currentStep]);
-
     const renderedContent = React.useMemo(
       () => (
         <HalfSheet className="bg-background border-t rounded-t-xl p-6">

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { prisma } from '@/lib/prisma'
-import { ServiceStatus } from '@prisma/client'
+import { headers } from 'next/headers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-01-27.acacia",
@@ -9,8 +8,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   try {
-    const { serviceRequestId, amount, userId, stripeConnectId } = await request.json()
-
+    const { serviceRequestId, amount, userId, mechanicConnectId } = await request.json()
+    const headersList = await headers()
+    const origin = headersList.get('origin')
     // Create a PaymentIntent with manual capture
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
@@ -21,51 +21,61 @@ export async function POST(request: Request) {
       },
     })
 
-    // Create Stripe checkout session with the PaymentIntent
+    const data = [
+      {
+      price: amount,
+      name: 'Service Offer',
+      smallDescription: 'Service Offer',
+      images: ['https://via.placeholder.com/150'],
+      }
+    ]
+
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      payment_intent_data: {
-        capture_method: 'manual',
-        application_fee_amount: 10, // 10% fee
-        transfer_data: {
-          destination: stripeConnectId,
-        },
-      },
+      // payment_method_types: ['card'],
+      mode: "payment",
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: "usd",
+            unit_amount: Math.round((data[0]?.price as number) * 100),
             product_data: {
-              name: 'Mechanic Service',
-              description: `Service Request #${serviceRequestId}`,
+              name: data[0]?.name as string,
+              description: data[0]?.smallDescription,
+              images: data[0]?.images,
             },
-            unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
         },
       ],
-      success_url: process.env.NEXT_PUBLIC_APP_URL + `/dashboard/customer/${userId}`,
-      // ).toString() + '?' + new URLSearchParams({
-      //   tab: 'map',
-      //   payment: 'authorized'
-      // }).toString(),
-      cancel_url: process.env.NEXT_PUBLIC_APP_URL + `/dashboard/customer/${userId}`,
       metadata: {
         serviceRequestId,
       },
-    })
 
-    // Update the service request with the payment hold ID
-    await prisma.serviceRequest.update({
-      where: { id: serviceRequestId },
-      data: {
-        paymentHoldId: paymentIntent.id,
-        status: ServiceStatus.PAYMENT_AUTHORIZED,
+      payment_intent_data: {
+        application_fee_amount: Math.round((data[0]?.price as number) * 100) * 0.1,
+        transfer_data: {
+          destination: mechanicConnectId as string,
+        },
       },
-    })
+      // return_url: `${origin}/dashboard/customer/${userId}?session_id={CHECKOUT_SESSION_ID}`,
+      // ui_mode: 'embedded',
+        // automatic_tax: {enabled: true},
+      success_url:
+        `${origin}/payment/success`,
+      cancel_url:
+        `${origin}/payment/cancel`
+    });
 
-    return NextResponse.json({ success: true, sessionId: session.id })
+    // if (session) {
+    //   await prisma.serviceRequest.update({
+    //     where: { id: serviceRequestId },
+    //     data: {
+    //       paymentHoldId: paymentIntent.id,
+    //       status: ServiceStatus.PAYMENT_AUTHORIZED,
+    //     },
+    //   })
+    // }
+    return NextResponse.json({ success: true, sessionId: session.id, sessionSecret: session.client_secret })
   } catch (error) {
     console.error('Payment session creation error:', error)
     return NextResponse.json(

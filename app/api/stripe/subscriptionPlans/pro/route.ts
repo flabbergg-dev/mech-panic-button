@@ -39,6 +39,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             session: session.id,
+            sessionSecret: session.client_secret,
         });
     }
     catch (error) {

@@ -14,9 +14,9 @@ export const useStripeConnect = (connectedAccountId: unknown) => {
           headers: {
             "Content-Type": "application/json",
           },
-          // body: JSON.stringify({
-          //   account: connectedAccountId,
-          // }),
+          body: JSON.stringify({
+            account: connectedAccountId,
+          }),
         });
 
         if (!response.ok) {

@@ -1,7 +1,7 @@
 import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
     try {
       const account = await stripe.accounts.create({
         controller: {
@@ -22,12 +22,7 @@ export async function POST(request: Request) {
         country: "US",
       });
 
-      if (account.details_submitted === false) {
-        console.log('Account created but requires additional information:', account.id);
-        return new NextResponse("Account created but requires additional information", { status: 400 });
-      } else {
-        return NextResponse.json({account: account.id});
-      }
+      return NextResponse.json({account: account.id});
 
     } catch (error) {
       console.error('An error occurred when calling the Stripe API to create an account:', error);

@@ -3,13 +3,11 @@ import { Button } from '../ui/button';
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '../ui/card';
-import { useAuth } from '@clerk/nextjs';
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
 export const StripeSubscribe = () => {
-  const { userId } = useAuth();
   const [error, setError] = useState(false);
   const [sessionId, setSessionId] = useState();
   const [secret, setSecret] = useState();

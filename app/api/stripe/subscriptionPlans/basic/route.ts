@@ -44,7 +44,6 @@ export async function POST() {
             session: session.id,
             sessionSecret: session.client_secret,
         });
-        // return NextResponse.redirect(session.url!, 303)
     }
     catch (error) {
         console.error('An error occurred when calling the Stripe API to create a subscription:', error);
