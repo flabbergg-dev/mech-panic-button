@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         });
 
         // Update the subscription id of the user in the database
-        await updateUserStripeInfo(user!.id, session.id!, session.status!)
+        await updateUserStripeInfo(user!.id, 'sub_1QuinQKFFfK1VKTS6c235Xr2', 'ACTIVE', 'PRO')
 
         return NextResponse.json({
             session: session.id,

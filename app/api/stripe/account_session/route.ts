@@ -1,6 +1,6 @@
 import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
-export async function POST(request: Request, res: Response) {
+export async function POST(request: Request) {
     try {
       const {account} = await request.json();
       const accountSession = await stripe.accountSessions.create({

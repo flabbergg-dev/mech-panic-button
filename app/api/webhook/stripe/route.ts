@@ -45,6 +45,25 @@ export async function POST(req: Request) {
         }
         break
       }
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        
+        // Find service request with this payment hold ID
+        const serviceRequest = await prisma.serviceRequest.findFirst({
+          where: { paymentHoldId: paymentIntent.id }
+        })
+
+        if (serviceRequest) {
+          // Update service request status to PAYMENT_COMPLETED
+          await prisma.serviceRequest.update({
+            where: { id: serviceRequest.id },
+            data: {
+              status: ServiceStatus.PAYMENT_AUTHORIZED
+            }
+          })
+        }
+        break
+      }
       // Add other webhook events as needed
     }
 

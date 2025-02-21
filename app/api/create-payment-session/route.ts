@@ -12,14 +12,14 @@ export async function POST(request: Request) {
     const headersList = await headers()
     const origin = headersList.get('origin')
     // Create a PaymentIntent with manual capture
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: 'usd',
-      capture_method: 'manual', // This enables the payment hold
-      metadata: {
-        serviceRequestId,
-      },
-    })
+    // const paymentIntent = await stripe.paymentIntents.create({
+    //   amount: Math.round(amount * 100), // Convert to cents
+    //   currency: 'usd',
+    //   capture_method: 'manual', // This enables the payment hold
+    //   metadata: {
+    //     serviceRequestId,
+    //   },
+    // })
 
     const data = [
       {
@@ -54,28 +54,19 @@ export async function POST(request: Request) {
       payment_intent_data: {
         application_fee_amount: Math.round((data[0]?.price as number) * 100) * 0.1,
         transfer_data: {
-          destination: mechanicConnectId as string,
+          destination: 'acct_1QuI5YGgvb4NdUsj', // mechanicConnectId as string
         },
       },
-      // return_url: `${origin}/dashboard/customer/${userId}?session_id={CHECKOUT_SESSION_ID}`,
-      // ui_mode: 'embedded',
+      return_url: `${origin}/dashboard/customer/${userId}?session_id={CHECKOUT_SESSION_ID}`,
+      ui_mode: 'embedded',
         // automatic_tax: {enabled: true},
-      success_url:
-        `${origin}/payment/success`,
-      cancel_url:
-        `${origin}/payment/cancel`
+      // success_url:
+      //   `${origin}/payment/success`,
+      // cancel_url:
+      //   `${origin}/payment/cancel`
     });
 
-    // if (session) {
-    //   await prisma.serviceRequest.update({
-    //     where: { id: serviceRequestId },
-    //     data: {
-    //       paymentHoldId: paymentIntent.id,
-    //       status: ServiceStatus.PAYMENT_AUTHORIZED,
-    //     },
-    //   })
-    // }
-    return NextResponse.json({ success: true, sessionId: session.id, sessionSecret: session.client_secret })
+    return NextResponse.json({ success: true, sessionDetails: session, sessionId: session.id, sessionSecret: session.client_secret })
   } catch (error) {
     console.error('Payment session creation error:', error)
     return NextResponse.json(

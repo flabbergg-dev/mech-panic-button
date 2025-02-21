@@ -37,8 +37,10 @@ export async function POST() {
             // proration_behavior: 'none',
         },
         });
+        console.log(session)
+        // TODO: prod id does not come from session object should be dinamic tho ignore for now
         // Update the subscription id of the user in the database
-        await updateUserStripeInfo(user!.id, session.id!, session.status!);
+        await updateUserStripeInfo(user!.id, 'sub_1QuijwKFFfK1VKTSN9UQrYBh', 'ACTIVE', "BASIC");
 
         return NextResponse.json({
             session: session.id,

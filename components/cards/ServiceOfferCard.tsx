@@ -12,6 +12,8 @@ import {
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
 import { useToast } from '@/hooks/use-toast'
+import { useSearchParams } from "next/navigation";
+import { updateServiceRequestByIdAction } from '@/app/actions/service/request/updateServiceRequestByIdAction'
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -65,7 +67,14 @@ export function ServiceOfferCard({
   const [firstName, lastName] = mechanicName.split(' ')
   const [mechanicConnectId, setMechanicConnectId] = useState<string | null>(null)
   const [mechanicUserId, setMechanicUserId] = useState("")
-
+  interface SessionDetails {
+    payment_status: string;
+  }
+  
+  const [sessionDetailsObject, setSessionDetailsObject] = useState<SessionDetails | null>(null);
+  const searchParams = useSearchParams();
+  const search = searchParams.has("session_id");
+ 
   const handleOffer = async (accepted: boolean) => {
     try {
       setIsLoading(true)
@@ -83,10 +92,29 @@ export function ServiceOfferCard({
             mechanicConnectId,
           }),
         });
-        const {session, sessionSecret, error} = await response.json()
+        const { sessionDetails, session, sessionSecret, error } =
+          await response.json();
+
+        if (sessionDetails) {
+          setSessionDetailsObject(sessionDetails);
+          console.log(sessionDetails + "sessionDetails");
+        }
 
         if (session) {
           setSessionId(session);
+          try {
+            await handleServiceOfferAction(
+              serviceRequestId,
+              true // accepted
+            );
+          } catch (error) {
+            console.error("Error handling offer:", error);
+            toast({
+              title: 'Error',
+              description: error as string,
+            })
+            setError(true);
+          }
         }
 
         if (sessionSecret) {
@@ -95,20 +123,12 @@ export function ServiceOfferCard({
         }
 
         if (error) {
-          console.error("Error creating account:", error);
+          console.error("Error creating transaction:", error);
           toast({
             title: 'Error',
             description: error,
           })
           setError(true);
-        }
-
-        if(response.ok) {
-          const result = await handleServiceOfferAction(serviceRequestId, accepted);
-    
-          if (!result.success) {
-            throw new Error(result.error);
-          }
         }
 
 
@@ -121,7 +141,7 @@ export function ServiceOfferCard({
       console.error('Error handling offer:', error)
       alert(error instanceof Error ? error.message : 'Failed to handle offer')
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -138,6 +158,18 @@ export function ServiceOfferCard({
       } else {
         console.error("No mechanic ID")
       }
+    }
+
+    const catchSearhOnPayment = async () => {
+      try {
+        await updateServiceRequestByIdAction(serviceRequestId)
+      } catch (error) {
+        console.error("Error updating service request:", error)
+      }
+    }
+
+    if(search === true) {
+      catchSearhOnPayment()
     }
 
     fetchData()
