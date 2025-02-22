@@ -18,8 +18,13 @@ import { MessageCircle } from "lucide-react"
 import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action"
 import supabase from "@/utils/supabase/specialClient"
 import { useAuth } from '@clerk/clerk-react'
+import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
 
-export const ChatBox = () => {
+type ChatBoxProps = {
+  mechanicId: string
+}
+
+export const ChatBox = ({mechanicId}: ChatBoxProps) => {
   const { userId } = useAuth()
 
   const [isOpen, setIsOpen] = useState(false)
@@ -47,20 +52,20 @@ export const ChatBox = () => {
   const { user: currentUser } = useUser()
   const channelRef = useRef<RealtimeChannel | null>(null)
 
-  // const createChat = async (userId: string, mechanicId: string) => {
-  //   try {
-  //     const chat = await createChatWithUserAction(userId, mechanicId)
-  //     if (chat) {
-  //       setChatId(chat.chat!.id)
-  //       return chat
-  //     } else {
-  //       console.error("Error creating chat")
-  //     }
-  //     return null
-  //   } catch (error) {
-  //     throw new Error(`Error creating chat: ${error}`)
-  //   }
-  // }
+  const createChat = async (userId: string, mechanicId: string) => {
+    try {
+      const chat = await createChatWithUserAction(userId, mechanicId)
+      if (chat) {
+        setChatId(chat.chat!.id)
+        return chat
+      } else {
+        console.error("Error creating chat")
+      }
+      return null
+    } catch (error) {
+      throw new Error(`Error creating chat: ${error}`)
+    }
+  }
 
   const createNewMessage = async (message: {
     userId: string
@@ -107,14 +112,17 @@ export const ChatBox = () => {
   const fetchChat = async () => {
     const chat = await getChatByUserIdAction(
       userId!,
-      "cfada8f4-f8b8-42fb-8b1e-0d549a447bca"
+      mechanicId
     );
     if (chat.chat?.id) {
       setChatId(chat.chat.id)
       if(chatId) {
         await fetchMessages(chatId!)
       }
-    } else {
+    } else if (!chat) {
+      createChat(userId!, mechanicId)
+    }
+    else {
       console.error("Error fetching chat")
     }
   }

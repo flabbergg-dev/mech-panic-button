@@ -22,6 +22,7 @@ import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
 import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
 import { useToast } from "@/hooks/use-toast";
+import { ChatBox } from '@/components/Chat/ChatBox'
 // import { useServiceRequestStore } from "@/store/serviceRequestStore";
 
 export function ClientDashboard() {
@@ -236,15 +237,18 @@ export function ClientDashboard() {
             <div className="fixed inset-0 z-0">
               <RequestMap />
             </div>
-            
+
             {/* Content Overlay */}
             {activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED && (
               <HalfSheet>
                 <ServiceCardLayout>
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-t-xl">
-                    <h2 className="text-xl font-semibold mb-2">Payment Authorized</h2>
+                    <h2 className="text-xl font-semibold mb-2">
+                      Payment Authorized
+                    </h2>
                     <p className="text-muted-foreground">
-                      Waiting for mechanic to start their journey. You'll be notified when they're on their way.
+                      Waiting for mechanic to start their journey. You'll be
+                      notified when they're on their way.
                     </p>
                   </div>
                 </ServiceCardLayout>
@@ -253,48 +257,58 @@ export function ClientDashboard() {
             {activeRequest?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
                 <ServiceCardLayout>
+                  {activeRequest.mechanicId && <ChatBox mechanicId={activeRequest.mechanicId} />}
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
-                    <h2 className="text-xl font-semibold mb-2">Mechanic on their way</h2>
-                      <p className="text-muted-foreground">
-                      {estimatedTime ? `Mechanic will be there in ${estimatedTime}` : 'Calculating arrival time...'}
+                    <h2 className="text-xl font-semibold mb-2">
+                      Mechanic on their way
+                    </h2>
+                    <p className="text-muted-foreground">
+                      {estimatedTime
+                        ? `Mechanic will be there in ${estimatedTime}`
+                        : "Calculating arrival time..."}
                     </p>
                     {!mechanicLocation && (
                       <p className="text-sm text-muted-foreground mt-2">
                         Waiting for mechanic's location...
                       </p>
-                      )}
-                    </div>
+                    )}
+                  </div>
                 </ServiceCardLayout>
               </HalfSheet>
             )}
-             {activeRequest?.status === ServiceStatus.IN_PROGRESS && (
-               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
-               <div className="flex flex-col h-full p-6">
-                 <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                   <div className="text-center space-y-4 max-w-md">
-                     <h2 className="text-2xl font-semibold">Enter Arrival Code</h2>
-                     <p className="text-muted-foreground">
-                       Please enter the 6-digit code provided by your mechanic to start the service
-                     </p>
-                     <div className="mt-8">
-                       <PinInput onComplete={handleVerifyCode} />
-                     </div>
-                     {isVerifyingCode && (
-                       <div className="flex items-center justify-center mt-4">
-                         <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
-                         <span>Verifying code...</span>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               </div>
-             </div>
-            ) }
+            {activeRequest?.status === ServiceStatus.IN_PROGRESS && (
+              <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
+                <div className="flex flex-col h-full p-6">
+                  <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                    <div className="text-center space-y-4 max-w-md">
+                      <h2 className="text-2xl font-semibold">
+                        Enter Arrival Code
+                      </h2>
+                      <p className="text-muted-foreground">
+                        Please enter the 6-digit code provided by your mechanic
+                        to start the service
+                      </p>
+                      <div className="mt-8">
+                        <PinInput onComplete={handleVerifyCode} />
+                      </div>
+                      {isVerifyingCode && (
+                        <div className="flex items-center justify-center mt-4">
+                          <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
+                          <span>Verifying code...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeRequest?.status === ServiceStatus.SERVICING && (
               <HalfSheet>
                 <ServiceCardLayout>
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
-                    <h2 className="text-xl font-semibold ">Servicing in Progress </h2>
+                    <h2 className="text-xl font-semibold ">
+                      Servicing in Progress{" "}
+                    </h2>
                     <p className="text-muted-foreground mb-2 pb-4">
                       Wait for the mechanic to complete their service
                     </p>
@@ -302,24 +316,28 @@ export function ClientDashboard() {
                   </div>
                 </ServiceCardLayout>
               </HalfSheet>
-            ) }
+            )}
             {activeRequest?.status === ServiceStatus.IN_COMPLETION && (
               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
                 <div className="flex flex-col h-full p-6">
                   <div className="flex-1 flex flex-col items-center justify-center space-y-6">
                     <div className="text-center space-y-4 max-w-md">
-                      <h2 className="text-2xl font-semibold">Service Completion Code</h2>
+                      <h2 className="text-2xl font-semibold">
+                        Service Completion Code
+                      </h2>
                       <p className="text-muted-foreground">
-                        Share this code with your mechanic to confirm service completion
+                        Share this code with your mechanic to confirm service
+                        completion
                       </p>
                       <div className="mt-8">
                         <div className="text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
                           {/* TODO: Replace with Loading... */}
-                          {activeRequest?.completionCode || '305203'}
+                          {activeRequest?.completionCode || "305203"}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">
-                        The mechanic will input this code to mark the service as completed and receive payment
+                        The mechanic will input this code to mark the service as
+                        completed and receive payment
                       </p>
                     </div>
                   </div>
@@ -327,7 +345,7 @@ export function ClientDashboard() {
               </div>
             )}
           </div>
-        )
+        );
       case "requests":
         return (
           <div className="relative min-h-screen">
