@@ -26,6 +26,7 @@ import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
 import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
+import { calculateEstimatedTime } from '@/utils/location';
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -57,51 +58,12 @@ export function ClientDashboard() {
     }
   }, [])
 
-  const calculateEstimatedTime = useCallback(async (mechanicLocation: {latitude: number; longitude: number} | null) => {
-    if (!customerLocation?.latitude || !customerLocation?.longitude) {
-      console.error('Invalid customer location coordinates')
-      setEstimatedTime("N/A")
-      return
+  const updateEstimatedTime = useCallback(async (mechanicLocation: {latitude: number; longitude: number} | null) => {
+    if (mechanicLocation) {
+      const time = await calculateEstimatedTime(mechanicLocation, customerLocation);
+      setEstimatedTime(time);
     }
-    if (!mechanicLocation?.latitude || !mechanicLocation?.longitude) {
-      console.error('Invalid mechanic location coordinates')
-      setEstimatedTime("N/A")
-      return
-    }
-
-    try {
-      const mechanicCoords = mechanicLocation && `${mechanicLocation.longitude},${mechanicLocation.latitude}`
-      const customerCoords = customerLocation && `${customerLocation.longitude},${customerLocation.latitude}`
-
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${mechanicCoords};${customerCoords}`
-      const query = await fetch(
-        `${url}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`,
-        { 
-          method: "GET",
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
-      )
-      
-      if (!query.ok) {
-        throw new Error(`Mapbox API error: ${query.statusText}`)
-      }
-
-      const json = await query.json()
-      
-      if (json.routes?.[0]?.duration) {
-        const durationMinutes = Math.round(json.routes[0].duration / 60)
-        setEstimatedTime(`${durationMinutes} min`)
-      } else {
-        console.error('No valid route found in Mapbox response:', json)
-        setEstimatedTime("N/A")
-      }
-    } catch (error) {
-      console.error('Error calculating distance:', error)
-      setEstimatedTime("N/A")
-    }
-  }, [customerLocation])
+  }, [customerLocation]);
 
   const { requests, offers, loading, error, refetch } = useServiceOffers(user?.id || '')
 
@@ -118,9 +80,9 @@ export function ClientDashboard() {
   // Update ETA when mechanic location changes
   useEffect(() => {
     if (activeRequest?.status === ServiceStatus.IN_ROUTE && mechanicLocation) {
-      calculateEstimatedTime(mechanicLocation)
+      updateEstimatedTime(mechanicLocation)
     }
-  }, [mechanicLocation, activeRequest?.status, calculateEstimatedTime])
+  }, [mechanicLocation, activeRequest?.status, updateEstimatedTime])
 
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
@@ -333,7 +295,7 @@ export function ClientDashboard() {
             
             {/* Content Container */}
             <div className="relative z-10 space-y-6 p-4 pb-20">
-              {activeRequest && (
+              {activeRequest && (activeRequest.status !== ServiceStatus.ACCEPTED && activeRequest.status !== ServiceStatus.PAYMENT_AUTHORIZED) &&  (
                 <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4">
                   <h2 className="text-xl font-semibold mb-4">Active Request</h2>
                   <div className="space-y-4">

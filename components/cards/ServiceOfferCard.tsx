@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useSearchParams } from "next/navigation";
 import { updateServiceRequestByIdAction } from '@/app/actions/service/request/updateServiceRequestByIdAction'
 import { getServiceOfferStatusAction } from '@/app/actions/service/offer/getServiceOfferStatusAction'
+import { calculateEstimatedTime } from '@/utils/location';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -74,7 +75,10 @@ export function ServiceOfferCard({
     payment_status: string;
   }
   const [sessionDetailsObject, setSessionDetailsObject] = useState<SessionDetails | null>(null);
+  const searchParams = useSearchParams();
+  const sessionIdParam = searchParams.get("session_id")
 
+  // Get mechanic user
   useEffect(() => {
     const checkOfferStatus = async () => {
       try {
@@ -90,6 +94,33 @@ export function ServiceOfferCard({
     checkOfferStatus();
   }, [serviceRequestId]);
 
+  // Update service request
+  useEffect(() => {
+    const catchSearhOnPayment = async () => {
+      try {
+        await updateServiceRequestByIdAction(serviceRequestId)
+      } catch (error) {
+        console.error("Error updating service request:", error)
+      }
+    }
+ 
+    if(sessionIdParam) {
+      catchSearhOnPayment()
+    }
+  }, [sessionIdParam, serviceRequestId])
+
+  // Get estimated time
+  useEffect(() => {
+    const getEstimatedTime = async () => {
+      if (mechanicLocation && customerLocation) {
+        const time = await calculateEstimatedTime(mechanicLocation, customerLocation);
+        setEstimatedTime(time);
+      }
+    };
+    getEstimatedTime();
+  }, [mechanicLocation, customerLocation])
+
+  // Handle offer
   const handleOffer = async (accepted: boolean) => {
     try {
       setIsLoading(true)
@@ -149,7 +180,7 @@ export function ServiceOfferCard({
       setIsLoading(false);
     }
   }
-
+// Handle checkout
   const handleCheckout = async () => {
     try {
       setIsLoading(true);
@@ -202,6 +233,8 @@ export function ServiceOfferCard({
       setIsLoading(false);
     }
   }
+
+
 
   if (mechanicConnectId === null || mechanicConnectId === undefined) {
     return null
