@@ -148,6 +148,7 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
         console.log("No token available");
         return;
       }
+      // Set the authentication token from Clerk for the realtime client
       supabase.realtime.setAuth(token);
 
       const subscribeServiceRequestToChannel = supabase

@@ -27,7 +27,8 @@ export async function acceptServiceOffer(offerId: string, requestId: string) {
       where: { id: requestId },
       data: { 
         status: ServiceStatus.ACCEPTED,
-        mechanicId: acceptedOffer.mechanicId
+        mechanicId: acceptedOffer.mechanicId,
+        totalAmount: acceptedOffer.price
       }
     })
 
