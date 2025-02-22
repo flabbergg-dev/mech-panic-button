@@ -14,6 +14,7 @@ import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
 // import { toast } from '@/hooks/use-toast'
+// import { toast } from '@/hooks/use-toast'
 import { motion } from 'framer-motion';
 import { ServiceStatus, ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
@@ -112,6 +113,8 @@ export function ClientDashboard() {
   // Check if there's an active request
   const activeRequest = requests.find((request: ServiceRequest) =>
     request.status !== ServiceStatus.COMPLETED
+  const activeRequest = requests.find((request: ServiceRequest) =>
+    request.status !== ServiceStatus.COMPLETED
   )
 
   // Get mechanic's location updates when in route
@@ -148,6 +151,7 @@ export function ClientDashboard() {
       if (result.success) {
         refetch() // Refresh the requests list
         toast({
+          title: 'Request cancelled successfully',
           title: 'Request cancelled successfully',
           description: 'Your request has been cancelled',
           className: 'bg-green-500 text-white'
@@ -383,6 +387,7 @@ export function ClientDashboard() {
                         key={offer.id}
                         serviceRequestId={offer.serviceRequestId}
                         mechanicName={
+                          offer.mechanic?.user
                           offer.mechanic?.user
                             ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`
                             : 'Unknown Mechanic'

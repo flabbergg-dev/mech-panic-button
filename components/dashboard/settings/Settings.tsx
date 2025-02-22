@@ -26,7 +26,6 @@ import { PersonalInfoForm } from "./PersonalInfo"
 import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
 import { getStripeCustomerId } from "@/app/actions/user/get-stripe-customer-id"
-
 const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
   { 
     id: "personal", 
@@ -73,6 +72,7 @@ const sections: { id: "personal" | "professional" | "notifications" | "security"
 const SettingsPage = () => {
   const [activeSection, setActiveSection] = useState<"personal" | "billing" | "notifications" | "preferences" | "professional" | "security">("personal")
   const path = usePathname()
+  const isBilling = path.includes("billing")
   const isMechanic = path.includes("mechanic")
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const isSubscribed = useIsUserSubscribed()
@@ -183,151 +183,162 @@ const SettingsPage = () => {
     }
   }, [isSubscribed, stripeConnectId])
 
-  const renderSection = () => {
-    switch (activeSection) {
-      case "personal":
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            <div className="flex flex-col space-y-1.5">
-              <h2 className="text-2xl font-semibold tracking-tight">Personal Information</h2>
-              <p className="text-sm text-muted-foreground">
-                Update your personal details and how others see you on the platform
-              </p>
-            </div>
-            <PersonalInfoForm />
-            {isMechanic && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Separator className="my-8" />
-                <div className="flex flex-col space-y-1.5 mb-6">
-                  <h2 className="text-2xl font-semibold tracking-tight">Mechanic Profile</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Showcase your expertise and services to potential customers
-                  </p>
-                </div>
-                <MechanicInfoForm />
-              </motion.div>
-            )}
-          </motion.div>
-        )
-      case "billing":
-        return (
-          <div>
-            {isSubscribed?.subscriptionPlan === "BASIC" ||
-            isSubscribed?.subscriptionPlan === "PRO" ? (
-              <motion.div>
-                <div className="flex flex-col items-start justify-start space-y-4">
-                  <h2 className="text-2xl font-semibold tracking-tight">
-                    Billing Information
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your subscription and payment methods
-                  </p>
-                </div>
-                <div className="pt-4 flex md:flex-row flex-col">
-                  <div className="flex flex-col justify-between items-center border-2 rounded-md p-4">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex justify-between items-center">
-                        <p>subscription:</p>
-                        <p>Pro</p>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <p>Status:</p>
-                        <p>active</p>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <p>your next payment is:</p>
-                        <p>April 1st, 2022</p>
-                      </div>
-                    </div>
-                    <div className="w-full pt-4">
-                      <Button
-                        className="w-full"
-                        onClick={() => handleSubscriptionCancel()}
-                      >
-                        Cancel Subscription
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-between items-center border-2 rounded-md p-4 mt-4 md:mt-0 md:ml-4">
-                    <div>
-                      <p>Invoice History:</p>
-                      <Button className="w-full">View Invoices</Button>
-                    </div>
-                    {/* TODO: Change to modal where they choose amount to withdraw */}
-                    <div className="flex gap-16">
-                      <p>Total:</p>
-                      <p>{currentAvailableBalance}</p>
-                    </div>
-                    <div>
-                      <p>Withdraw</p>
-                      <Button
-                        className="w-full"
-                        onClick={() => handleWithdrawFunds()}
-                      >
-                        Withdraw Funds
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <div className="flex flex-col space-y-1.5">
-                  <h2 className="text-2xl font-semibold tracking-tight">
-                    Subscribe to Pro
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Unlock premium features and support the app
-                  </p>
-                </div>
-                <StripeSubscribe />
-              </motion.div>
-            )}
-          </div>
-        );
-      default:
-        return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center h-[60vh] space-y-4"
-          >
-            <div className="relative w-24 h-24">
-              <motion.div
-                className="absolute inset-0 bg-primary/10 rounded-full"
-                animate={{
-                  scale: [1, 1.2, 1],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-              <Settings2 className="w-24 h-24 text-primary/40" />
-            </div>
-            <p className="text-xl font-medium">Coming Soon</p>
-            <p className="text-sm text-muted-foreground text-center max-w-md">
-              We're working hard to bring you this feature. Stay tuned for updates!
-            </p>
-          </motion.div>
-      )
-    }
+    // TODO: review this logic
+  if (isBilling === true) {
+    setActiveSection("billing")
   }
+    const renderSection = () => {
+      switch (activeSection) {
+        case "personal":
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              <div className="flex flex-col space-y-1.5">
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  Personal Information
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Update your personal details and how others see you on the
+                  platform
+                </p>
+              </div>
+              <PersonalInfoForm />
+              {isMechanic && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Separator className="my-8" />
+                  <div className="flex flex-col space-y-1.5 mb-6">
+                    <h2 className="text-2xl font-semibold tracking-tight">
+                      Mechanic Profile
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Showcase your expertise and services to potential
+                      customers
+                    </p>
+                  </div>
+                  <MechanicInfoForm />
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        case "billing":
+          return (
+            <div>
+              {isSubscribed?.subscriptionPlan === "BASIC" ||
+              isSubscribed?.subscriptionPlan === "PRO" ? (
+                <motion.div>
+                  <div className="flex flex-col items-start justify-start space-y-4">
+                    <h2 className="text-2xl font-semibold tracking-tight">
+                      Billing Information
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your subscription and payment methods
+                    </p>
+                  </div>
+                  <div className="pt-4 flex md:flex-row flex-col">
+                    <div className="flex flex-col justify-between items-center border-2 rounded-md p-4">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex justify-between items-center">
+                          <p>subscription:</p>
+                          <p>Pro</p>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p>Status:</p>
+                          <p>active</p>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p>your next payment is:</p>
+                          <p>April 1st, 2022</p>
+                        </div>
+                      </div>
+                      <div className="w-full pt-4">
+                        <Button
+                          className="w-full"
+                          onClick={() => handleSubscriptionCancel()}
+                        >
+                          Cancel Subscription
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-col justify-between items-center border-2 rounded-md p-4 mt-4 md:mt-0 md:ml-4">
+                      <div>
+                        <p>Invoice History:</p>
+                        <Button className="w-full">View Invoices</Button>
+                      </div>
+                      {/* TODO: Change to modal where they choose amount to withdraw */}
+                      <div className="flex gap-16">
+                        <p>Total:</p>
+                        <p>{currentAvailableBalance}</p>
+                      </div>
+                      <div>
+                        <p>Withdraw</p>
+                        <Button
+                          className="w-full"
+                          onClick={() => handleWithdrawFunds()}
+                        >
+                          Withdraw Funds
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="flex flex-col space-y-1.5">
+                    <h2 className="text-2xl font-semibold tracking-tight">
+                      Subscribe to Pro
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Unlock premium features and support the app
+                    </p>
+                  </div>
+                  <StripeSubscribe />
+                </motion.div>
+              )}
+            </div>
+          );
+        default:
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center h-[60vh] space-y-4"
+            >
+              <div className="relative w-24 h-24">
+                <motion.div
+                  className="absolute inset-0 bg-primary/10 rounded-full"
+                  animate={{
+                    scale: [1, 1.2, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+                <Settings2 className="w-24 h-24 text-primary/40" />
+              </div>
+              <p className="text-xl font-medium">Coming Soon</p>
+              <p className="text-sm text-muted-foreground text-center max-w-md">
+                We're working hard to bring you this feature. Stay tuned for
+                updates!
+              </p>
+            </motion.div>
+          );
+      }
+    };
 
   const SidebarContent = () => (
     <div className="space-y-1.5 py-4 ">
