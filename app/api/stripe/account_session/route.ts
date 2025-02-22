@@ -2,11 +2,19 @@ import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
     try {
-      const body = await request.json();
+      const {account} = await request.json();
       const accountSession = await stripe.accountSessions.create({
-        account: body.account,
+        account: account,
         components: {
           account_onboarding: { enabled: true },
+          payments: {
+            enabled: true,
+            features: {
+              refund_management: true,
+              dispute_management: true,
+              capture_payments: true,
+            }
+          }
         }
       });
 

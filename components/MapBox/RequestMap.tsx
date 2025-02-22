@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
-import { MapPin } from "lucide-react"
 
 const getUserLocation = (
   setUserCords: React.Dispatch<

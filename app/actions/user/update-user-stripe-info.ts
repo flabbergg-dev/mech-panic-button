@@ -1,8 +1,9 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { SubscriptionPlan } from "@prisma/client"
 
-export async function updateUserStripeInfo(userId: string, stripesubscriptionId: string, stripeSubscriptionStatus: string) {
+export async function updateUserStripeInfo(userId: string, stripesubscriptionId: string, stripeSubscriptionStatus: string, stripeSubscriptionPlan?: SubscriptionPlan) {
   if (!userId) {
     return {
       success: false,
@@ -14,7 +15,8 @@ export async function updateUserStripeInfo(userId: string, stripesubscriptionId:
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
-        stripeSubscriptionId: stripesubscriptionId,
+        stripeSubscriptionId: stripesubscriptionId === "" ? null : stripesubscriptionId,
+        stripeSubscriptionPlan: stripeSubscriptionPlan ? stripeSubscriptionPlan : null,
         stripeSubscriptionStatus: stripeSubscriptionStatus as 'ACTIVE' | 'CANCELED' | 'UNPAID' | 'PAST_DUE',
       },
     })

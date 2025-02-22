@@ -461,7 +461,7 @@ export default function MechanicMapPage() {
                           title: "Copied!",
                           description: "Arrival code copied to clipboard",
                         })
-                        setTimeout(() => setIsCopied(false), 2000)
+                        setTimeout(() => setIsCopied(false), 1000)
                       }}
                     >
                       {isCopied ? (

@@ -4,26 +4,31 @@ import { prisma } from "@/lib/prisma"
 
 export async function getMechanicByIdAction(userId: string) {
     try {
-        const mechanic = await prisma.mechanic.findUnique({
-            where: { userId: userId },
+        const mechanic = await prisma.mechanic.findFirst({
+            where: {
+            OR: [
+                { userId: userId },
+                { id: userId } // Assuming userId can also be the mechanic's id
+            ]
+            },
             select: {
-                id: true,
-                userId: true,
-                bio: true,
-                servicesOffered: true,
-                isAvailable: true,
-                rating: true,
-                bannerImage: true,
-                driversLicenseId: true,
-                merchantDocumentUrl: true,
-                earnings: true,
-                user: true,
-                serviceRequests: true,
-                availability: true,
-                location: true,
-                serviceArea: true,
-                createdAt: true,
-                updatedAt: true,
+            id: true,
+            userId: true,
+            bio: true,
+            servicesOffered: true,
+            isAvailable: true,
+            rating: true,
+            bannerImage: true,
+            driversLicenseId: true,
+            merchantDocumentUrl: true,
+            earnings: true,
+            user: true,
+            serviceRequests: true,
+            availability: true,
+            location: true,
+            serviceArea: true,
+            createdAt: true,
+            updatedAt: true,
             }
         })
         if (!mechanic) {

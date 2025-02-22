@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation"
 interface BottomNavigationProps {
   activeTab: string
   onTabChange: (tab: string) => void
-  userRole?: string
+  userRole?: "Customer" | "Mechanic"
   showMap?: boolean
   showRequests?: boolean
   disabledTabs?: string[]

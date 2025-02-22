@@ -21,11 +21,11 @@ export const useStripeConnect = (connectedAccountId: unknown) => {
 
         if (!response.ok) {
           // Handle errors on the client side here
-          const { error } = await response.json();
-        //   throw ("An error occurred: ", error);
-        console.error("An error occurred: ", error);
+          const {error} = await response.json();
+          console.log('An error occurred: ', error);
+          return undefined;
         } else {
-          const { client_secret: clientSecret } = await response.json();
+          const {client_secret: clientSecret} = await response.json();
           return clientSecret;
         }
       };
@@ -33,7 +33,7 @@ export const useStripeConnect = (connectedAccountId: unknown) => {
       setStripeConnectInstance(
         loadConnectAndInitialize({
           publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-          fetchClientSecret,
+          fetchClientSecret: fetchClientSecret,
           appearance: {
             overlays: "dialog",
             variables: {

@@ -21,6 +21,9 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
   const { toast } = useToast();
 
   const handleOnClickEvent = async () => {
+    setAccountCreatePending(true);
+    setError(false);
+    // fix this fetch call
     await fetch("/api/stripe/account", {
       method: "GET",
     })
@@ -46,7 +49,6 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
   }
 
   const handleExit = () => {
-    if (stripeAccountId) {
       setOnboardingExited(true);
       setCurrentStep("documents");
       console.log("Stripe account created:", stripeAccountId);
@@ -54,7 +56,6 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
         title: "Success",
         description: "Your account has been created",
       })
-    }
   };
 
   return (
@@ -66,9 +67,7 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
         {!accountCreatePending && !stripeAccountId && (
           <div>
             <Button
-              onClick={async () => {
-                setAccountCreatePending(true);
-                setError(false);
+              onClick={() => {
                 handleOnClickEvent();
               }}
             >
@@ -86,16 +85,16 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
         {error && <p className="error">Something went wrong!</p>}
         {(stripeAccountId || accountCreatePending || onboardingExited) && (
           <div className="dev-callout">
-            {stripeAccountId && (
+            {/* {stripeAccountId && (
               <p>
                 Your connected account ID is:{" "}
                 <code className="bold">{stripeAccountId}</code>
               </p>
-            )}
+            )} */}
             {accountCreatePending && <p>Creating a connected account...</p>}
-            {onboardingExited && (
+            {/* {onboardingExited && (
               <p>The Account Onboarding component has exited</p>
-            )}
+            )} */}
           </div>
         )}{" "}
       </div>

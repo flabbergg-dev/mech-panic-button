@@ -110,19 +110,26 @@ const SettingsPage = () => {
   }
 
   const handleSubscriptionCancel = async () => {
-    fetch(`/api/stripe/subscriptionPlans/cancel-subscription`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
+    if (isSubscribed.subscriptionId) {
+      fetch(`/api/stripe/subscriptionPlans/cancel-subscription`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subscriptionId: isSubscribed!.subscriptionId,
+        }),
       })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
+        .then((response) => response.json())
+        .then((data) => {
+          console.log(data);
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+    } else {
+      console.error("Error cancelling subscription")
+    }
   }
 
   const handleWithdrawFunds = async () => {
@@ -167,8 +174,10 @@ const SettingsPage = () => {
   }
 
   useEffect(() => {
+    console.log("isSubscribed: ", isSubscribed.subscriptionId)
+
     fetchStripeConnectId()
-    if(isSubscribed) {
+    if(isSubscribed.isSubscribed !== null) {
       fetchData()
       fetchBalance()
     }
@@ -213,23 +222,8 @@ const SettingsPage = () => {
       case "billing":
         return (
           <div>
-            {!isSubscribed ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <div className="flex flex-col space-y-1.5">
-                  <h2 className="text-2xl font-semibold tracking-tight">
-                    Subscribe to Pro
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Unlock premium features and support the app
-                  </p>
-                </div>
-                <StripeSubscribe />
-              </motion.div>
-            ) : (
+            {isSubscribed?.subscriptionPlan === "BASIC" ||
+            isSubscribed?.subscriptionPlan === "PRO" ? (
               <motion.div>
                 <div className="flex flex-col items-start justify-start space-y-4">
                   <h2 className="text-2xl font-semibold tracking-tight">
@@ -271,12 +265,8 @@ const SettingsPage = () => {
                     </div>
                     {/* TODO: Change to modal where they choose amount to withdraw */}
                     <div className="flex gap-16">
-                      <p>
-                        Total:
-                      </p>
-                      <p>
-                        {currentAvailableBalance}
-                      </p>
+                      <p>Total:</p>
+                      <p>{currentAvailableBalance}</p>
                     </div>
                     <div>
                       <p>Withdraw</p>
@@ -289,6 +279,22 @@ const SettingsPage = () => {
                     </div>
                   </div>
                 </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="flex flex-col space-y-1.5">
+                  <h2 className="text-2xl font-semibold tracking-tight">
+                    Subscribe to Pro
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Unlock premium features and support the app
+                  </p>
+                </div>
+                <StripeSubscribe />
               </motion.div>
             )}
           </div>
@@ -319,7 +325,7 @@ const SettingsPage = () => {
               We're working hard to bring you this feature. Stay tuned for updates!
             </p>
           </motion.div>
-        )
+      )
     }
   }
 
