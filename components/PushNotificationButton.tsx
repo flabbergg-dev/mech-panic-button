@@ -10,6 +10,8 @@ import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { useEmailNotification } from '@/hooks/useEmailNotification';
+import { getUserEmailPreferenceAction } from '@/app/actions/user/getUserEmailPreferenceAction';
+import { updateUserEmailPreferenceAction } from '@/app/actions/user/updateUserEmailPreferenceAction';
 
 export function PushNotificationButton({ className }: { className?: string }) {
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
@@ -20,6 +22,16 @@ export function PushNotificationButton({ className }: { className?: string }) {
   const [isEmailEnabled, setIsEmailEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { sendEmail } = useEmailNotification()
+
+  useEffect(() => {
+    const fetchEmailPreference = async () => {
+      if (user?.id) {
+        const preference = await getUserEmailPreferenceAction(user.id);
+        setIsEmailEnabled(preference);
+      }
+    };
+    fetchEmailPreference();
+  }, [user?.id]);
 
   useEffect(() => {
     async function registerServiceWorker() {
@@ -82,6 +94,8 @@ export function PushNotificationButton({ className }: { className?: string }) {
     try {
       setIsEmailEnabled(!isEmailEnabled);
       // You can add an API call here to update user preferences in your database
+      if (!user?.id) return;
+      await updateUserEmailPreferenceAction(user?.id, !isEmailEnabled);
       sendEmail({to:"fernando.aponte@digital-sunsets.com", subject:"Test email", message:"This is a test email", userName:"Fernando Aponte"})
       .then(() => console.log('Email sent successfully'))
       .catch((err) => console.error('Error sending email:', err));
