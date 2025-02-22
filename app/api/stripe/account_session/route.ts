@@ -5,7 +5,6 @@ export async function POST(request: Request) {
       const {account} = await request.json();
       const accountSession = await stripe.accountSessions.create({
         account: account,
-        // account: "{{CONNECTED_ACCOUNT_ID}}",
         components: {
           account_onboarding: { enabled: true },
           payments: {

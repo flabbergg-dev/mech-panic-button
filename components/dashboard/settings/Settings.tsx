@@ -325,7 +325,7 @@ const SettingsPage = () => {
               We're working hard to bring you this feature. Stay tuned for updates!
             </p>
           </motion.div>
-        )
+      )
     }
   }
 
