@@ -16,10 +16,12 @@ type ModalProps = {
   dialogText: string
   buttonText: string
   isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
   buttonActive?: boolean
   className?: string
   buttonClassName?: string
   disabled?: boolean
+  side?: "top" | "bottom" | "left" | "right"
   variant?:
     | "link"
     | "default"
@@ -34,15 +36,17 @@ export const Modal = ({
   children,
   dialogText,
   isOpen,
+  onOpenChange,
   buttonText,
   buttonActive,
   className,
   buttonClassName,
   variant,
   disabled,
+  side = "bottom",
 }: ModalProps) => {
   return (
-    <ResponsiveModal open={isOpen}>
+    <ResponsiveModal open={isOpen} onOpenChange={onOpenChange}>
       {buttonActive === true ? (
         <ResponsiveModalTrigger asChild>
           <Button
@@ -54,7 +58,7 @@ export const Modal = ({
           </Button>
         </ResponsiveModalTrigger>
       ) : null}
-      <ResponsiveModalContent className={className}>
+      <ResponsiveModalContent className={className} side={side}>
         <ResponsiveModalHeader>
           <ResponsiveModalTitle>{dialogText}</ResponsiveModalTitle>
         </ResponsiveModalHeader>

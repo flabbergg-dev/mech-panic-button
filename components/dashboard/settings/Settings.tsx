@@ -168,7 +168,7 @@ const SettingsPage = () => {
 
   useEffect(() => {
     fetchStripeConnectId()
-    if(isSubscribed === true) {
+    if(isSubscribed) {
       fetchData()
       fetchBalance()
     }
