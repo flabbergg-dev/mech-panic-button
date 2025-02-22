@@ -142,7 +142,7 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
       fetchBalance();
     }
 
-    const getToken = async () => {
+    const setupRealtimeSubscription = async () => {
       const token = await getUserToken();
       if (!token) {
         console.log("No token available");
@@ -151,7 +151,11 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
       supabase.realtime.setAuth(token);
 
       const subscribeServiceRequestToChannel = supabase
-        .channel(`service_request`)
+        .channel('service_request', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "ServiceRequest" },
@@ -162,15 +166,12 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
         )
         .subscribe();
 
-      const unsubscribeFromChannels = () => {
+      return () => {
         supabase.removeChannel(subscribeServiceRequestToChannel);
       };
-
-      return unsubscribeFromChannels;
     };
 
-    getToken();
-
+    setupRealtimeSubscription();
     fetchData();
   }, [user, router]);
 
