@@ -20,7 +20,7 @@ export const MechanicDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "home":
-        return <MechanicHome />
+        return <MechanicHome setActiveTab={setActiveTab} />;
       case "map":
         return <div className="p-4 font-michroma-sans text-center text-2xl text-muted-foreground ">Map Component (Only Available while on service request)</div>
       case "settings":
@@ -30,7 +30,7 @@ export const MechanicDashboard = () => {
       case "history":
         return <MechanicHistory />
       default:
-        return <MechanicHome />
+        return <MechanicHome setActiveTab={setActiveTab} />;
     }
   }
 
