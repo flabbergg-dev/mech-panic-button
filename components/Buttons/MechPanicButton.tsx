@@ -268,7 +268,9 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
         isOpen={isServiceTypeModalOpen}
         onOpenChange={setIsServiceTypeModalOpen}
         variant="default"
-        className="sm:max-w-[500px]"
+        className="sm:max-w-[500px] mx-auto lg:mx-0"
+        side="bottom"
+
       >
         <div className="flex flex-col gap-6 py-4">
           <RadioGroup

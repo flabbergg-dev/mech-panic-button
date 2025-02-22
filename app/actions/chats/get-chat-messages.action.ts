@@ -21,6 +21,7 @@ export async function getChatMessages(chatId: number) {
     }
 
     return {
+      success: true,
       messages,
     }
   }

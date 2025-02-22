@@ -19,6 +19,7 @@ import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action"
 import supabase from "@/utils/supabase/specialClient"
 import { useAuth } from '@clerk/clerk-react'
 import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
+import { getUserToken } from "@/app/actions/getUserToken"
 
 type ChatBoxProps = {
   mechanicId: string
@@ -57,7 +58,6 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
       const chat = await createChatWithUserAction(userId, mechanicId)
       if (chat) {
         setChatId(chat.chat!.id)
-        return chat
       } else {
         console.error("Error creating chat")
       }
@@ -119,8 +119,6 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
       if(chatId) {
         await fetchMessages(chatId!)
       }
-    } else if (!chat) {
-      createChat(userId!, mechanicId)
     }
     else {
       console.error("Error fetching chat")
@@ -128,7 +126,19 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
   }
 
   const realTimeSubscription = async () => {
-    await fetchChat()
+    
+    if (!chatId) {
+      await createChat(userId!, mechanicId)
+    } else {
+      await fetchChat()
+    }
+
+    const token = await getUserToken()
+    if (!token) {
+      console.log("No token available")
+      return
+    }
+    supabase.realtime.setAuth(token)
 
     channelRef.current = supabase.channel('realtime:public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, async (payload: any) => {
       setTimeout(async () => {
@@ -143,7 +153,7 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
 
   useEffect(() => {
     realTimeSubscription()
-  }, [chatId, channelRef])
+  }, [channelRef])
 
 
 
@@ -156,14 +166,7 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
         <MessageCircle size={24} />
       </Button>
 
-      <div className={`absolute left-0 right-0 justify-center bg-slate-600 text-white p-2 rounded-md duration-300 h-auto overflow-y-scroll w-[70dvw] md:w-[20dvw] border-2 hover:border-slate-400 transition-all ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}>
-        {!chatId && (
-          <div className="flex flex-col justify-center items-center">
-            <h1>
-              No Chat at the moment
-            </h1>
-          </div>
-        )}
+      <div className={`z-10 absolute left-0 right-0 justify-center bg-slate-600 text-white p-2 rounded-md duration-300 h-auto overflow-y-scroll w-[70dvw] md:w-[20dvw] border-2 hover:border-slate-400 transition-all ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}>
         {chatId && (
           <div className="flex flex-col justify-between">
             <h1 className="p-2 bg-slate-600 text-white rounded-md w-fit my-4">

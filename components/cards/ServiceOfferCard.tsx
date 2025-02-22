@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { handleServiceOfferAction } from '@/app/actions/serviceOfferAction'
@@ -14,6 +14,8 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { useSearchParams } from "next/navigation";
 import { updateServiceRequestByIdAction } from '@/app/actions/service/request/updateServiceRequestByIdAction'
+import { getServiceOfferStatusAction } from '@/app/actions/service/offer/getServiceOfferStatusAction'
+import { calculateEstimatedTime } from '@/utils/location';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -29,6 +31,7 @@ interface ServiceOfferCardProps {
   mechanicId: string
   mechanicName: string
   mechanicRating?: number
+  mechanicConnectId: string | null | undefined
   price: number
   note?: string
   expiresAt?: Date
@@ -47,6 +50,7 @@ interface ServiceOfferCardProps {
 export function ServiceOfferCard({
   serviceRequestId,
   mechanicId,
+  mechanicConnectId,
   mechanicName,
   mechanicRating,
   price,
@@ -65,101 +69,33 @@ export function ServiceOfferCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
   const [firstName, lastName] = mechanicName.split(' ')
-  const [mechanicConnectId, setMechanicConnectId] = useState<string | null>(null)
   const [mechanicUserId, setMechanicUserId] = useState("")
+  const [offerAccepted, setOfferAccepted] = useState(false)
   interface SessionDetails {
     payment_status: string;
   }
-  
   const [sessionDetailsObject, setSessionDetailsObject] = useState<SessionDetails | null>(null);
   const searchParams = useSearchParams();
-  const search = searchParams.has("session_id");
- 
-  const handleOffer = async (accepted: boolean) => {
-    try {
-      setIsLoading(true)
+  const sessionIdParam = searchParams.get("session_id")
 
-      if (accepted) {
-        const response = await fetch("/api/create-payment-session", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            serviceRequestId,
-            amount: price,
-            userId,
-            mechanicConnectId,
-          }),
-        });
-        const { sessionDetails, session, sessionSecret, error } =
-          await response.json();
-
-        if (sessionDetails) {
-          setSessionDetailsObject(sessionDetails);
-          console.log(sessionDetails + "sessionDetails");
-        }
-
-        if (session) {
-          setSessionId(session);
-          try {
-            await handleServiceOfferAction(
-              serviceRequestId,
-              true // accepted
-            );
-          } catch (error) {
-            console.error("Error handling offer:", error);
-            toast({
-              title: 'Error',
-              description: error as string,
-            })
-            setError(true);
-          }
-        }
-
-        if (sessionSecret) {
-          setSecret(sessionSecret);
-          console.log(sessionSecret + "sessionSecret");
-        }
-
-        if (error) {
-          console.error("Error creating transaction:", error);
-          toast({
-            title: 'Error',
-            description: error,
-          })
-          setError(true);
-        }
-
-
-      }
-
-      if (onOfferHandled) {
-        onOfferHandled()
-      }
-    } catch (error) {
-      console.error('Error handling offer:', error)
-      alert(error instanceof Error ? error.message : 'Failed to handle offer')
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
+  // Get mechanic user
   useEffect(() => {
-    const fetchData = async () => {
-      if(mechanicId) {
-        const response = await getMechanicByIdAction(mechanicId!)
-        setMechanicUserId(response.mechanic?.userId!);
-        if (response) {
-          const userResponse = await getUserAction(response.mechanic?.userId!)
-          setMechanicConnectId(userResponse!.stripeCustomerId)
-          console.log("Mechanic Connect ID: ", userResponse!.stripeCustomerId)
+    const checkOfferStatus = async () => {
+      try {
+        const response = await getServiceOfferStatusAction(serviceRequestId);
+        if (response.success) {
+          setOfferAccepted(response.isAccepted);
         }
-      } else {
-        console.error("No mechanic ID")
+      } catch (error) {
+        console.error("Error checking offer status:", error);
       }
-    }
+    };
 
+    checkOfferStatus();
+  }, [serviceRequestId]);
+
+  // Update service request
+  useEffect(() => {
     const catchSearhOnPayment = async () => {
       try {
         await updateServiceRequestByIdAction(serviceRequestId)
@@ -167,88 +103,214 @@ export function ServiceOfferCard({
         console.error("Error updating service request:", error)
       }
     }
-
-    if(search === true) {
+ 
+    if(sessionIdParam) {
       catchSearhOnPayment()
     }
+  }, [sessionIdParam, serviceRequestId])
 
-    fetchData()
+  // Get estimated time
+  useEffect(() => {
+    const getEstimatedTime = async () => {
+      if (mechanicLocation && customerLocation) {
+        const time = await calculateEstimatedTime(mechanicLocation, customerLocation);
+        setEstimatedTime(time);
+      }
+    };
+    getEstimatedTime();
+  }, [mechanicLocation, customerLocation])
 
-  }, [mechanicUserId])
+  // Handle offer
+  const handleOffer = async (accepted: boolean) => {
+    try {
+      setIsLoading(true)
+
+      if (!accepted) {
+        // If declining the offer, just update the status
+        try {
+          await handleServiceOfferAction(
+            serviceRequestId,
+            accepted
+          );
+          if (onOfferHandled) {
+            onOfferHandled()
+          }
+        } catch (error) {
+          console.error("Error handling offer:", error);
+          toast({
+            title: 'Error',
+            description: error as string,
+          })
+          setError(true);
+        }
+        return;
+      }
+
+      // Handle offer acceptance
+      const offerResponse = await handleServiceOfferAction(
+        serviceRequestId,
+        accepted
+      );
+
+      if (!offerResponse.success) {
+        console.error("Error handling offer:", offerResponse.error);
+        toast({
+          title: 'Error',
+          description: offerResponse.error as string,
+        })
+        setError(true);
+        return;
+      }
+
+      // Set offer as accepted to show checkout button
+      setOfferAccepted(true);
+      toast({
+        title: 'Success',
+        description: 'Offer accepted! Please proceed to checkout.',
+      })
+
+    } catch (error) {
+      console.error('Error handling offer:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to handle offer',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false);
+    }
+  }
+// Handle checkout
+  const handleCheckout = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/create-payment-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceRequestId,
+          amount: price,
+          userId,
+          mechanicConnectId,
+        }),
+      });
+      
+      const { sessionDetails, session, sessionSecret, error } = await response.json();
+
+      if (error) {
+        console.error("Error creating transaction:", error);
+        toast({
+          title: 'Error',
+          description: error,
+        })
+        setError(true);
+        return;
+      }
+
+      if (sessionDetails) {
+        setSessionDetailsObject(sessionDetails);
+      }
+
+      if (session) {
+        setSessionId(session);
+        console.log("Session ID:", session);
+      }
+
+      if (sessionSecret) {
+        setSecret(sessionSecret);
+      }
+
+    } catch (error) {
+      console.error('Error creating checkout session:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create checkout session',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+
+
+  if (mechanicConnectId === null || mechanicConnectId === undefined) {
+    return null
+  }
 
   return (
     <motion.div
       layout
-      onClick={() => setIsExpanded(!isExpanded)}
-      className="cursor-pointer"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="w-full"
     >
-      <Card className="overflow-hidden bg-background/90 backdrop-blur-sm">
-        <div className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Avatar>
-                <AvatarImage
-                  src={`https://avatar.vercel.sh/${firstName}.png`}
-                />
-                <AvatarFallback>
-                  {firstName[0]}
-                  {lastName[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-medium">{firstName}</h3>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <span>★ {mechanicRating?.toFixed(1) || "4.8"}</span>
-                  <span className="mx-1">•</span>
-                  <span>{estimatedTime || "Calculating..."} Away</span>
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="font-medium">${price.toFixed(2)}</div>
-              {/* TODO: Add model name */}
-              <div className="text-sm text-muted-foreground">
-                Toyota Corolla
+      <Card className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-4">
+            <Avatar>
+              <AvatarImage src="" />
+              <AvatarFallback>{`${firstName[0]}${lastName[0]}`}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold">{mechanicName}</h3>
+              <div className="flex items-center text-sm text-muted-foreground">
+                <span>★ {mechanicRating?.toFixed(1) || "4.8"}</span>
+                <span className="mx-1">•</span>
+                <span>{estimatedTime || "Calculating..."} </span>
               </div>
             </div>
           </div>
+          <div className="text-right">
+            <p className="font-semibold">${(price).toFixed(2)}</p>
+            {expiresAt && (
+              <p className="text-sm text-muted-foreground">
+                Expires in {/* Add expiry calculation */}
+              </p>
+            )}
+          </div>
         </div>
 
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: "auto" }}
-              exit={{ height: 0 }}
-              className="overflow-hidden"
+        {note && (
+          <div
+            className={`mt-4 text-sm text-muted-foreground ${
+              isExpanded ? '' : 'line-clamp-2'
+            }`}
+          >
+            {note}
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-end space-x-2">
+          {!offerAccepted ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => handleOffer(false)}
+                disabled={isLoading}
+              >
+                Decline
+              </Button>
+              <Button
+                onClick={() => handleOffer(true)}
+                disabled={isLoading}
+              >
+                Accept
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={handleCheckout}
+              disabled={isLoading}
+              className="bg-green-600 hover:bg-green-700"
             >
-              <div className="p-4 pt-0 grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOffer(false);
-                  }}
-                  disabled={isLoading}
-                >
-                  Decline
-                </Button>
-                <Button
-                  variant="default"
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOffer(true);
-                  }}
-                  disabled={isLoading}
-                >
-                  Accept Offer
-                </Button>
-              </div>
-            </motion.div>
+              Proceed to Checkout
+            </Button>
           )}
-        </AnimatePresence>
+        </div>
       </Card>
       {secret && (
         <EmbeddedCheckoutProvider
@@ -261,5 +323,5 @@ export function ServiceOfferCard({
       {sessionId && <p>Redirecting to checkout...</p>}
       {error && <p className="error">Something went wrong!</p>}
     </motion.div>
-  );
+  )
 }

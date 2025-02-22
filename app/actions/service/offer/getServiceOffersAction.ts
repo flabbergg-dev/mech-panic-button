@@ -20,6 +20,7 @@ export type EnrichedServiceOffer = {
     user: {
       firstName: string
       lastName: string
+      stripeCustomerId: string | null | undefined
     } | null
   } | null
 }
@@ -31,7 +32,7 @@ export async function getServiceOffersForClient(serviceRequestId: string) {
   const offers = await prisma.serviceOffer.findMany({
     where: {
       serviceRequestId: serviceRequestId,
-      status: OfferStatus.PENDING,
+      status: { in: [OfferStatus.PENDING, OfferStatus.ACCEPTED] },
       expiresAt: {
         gt: new Date() // Only get non-expired offers
       },
@@ -60,7 +61,8 @@ export async function getServiceOffersForClient(serviceRequestId: string) {
           user: {
             select: {
               firstName: true,
-              lastName: true
+              lastName: true,
+              stripeCustomerId: true
             }
           }
         }

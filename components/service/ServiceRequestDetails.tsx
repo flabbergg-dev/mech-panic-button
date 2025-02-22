@@ -68,7 +68,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         setIsRedirecting(true)
         setTimeout(() => {
           router.push(`/dashboard/mechanic`)
-        }, 5000)
+        }, 1000)
       }
 
       if (offerResult.success && offerResult.data) {
@@ -154,7 +154,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   if (request.status === "COMPLETED") {
     setTimeout(() => {
       router.push(`/dashboard`)
-    }, 2000)
+    }, 1000)
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -251,7 +251,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       const response = await deleteServiceOfferAction(serviceOffer.id)
       setTimeout(() => {
         window.history.back();
-      }, 2000)
+      }, 1000)
       console.log('response', response)
     } catch (error) {
       console.error("Error cancelling service offer:", error)

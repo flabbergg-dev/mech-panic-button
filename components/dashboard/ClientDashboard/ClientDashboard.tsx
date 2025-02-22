@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useServiceOffers } from '@/hooks/useServiceOffers'
 import { useMechanicLocation } from '@/hooks/useMechanicLocation'
 import { ServiceOfferCard } from '@/components/cards/ServiceOfferCard'
@@ -13,7 +13,12 @@ import { Loader2Icon } from "lucide-react"
 import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
-// import { toast } from '@/hooks/use-toast'
+import { useToast } from "@/hooks/use-toast";
+import { usePathname, useSearchParams } from 'next/navigation'
+import { Loader } from '@/components/loader'
+import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
+import SettingsPage from '../settings/Settings'
+import { Profile } from '@/components/profile/Profile'
 import { motion } from 'framer-motion';
 import { ServiceStatus, ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
@@ -21,19 +26,22 @@ import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
 import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
-import { useToast } from "@/hooks/use-toast";
 import { ChatBox } from '@/components/Chat/ChatBox'
 // import { useServiceRequestStore } from "@/store/serviceRequestStore";
+import { calculateEstimatedTime } from '@/utils/location';
 
 export function ClientDashboard() {
   const { user } = useUser()
-  const [activeTab, setActiveTab] = useState<string>("home")
+  const {toast} = useToast();
+  const params = useSearchParams()
+  const tab = params.get("tab")
+  const path = usePathname()
+  const userRole = path.includes("customer") ? "Customer" : "Mechanic"
+
+  const [activeTab, setActiveTab] = useState<string>(tab || "home")
   const [customerLocation, setCustomerLocation] = useState<{latitude: number; longitude: number} | null>(null)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
   const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  // const { serviceRequests, serviceStatus } = useServiceRequestStore();
-  // const activeServiceRequest = serviceRequests[0];
-  const {toast} = useToast();
 
   // Get customer location
   useEffect(() => {
@@ -52,51 +60,12 @@ export function ClientDashboard() {
     }
   }, [])
 
-  const calculateEstimatedTime = useCallback(async (mechanicLocation: {latitude: number; longitude: number} | null) => {
-    if (!customerLocation?.latitude || !customerLocation?.longitude) {
-      console.error('Invalid customer location coordinates')
-      setEstimatedTime("N/A")
-      return
+  const updateEstimatedTime = useCallback(async (mechanicLocation: {latitude: number; longitude: number} | null) => {
+    if (mechanicLocation) {
+      const time = await calculateEstimatedTime(mechanicLocation, customerLocation);
+      setEstimatedTime(time);
     }
-    if (!mechanicLocation?.latitude || !mechanicLocation?.longitude) {
-      console.error('Invalid mechanic location coordinates')
-      setEstimatedTime("N/A")
-      return
-    }
-
-    try {
-      const mechanicCoords = mechanicLocation && `${mechanicLocation.longitude},${mechanicLocation.latitude}`
-      const customerCoords = customerLocation && `${customerLocation.longitude},${customerLocation.latitude}`
-
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${mechanicCoords};${customerCoords}`
-      const query = await fetch(
-        `${url}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`,
-        { 
-          method: "GET",
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
-      )
-      
-      if (!query.ok) {
-        throw new Error(`Mapbox API error: ${query.statusText}`)
-      }
-
-      const json = await query.json()
-      
-      if (json.routes?.[0]?.duration) {
-        const durationMinutes = Math.round(json.routes[0].duration / 60)
-        setEstimatedTime(`${durationMinutes} min`)
-      } else {
-        console.error('No valid route found in Mapbox response:', json)
-        setEstimatedTime("N/A")
-      }
-    } catch (error) {
-      console.error('Error calculating distance:', error)
-      setEstimatedTime("N/A")
-    }
-  }, [customerLocation])
+  }, [customerLocation]);
 
   const { requests, offers, loading, error, refetch } = useServiceOffers(user?.id || '')
 
@@ -113,9 +82,9 @@ export function ClientDashboard() {
   // Update ETA when mechanic location changes
   useEffect(() => {
     if (activeRequest?.status === ServiceStatus.IN_ROUTE && mechanicLocation) {
-      calculateEstimatedTime(mechanicLocation)
+      updateEstimatedTime(mechanicLocation)
     }
-  }, [mechanicLocation, activeRequest?.status, calculateEstimatedTime])
+  }, [mechanicLocation, activeRequest?.status, updateEstimatedTime])
 
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
@@ -186,25 +155,14 @@ export function ClientDashboard() {
   }
 
   if (loading || !user) {
-    return <div className="flex justify-center items-center h-screen ">
-      <Loader2Icon className="animate-spin h-8 w-8" />
-    </div>
+    return <Loader title="Loading Your Dashboard..." />
   }
 
   if (error) {
     return <div className="text-red-500 p-4">Error: {error}</div>
   }
 
-  // Debug logging
-  console.log('All requests:', requests)
-  console.log('Active request:', activeRequest)
-  console.log('Active offers:', offers)
-
   const renderContent = () => {
-    // Debug logging
-    console.log('Current tab:', activeTab)
-    console.log('Active request:', activeRequest)
-    console.log('Active request status:', activeRequest?.status)
 
     switch (activeTab) {
       case "home":
@@ -356,7 +314,7 @@ export function ClientDashboard() {
             
             {/* Content Container */}
             <div className="relative z-10 space-y-6 p-4 pb-20">
-              {activeRequest && (
+              {activeRequest && (activeRequest.status !== ServiceStatus.ACCEPTED && activeRequest.status !== ServiceStatus.PAYMENT_AUTHORIZED) &&  (
                 <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4">
                   <h2 className="text-xl font-semibold mb-4">Active Request</h2>
                   <div className="space-y-4">
@@ -398,13 +356,10 @@ export function ClientDashboard() {
                       .map((offer: EnrichedServiceOffer) => (
                       <ServiceOfferCard
                         mechanicId={offer.mechanic!.id}
+                        mechanicConnectId={offer.mechanic!.user?.stripeCustomerId}
                         key={offer.id}
                         serviceRequestId={offer.serviceRequestId}
-                        mechanicName={
-                          offer.mechanic?.user
-                            ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`
-                            : 'Unknown Mechanic'
-                        }
+                        mechanicName={offer.mechanic?.user ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}` : 'Unknown Mechanic'}
                         mechanicRating={offer.mechanic?.rating || undefined}
                         price={offer.price || 0}
                         note={offer.note || undefined}
@@ -418,6 +373,11 @@ export function ClientDashboard() {
                   </div>
                 </div>
               )}
+              
+
+
+             
+               
 
               {!activeRequest && offers.length === 0 && (
                 <div className="text-center p-4 bg-background/80 backdrop-blur-sm rounded-lg text-muted-foreground">
@@ -430,9 +390,13 @@ export function ClientDashboard() {
       case "history":
         return <div>History Component (Coming Soon)</div>
       case "settings":
-        return <div>Settings Component (Coming Soon)</div>
+        return (
+          <Suspense fallback={<SkeletonBasic />}>
+            <SettingsPage />
+          </Suspense>
+          )
       case "profile":
-        return <div>Profile Component (Coming Soon)</div>
+        return <Profile />
       default:
         return null
     }
@@ -443,6 +407,8 @@ export function ClientDashboard() {
       {renderContent()}
       <BottomNavigation 
         activeTab={activeTab} 
+        userRole={userRole}
+
         onTabChange={tab => {
           // Allow tab changes if:
           // 1. There's no active request

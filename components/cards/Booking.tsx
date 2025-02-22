@@ -100,7 +100,7 @@ export const Booking = () => {
     try {
       setLoading(true)
       // Here you would make an API call to save the booking
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
       setIsConfirmed(true)
       setTimeout(() => {
         setIsOpen(false)

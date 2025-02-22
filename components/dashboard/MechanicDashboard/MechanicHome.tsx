@@ -1,38 +1,42 @@
-"use client"
+"use client";
 
-import { useUser } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 // import { UserCircle } from "lucide-react"
 // import { ServiceStatus } from "@prisma/client"
-import { getActiveMechanicOfferAction } from "@/app/actions/getActiveMechanicOfferAction"
+import { getActiveMechanicOfferAction } from "@/app/actions/getActiveMechanicOfferAction";
 
-import { BalanceCard } from "@/components/cards/BalanceCard"
-import { ServiceRequest } from "@/components/service/ServiceRequest"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
+import { BalanceCard } from "@/components/cards/BalanceCard";
+import { ServiceRequest } from "@/components/service/ServiceRequest";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // import { PushNotificationButton } from "../../PushNotificationButton"
-import { ServiceRequest as ServiceRequestType, Booking as BookingType, SubscriptionPlan } from "@prisma/client"
-import { getUserToken } from "@/app/actions/getUserToken"
-import { supabase } from "@/utils/supabase/client"
-import { cn } from "@/lib/utils"
-import { Card } from "@/components/ui/card"
-import { Loader } from "@/components/loader"
+import {
+  ServiceRequest as ServiceRequestType,
+  Booking as BookingType,
+  SubscriptionPlan,
+} from "@prisma/client";
+import { getUserToken } from "@/app/actions/getUserToken";
+import { supabase } from "@/utils/supabase/client";
+import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Loader } from "@/components/loader";
 import { getStripeCustomerId } from "@/app/actions/user/get-stripe-customer-id";
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed";
-import { Magnet } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Magnet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type BookingWithService = BookingType & {
-  service: ServiceRequestType
-}
+  service: ServiceRequestType;
+};
 
 type MechanicHomeProps = {
-  setActiveTab: (tab: string) => void
-}
+  setActiveTab: (tab: string) => void;
+};
 
-export const MechanicHome = ({setActiveTab}: MechanicHomeProps) => {
+export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
   const { user } = useUser();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +53,7 @@ export const MechanicHome = ({setActiveTab}: MechanicHomeProps) => {
   const fetchData = async () => {
     console.log("fetchData called, user:", user?.id);
     try {
-      // First check for active offers
+      // First check for active offers.
       if (!user?.id) {
         console.log("No user ID available");
         return;
@@ -138,7 +142,7 @@ export const MechanicHome = ({setActiveTab}: MechanicHomeProps) => {
       fetchBalance();
     }
 
-    const getToken = async () => {
+    const setupRealtimeSubscription = async () => {
       const token = await getUserToken();
       if (!token) {
         console.log("No token available");
@@ -147,7 +151,11 @@ export const MechanicHome = ({setActiveTab}: MechanicHomeProps) => {
       supabase.realtime.setAuth(token);
 
       const subscribeServiceRequestToChannel = supabase
-        .channel(`service_request`)
+        .channel('service_request', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "ServiceRequest" },
@@ -158,15 +166,12 @@ export const MechanicHome = ({setActiveTab}: MechanicHomeProps) => {
         )
         .subscribe();
 
-      const unsubscribeFromChannels = () => {
+      return () => {
         supabase.removeChannel(subscribeServiceRequestToChannel);
       };
-
-      return unsubscribeFromChannels;
     };
 
-    getToken();
-
+    setupRealtimeSubscription();
     fetchData();
   }, [user, router]);
 
@@ -180,7 +185,7 @@ export const MechanicHome = ({setActiveTab}: MechanicHomeProps) => {
 
   const handleSubscribe = () => {
     setActiveTab("settings");
-  }
+  };
 
   return (
     <div className="flex flex-col space-y-4 p-4 md:p-6">
