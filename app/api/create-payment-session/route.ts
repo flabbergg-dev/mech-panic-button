@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { headers } from 'next/headers';
+import { prisma } from '@/lib/prisma';
+import { ServiceStatus } from '@prisma/client';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-01-27.acacia",
@@ -47,14 +49,13 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      metadata: {
-        serviceRequestId,
-      },
-
       payment_intent_data: {
         application_fee_amount: Math.round((data[0]?.price as number) * 100) * 0.1,
         transfer_data: {
           destination: 'acct_1QuI5YGgvb4NdUsj', // mechanicConnectId as string
+        },
+        metadata: {
+          serviceRequestId,
         },
       },
       return_url: `${origin}/dashboard/customer/${userId}?session_id={CHECKOUT_SESSION_ID}`,

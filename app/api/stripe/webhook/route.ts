@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
-import { SubscriptionPlan, SubscriptionStatus } from '@prisma/client'
+import { ServiceStatus, SubscriptionPlan, SubscriptionStatus } from '@prisma/client'
 import { sendInvoiceEmail } from '@/utils/emailNotifications'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -35,32 +35,15 @@ export async function POST(req: Request) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
         // Find service request with this payment hold ID
-        const serviceRequest = await prisma.serviceRequest.findFirst({
-          where: { paymentHoldId: paymentIntent.id }
+        // const serviceRequest = await prisma.serviceRequest.findFirst({
+        //   where: { paymentHoldId: paymentIntent.id }
+        // })
+        const serviceRequest =  await prisma.serviceRequest.findFirst({
+          where: { id: paymentIntent.metadata.serviceRequestId as string }
         })
 
         if (serviceRequest) {
           // Update service request status to PAYMENT_AUTHORIZED
-          await prisma.serviceRequest.update({
-            where: { id: serviceRequest.id },
-            data: { 
-              status: ServiceStatus.PAYMENT_AUTHORIZED
-            }
-          })
-        }
-        break
-      }
-
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent
-        
-        // Find service request with this payment hold ID
-        const serviceRequest = await prisma.serviceRequest.findFirst({
-          where: { paymentHoldId: paymentIntent.id }
-        })
-
-        if (serviceRequest) {
-          // Update service request status to PAYMENT_COMPLETED
           await prisma.serviceRequest.update({
             where: { id: serviceRequest.id },
             data: {
@@ -70,7 +53,27 @@ export async function POST(req: Request) {
         }
         break
       }
+
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        console.log('paymentIntent succeeded:', paymentIntent)
+        // Find service request with this payment hold ID
+        // const serviceRequest = await prisma.serviceRequest.findFirst({
+        //   where: { paymentHoldId: paymentIntent.id }
+        // })
+
+        // if (serviceRequest) {
+        //   // Update service request status to PAYMENT_COMPLETED
+        //   await prisma.serviceRequest.update({
+        //     where: { id: serviceRequest.id },
+        //     data: {
+        //       status: ServiceStatus.PAYMENT_AUTHORIZED
+        //     }
+        //   })
+        // }
+        break
       }
+      
 
       case 'checkout.session.completed': {
         const session = await stripe.checkout.sessions.retrieve(
@@ -79,7 +82,7 @@ export async function POST(req: Request) {
           }
         );
 
-        console.log('Checkout session completed:', session);
+        // console.log('Checkout session completed:', session);
 
         let customerEmail = null;
 
@@ -97,11 +100,11 @@ export async function POST(req: Request) {
           (event.data.object as Stripe.Checkout.Session).subscription as string
         );
 
-        console.log('Subscription:', subscription);
+        // console.log('Subscription:', subscription);
 
         const product = await stripe.products.retrieve(subscription.items.data[0].price.product as string);
 
-        console.log('Product:', product);
+        // console.log('Product:', product);
 
         let planName = null
 
@@ -134,7 +137,7 @@ export async function POST(req: Request) {
           link: invoice.hosted_invoice_url!
         });
 
-        console.log('User updated with subscription details');
+        // console.log('User updated with subscription details');
         break;
       }
 

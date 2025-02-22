@@ -141,7 +141,7 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
   ]
 
   return (
-    <>
+    <> 
       <button 
         className="btn-class-name" 
         onClick={() => setIsLocationModalOpen(true)}
@@ -213,13 +213,17 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
         }
         `}
       </style>
+     
+      {/* Location Modal */}
       <Modal
         dialogText="Confirm Your Location"
         buttonText=""
         buttonActive={false}
         isOpen={isLocationModalOpen}
+        onOpenChange={setIsLocationModalOpen}
         variant="default"
-        className="sm:max-w-[420px]"
+        className="sm:max-w-[500px] mx-auto lg:mx-0"
+        side="bottom"
       >
         <div className="flex flex-col gap-4" ref={modalRef}>
           <div className="w-[-webkit-fill-available] h-[300px] border-2 rounded-md border-slate-300 mb-4">
@@ -262,6 +266,7 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
         buttonText=""
         buttonActive={false}
         isOpen={isServiceTypeModalOpen}
+        onOpenChange={setIsServiceTypeModalOpen}
         variant="default"
         className="sm:max-w-[500px]"
       >
@@ -303,7 +308,7 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
           </Button>
         </div>
       </Modal>
-
+      
       <style jsx>{`
         .btn-class-name {
           position: relative;
