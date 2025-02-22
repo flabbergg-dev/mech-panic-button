@@ -58,6 +58,9 @@ export async function POST(request: Request) {
           serviceRequestId,
         },
       },
+      metadata: {
+        serviceRequestId, // Add metadata to the session itself
+      },
       return_url: `${origin}/dashboard/customer/${userId}?session_id={CHECKOUT_SESSION_ID}`,
       ui_mode: 'embedded',
         // automatic_tax: {enabled: true},

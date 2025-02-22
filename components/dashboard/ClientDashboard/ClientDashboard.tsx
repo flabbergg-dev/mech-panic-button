@@ -13,8 +13,12 @@ import { Loader2Icon } from "lucide-react"
 import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
-// import { toast } from '@/hooks/use-toast'
-// import { toast } from '@/hooks/use-toast'
+import { useToast } from "@/hooks/use-toast";
+import { usePathname, useSearchParams } from 'next/navigation'
+import { Loader } from '@/components/loader'
+import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
+import SettingsPage from '../settings/Settings'
+import { Profile } from '@/components/profile/Profile'
 import { motion } from 'framer-motion';
 import { ServiceStatus, ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
@@ -22,13 +26,6 @@ import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
 import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
-import { useToast } from "@/hooks/use-toast";
-import { usePathname, useSearchParams } from 'next/navigation'
-import { Loader } from '@/components/loader'
-import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
-import SettingsPage from '../settings/Settings'
-import { Profile } from '@/components/profile/Profile'
-// import { useServiceRequestStore } from "@/store/serviceRequestStore";
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -42,8 +39,6 @@ export function ClientDashboard() {
   const [customerLocation, setCustomerLocation] = useState<{latitude: number; longitude: number} | null>(null)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
   const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  // const { serviceRequests, serviceStatus } = useServiceRequestStore();
-  // const activeServiceRequest = serviceRequests[0];
 
   // Get customer location
   useEffect(() => {
@@ -113,8 +108,6 @@ export function ClientDashboard() {
   // Check if there's an active request
   const activeRequest = requests.find((request: ServiceRequest) =>
     request.status !== ServiceStatus.COMPLETED
-  const activeRequest = requests.find((request: ServiceRequest) =>
-    request.status !== ServiceStatus.COMPLETED
   )
 
   // Get mechanic's location updates when in route
@@ -151,7 +144,6 @@ export function ClientDashboard() {
       if (result.success) {
         refetch() // Refresh the requests list
         toast({
-          title: 'Request cancelled successfully',
           title: 'Request cancelled successfully',
           description: 'Your request has been cancelled',
           className: 'bg-green-500 text-white'
@@ -386,12 +378,7 @@ export function ClientDashboard() {
                         mechanicConnectId={offer.mechanic!.user?.stripeCustomerId}
                         key={offer.id}
                         serviceRequestId={offer.serviceRequestId}
-                        mechanicName={
-                          offer.mechanic?.user
-                          offer.mechanic?.user
-                            ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`
-                            : 'Unknown Mechanic'
-                        }
+                        mechanicName={offer.mechanic?.user ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}` : 'Unknown Mechanic'}
                         mechanicRating={offer.mechanic?.rating || undefined}
                         price={offer.price || 0}
                         note={offer.note || undefined}
@@ -405,6 +392,11 @@ export function ClientDashboard() {
                   </div>
                 </div>
               )}
+              
+
+
+             
+               
 
               {!activeRequest && offers.length === 0 && (
                 <div className="text-center p-4 bg-background/80 backdrop-blur-sm rounded-lg text-muted-foreground">
