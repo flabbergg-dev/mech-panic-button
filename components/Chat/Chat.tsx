@@ -1,13 +1,13 @@
-"use server"
-import { auth } from "@clerk/nextjs/server"
-import { ChatBox } from "./ChatBox"
-export async function Chat () {
-    const { getToken } = await auth()
-    const token = await getToken({ template: process.env.NEXT_PUBLIC_SUPABASE_JWT_TEMPLATE! })
+// "use server"
+// import { auth } from "@clerk/nextjs/server"
+// import { ChatBox } from "./ChatBox"
+// export async function Chat () {
+//     const { getToken } = await auth()
+//     const token = await getToken({ template: process.env.NEXT_PUBLIC_SUPABASE_JWT_TEMPLATE! })
 
-    if (!token) {
-        return null
-    }
+//     if (!token) {
+//         return null
+//     }
 
     // const fetchData = async () => {
     //   try {
@@ -34,7 +34,16 @@ export async function Chat () {
 
     // return () => clearInterval(intervalId); // Cleanup interval on component unmount
 
-    return (
-        <ChatBox/>
-    )
+//     return (
+//         <ChatBox/>
+//     )
+// }
+
+import React from 'react'
+
+export const Chat = () => {
+  return (
+    <div>Chat</div>
+  )
 }
+
