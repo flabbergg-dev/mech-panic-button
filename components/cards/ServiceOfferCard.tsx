@@ -71,6 +71,7 @@ export function ServiceOfferCard({
   const [firstName, lastName] = mechanicName.split(' ')
   const [mechanicUserId, setMechanicUserId] = useState("")
   const [offerAccepted, setOfferAccepted] = useState(false)
+  const [expirationTime, setExpirationTime] = useState<string | null>(null)
   interface SessionDetails {
     payment_status: string;
   }
@@ -112,6 +113,7 @@ export function ServiceOfferCard({
   // Get estimated time
   useEffect(() => {
     const getEstimatedTime = async () => {
+      console.log("Getting estimated time:", mechanicLocation, customerLocation)
       if (mechanicLocation && customerLocation) {
         const time = await calculateEstimatedTime(mechanicLocation, customerLocation);
         setEstimatedTime(time);
@@ -120,6 +122,26 @@ export function ServiceOfferCard({
     getEstimatedTime();
   }, [mechanicLocation, customerLocation])
 
+  {useEffect(() => {
+    if (!expiresAt) return;
+
+    const updateExpirationTime = () => {
+      const now = new Date();
+      const diff = expiresAt.getTime() - now.getTime();
+      if (diff <= 0) {
+        setExpirationTime('Expired');
+        return;
+      }
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setExpirationTime(`Expires in ${minutes}m ${seconds}s`);
+    };
+
+    updateExpirationTime();
+    const timer = setInterval(updateExpirationTime, 1000);
+
+    return () => clearInterval(timer);
+  }, [expiresAt])}
   // Handle offer
   const handleOffer = async (accepted: boolean) => {
     try {
@@ -234,8 +256,6 @@ export function ServiceOfferCard({
     }
   }
 
-
-
   if (mechanicConnectId === null || mechanicConnectId === undefined) {
     return null
   }
@@ -268,7 +288,7 @@ export function ServiceOfferCard({
             <p className="font-semibold">${(price).toFixed(2)}</p>
             {expiresAt && (
               <p className="text-sm text-muted-foreground">
-                Expires in {/* Add expiry calculation */}
+                {expirationTime}
               </p>
             )}
           </div>

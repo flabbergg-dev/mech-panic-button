@@ -21,6 +21,8 @@ import { updateMechanicLocation } from "@/app/actions/updateMechanicLocation"
 import { updateUserCurrentLocation } from "@/app/actions/user/update-user-current-location"
 import { deleteServiceOfferAction } from "@/app/actions/service/offer/deleteServiceOfferAction"
 import { useEmailNotification } from "@/hooks/useEmailNotification"
+import { cn } from "@/lib/utils"
+import { updateOfferStatus } from "@/app/actions/updateOfferStatusAction"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -49,6 +51,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   const { toast } = useToast()
   const router = useRouter()
   const {sendEmail} = useEmailNotification()
+  const [expirationTime, setExpirationTime] = useState<string | null>(null)
   
   const fetchData = async () => {
     try {
@@ -71,17 +74,22 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         }, 1000)
       }
 
-      if (offerResult.success && offerResult.data) {
-        setServiceOffer(offerResult.data)
-        console.log(offerResult.data)
-        // If there's an existing offer, set the form values
-        if (offerResult.data.price) {
-          setPrice(offerResult.data.price.toString())
+      if (offerResult) {
+        if (offerResult.success && offerResult.data) {
+          setServiceOffer(offerResult.data)
+          console.log(offerResult.data)
+          // If there's an existing offer, set the form values
+          if (offerResult.data.price) {
+            setPrice(offerResult.data.price.toString())
+          }
+          if (offerResult.data.note) {
+            setNote(offerResult.data.note)
+          }
         }
-        if (offerResult.data.note) {
-          setNote(offerResult.data.note)
-        }
+      } else {
+        console.log("No offer result received");
       }
+
     } catch (error) {
       console.error("Error fetching data:", error)
      
@@ -147,7 +155,28 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     }
   }, [toast])
 
+  {useEffect(() => {
 
+    const expiresAt = new Date(serviceOffer?.expiresAt ?? new Date())
+    if (!expiresAt || !serviceOffer || serviceOffer.status === 'EXPIRED') return;
+    const updateExpirationTime = () => {
+      const now = new Date();
+      const diff = expiresAt.getTime() - now.getTime();
+      if (diff <= 0) {
+        setExpirationTime('Expired');
+        if(serviceOffer.status === 'PENDING') updateOfferStatus(serviceOffer.id, 'EXPIRED');
+        return;
+      }
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setExpirationTime(`Expires in ${minutes}m ${seconds}s`);
+    };
+
+    updateExpirationTime();
+    const timer = setInterval(updateExpirationTime, 1000);
+
+    return () => clearInterval(timer);
+  }, [expirationTime, serviceOffer?.expiresAt])}
   if (isLoading || !request) return <Loader title="Loading Request..." />
   if (isRedirecting) return <Loader title="Redirecting to dashboard..." />
 
@@ -198,9 +227,24 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
       if (result.success) {
         // Fetch the updated offer to get the full details
-        const offerResult = await getMechanicServiceOfferAction(mechanicId, requestId)
+        const offerResult = await getMechanicServiceOfferAction(mechanicId, requestId);
+        console.log("Offer result:", offerResult);
+
+        if (!offerResult) {
+          console.log("No offer result received");
+          return;
+        }
+
         if (offerResult.success && offerResult.data) {
           setServiceOffer(offerResult.data)
+          console.log("Setting offer data:", offerResult.data)
+          // If there's an existing offer, set the form values
+          if (offerResult.data.price) {
+            setPrice(offerResult.data.price.toString())
+          }
+          if (offerResult.data.note) {
+            setNote(offerResult.data.note)
+          }
         }
 
         // TODO: merge this function with updateCurrentMechanicLocation function location
@@ -218,12 +262,20 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           title: "Success",
           description: "Service offer submitted successfully",
         })
-        await sendEmail({
-          to: request.client.email,
-          subject: 'Service Offer Submitted',
-          message: `Your service offer for ${request.serviceType} has been submitted.`,
-          userName: request.client.firstName
-        }) 
+        try {
+          sendEmail({
+            to: request.client.email,
+            subject: 'Service Offer Submitted',
+            message: `Your service offer for ${request.serviceType} has been submitted.`,
+            userName: request.client.firstName
+          }).catch(error => {
+            console.error('Failed to send email notification:', error);
+            // Don't throw, just log the error
+          });
+        } catch (error) {
+          console.error('Error initiating email notification:', error);
+          // Continue with the flow even if email fails
+        }
       } else {
         toast({
           title: "Error",
@@ -266,15 +318,21 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   }
 
   const getOfferStatusMessage = () => {
-    if (!serviceOffer) return null
-    // TODO: Add payment failed clause aswell
+    if (!serviceOffer) return null;
+
+    // Check if offer is expired based on time first
+    const isExpired = serviceOffer.expiresAt && new Date(serviceOffer.expiresAt) < new Date();
+    if (isExpired) {
+      return "Offer has expired. You can cancel the service request.";
+    }
+
     switch (serviceOffer.status) {
       case 'PENDING':
-        return "Waiting for client to accept your offer..."
+        return "Waiting for client's response..."
+      case 'ACCEPTED':
+        return "Offer was accepted by the client!"
       case 'DECLINED':
         return "Offer was declined by the client."
-      case 'ACCEPTED':
-        return `Offer accepted! ${request.status !== "ACCEPTED" && request.status !== "REQUESTED" ? "Payment authorized." : "Payment pending."}`
       case 'REJECTED':
         return "Offer was rejected by the client."
       case 'EXPIRED':
@@ -325,26 +383,35 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
             {serviceOffer ? (
               <div className="space-y-4">
                 <div
-                  className={`p-4 rounded-lg  ${request.status === "PAYMENT_AUTHORIZED" ? "bg-green-950" : "bg-muted"}`}
+                  className={cn("p-4 rounded-lg", 
+                    request.status === "PAYMENT_AUTHORIZED" ? "bg-green-950/95" : "bg-muted", 
+                    (serviceOffer.status === "EXPIRED" || (serviceOffer.expiresAt && new Date(serviceOffer.expiresAt) < new Date())) ? "bg-primary/95 text-primary-foreground" : ""
+                  )}
                 >
-                  <h3 className="font-medium mb-2">Your Offer</h3>
+                  <h3 className={cn("font-medium", (serviceOffer.status === "EXPIRED" || (serviceOffer.expiresAt && new Date(serviceOffer.expiresAt) < new Date())) ? "text-primary-foreground" : "", request.status === "PAYMENT_AUTHORIZED" ? "text-green-500" : "text-muted-foreground")}>Your Offer</h3>
                   <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Price</span>
-                      <span className="font-medium">${serviceOffer.price}</span>
-                    </div>
                     {serviceOffer.note && (
-                      <div className="mt-2">
-                        <span className="text-sm text-muted-foreground">
-                          Note: {serviceOffer.note}
+                      <div className="text-sm">
+                        <span className="font-medium">Note: </span>
+                        <span className="text-muted-foreground">
+                          {serviceOffer.note}
                         </span>
                       </div>
                     )}
-                    <div className="mt-2">
+                    <div className="mt-2 flex justify-between gap-4">
                       <span
-                        className={`text-sm font-medium  transition-colors duration-200 ${request.status === "PAYMENT_AUTHORIZED" ? "text-green-500" : "text-muted-foreground"}`}
+                        className={cn("text-sm font-medium transition-colors duration-200 flex-1",
+                          request.status === "PAYMENT_AUTHORIZED" ? "text-green-500" : "text-muted-foreground",
+                          (serviceOffer.status === "EXPIRED" || (serviceOffer.expiresAt && new Date(serviceOffer.expiresAt) < new Date())) ? "text-primary-foreground" : ""
+                        )}
                       >
                         {getOfferStatusMessage()}
+                      </span>
+                      <span className={cn("text-sm font-medium transition-colors duration-200",
+                        request.status === "PAYMENT_AUTHORIZED" ? "text-green-500" : "text-muted-foreground",
+                        (serviceOffer.status === "EXPIRED" || (serviceOffer.expiresAt && new Date(serviceOffer.expiresAt) < new Date())) ? "text-primary-foreground" : ""
+                      )}>
+                        {expirationTime}
                       </span>
                     </div>
                   </div>
@@ -400,11 +467,11 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
                   serviceOffer &&
                   (serviceOffer.status === "EXPIRED" ||
                     serviceOffer.status === "REJECTED" ||
-                    serviceOffer.status === "DECLINED")
+                    serviceOffer.status === "DECLINED" || expirationTime === 'Expired')
                     ? "destructive"
                     : "outline"
                 }
-                className={"flex-1"}
+                className={cn("flex-1 ", serviceOffer?.status === 'EXPIRED' ? " text-destructive-foreground" : "")}
                 onClick={serviceOffer ? handleCancelServiceOffer : () => router.back()}
               >
                 Cancel

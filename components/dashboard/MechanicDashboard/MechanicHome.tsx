@@ -62,10 +62,13 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
       const activeOfferResult = await getActiveMechanicOfferAction(user.id);
       console.log("Active offer check result:", activeOfferResult);
 
-      if (
-        activeOfferResult.success === undefined ||
-        activeOfferResult === undefined
-      ) {
+      if (!activeOfferResult || typeof activeOfferResult !== "object") {
+        console.log("Invalid active offer result");
+        return;
+      }
+
+      if (!activeOfferResult.success) {
+        console.log("No active offer found");
         return;
       }
 
