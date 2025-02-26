@@ -13,7 +13,7 @@ export type EnrichedServiceOffer = {
   expiresAt: Date | null
   createdAt: Date
   updatedAt: Date
-  location: {latitude: number, longitude: number} | null
+  location: {latitude: number, longitude: number}
   mechanic?: {
     id: string
     rating: number | null
@@ -47,9 +47,7 @@ export async function getServiceOffersForClient(serviceRequestId: string) {
   // For pending offers, fetch mechanic details
   const enrichedOffers = await Promise.all(
     offers.map(async (offer): Promise<EnrichedServiceOffer> => {
-      const location = typeof offer.location === 'object' && offer.location 
-        ? offer.location as { latitude: number; longitude: number }
-        : null;
+      const location = offer.location as { latitude: number; longitude: number }        ;
 
       if (!offer.mechanicId) {
         return { ...offer, location };

@@ -359,6 +359,9 @@ export function ClientDashboard() {
                     {offers
                       .slice() // Create a copy to avoid mutating the original array
                       .map((offer: EnrichedServiceOffer) => (
+                        console.log("Debug offer:", offer),
+                        // console.log("Debug offer mechanic:", offer.mechanic),
+                        console.log("Debug customer location:", customerLocation),
                       <ServiceOfferCard
                         mechanicId={offer.mechanic!.id}
                         mechanicConnectId={offer.mechanic!.user?.stripeCustomerId}

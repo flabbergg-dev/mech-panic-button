@@ -1,23 +1,24 @@
 "use client"
 
-import { useState, lazy } from "react"
-import { ServiceRequest } from "@prisma/client"
+import { useState, useEffect, lazy, Suspense } from "react"
 import { Card } from "@/components/ui/card"
 import { Navigation, MapPin } from "lucide-react"
-const Map = lazy(() => import("./Map"));
+import { Skeleton } from "@/components/ui/skeleton"
+import { usePathname } from "next/navigation";
+const Map = lazy(() => import("./Map"))
 
 interface Location {
-  latitude: number
   longitude: number
+  latitude: number
 }
 
 interface ServiceRequestMapProps {
-  serviceRequest: ServiceRequest
+  serviceRequest: any
   customerLocation: Location
   mechanicLocation?: Location
   showMechanicLocation?: boolean
   showRoute?: boolean
-  onRouteCalculated?: (duration: number) => void
+  onRouteCalculated?: (duration: number, distance: number) => void
 }
 
 export const ServiceRequestMap = ({
@@ -29,65 +30,63 @@ export const ServiceRequestMap = ({
   onRouteCalculated,
 }: ServiceRequestMapProps) => {
   const [status, setStatus] = useState(serviceRequest.status)
-  const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
+  const pathname = usePathname();
 
+  // Determine if user is mechanic based on URL
+  const isMechanic = pathname?.includes('/dashboard/mechanic');
+
+  // Update status when service request changes
+  useEffect(() => {
+    setStatus(serviceRequest.status);
+  }, [serviceRequest.status]);
+
+  // Get center location based on role
+  const getCenterLocation = () => {
+    if (isMechanic && mechanicLocation) {
+      return mechanicLocation;
+    }
+    return customerLocation;
+  };
+
+  // Only show markers when we have valid locations
   const markers = [
     {
       location: customerLocation,
-      color: "#2563eb",
+      color: "#2563eb", // blue
       popupText: "<h3>Customer Location</h3>"
     },
     ...(showMechanicLocation && mechanicLocation ? [{
       location: mechanicLocation,
-      color: "#059669",
-      popupText: "<h3>Mechanic Location</h3>"
+      color: "#059669", // green
+      popupText: "<h3>Your Location</h3>"
     }] : [])
-  ]
+  ].filter(marker => 
+    marker.location && 
+    !isNaN(marker.location.latitude) && 
+    !isNaN(marker.location.longitude)
+  );
 
-  const handleRouteCalculated = (duration: number) => {
-    setEstimatedTime(duration)
-    onRouteCalculated?.(duration)
+  const handleRouteCalculated = (duration: number, steps: any[], totalDistance: number) => {
+    onRouteCalculated?.(duration, totalDistance);
   }
+
+  // Only show route if we have both locations and showRoute is true
+  const shouldShowRoute = showRoute && 
+    markers.length === 2 && 
+    mechanicLocation && 
+    !isNaN(mechanicLocation.latitude) && 
+    !isNaN(mechanicLocation.longitude);
 
   return (
     <div className="relative w-full h-[calc(100vh-4rem)]">
-      <Map
-        center={customerLocation}
-        markers={markers}
-        showRoute={showRoute}
-        onRouteCalculated={onRouteCalculated}
-      />
-      
-      {/* Status Card */}
-      <Card className="absolute bottom-4 left-4 right-4 p-4 bg-white/90 backdrop-blur">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {status === "ACCEPTED" && (
-                <span className="text-yellow-500">Payment Pending</span>
-              )}
-              {status === "PAYMENT_AUTHORIZED" && (
-                <span className="text-blue-500">Waiting for mechanic...</span>
-              )}
-              {status === "IN_ROUTE" && (
-                <div className="flex items-center gap-2">
-                  <Navigation className="text-green-600 animate-pulse" />
-                  <span className="text-green-600">
-                    Mechanic is on the way
-                    {estimatedTime && ` - ETA: ${estimatedTime} minutes`}
-                  </span>
-                </div>
-              )}
-              {status === "IN_PROGRESS" && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="text-green-600" />
-                  <span className="text-green-600">Mechanic has arrived!</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </Card>
+      <Suspense fallback={<Skeleton className="w-full h-full" />}>
+        <Map
+          center={getCenterLocation()}
+          markers={markers}
+          showRoute={shouldShowRoute}
+          onRouteCalculated={handleRouteCalculated}
+        />
+      </Suspense>
     </div>
   );
-}
+};
