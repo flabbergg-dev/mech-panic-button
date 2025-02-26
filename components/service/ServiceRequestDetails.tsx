@@ -21,6 +21,7 @@ import { updateMechanicLocation } from "@/app/actions/updateMechanicLocation"
 import { updateUserCurrentLocation } from "@/app/actions/user/update-user-current-location"
 import { deleteServiceOfferAction } from "@/app/actions/service/offer/deleteServiceOfferAction"
 import { useEmailNotification } from "@/hooks/useEmailNotification"
+import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -292,7 +293,21 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         variant: "destructive"
       })
       return
+    } else {
+      const createChat = async () => {
+        try {
+          await createChatWithUserAction(
+            request.clientId,
+            mechanicId
+          );
+          return null;
+        } catch (error) {
+          throw new Error(`Error creating chat: ${error}`);
+        }
+      };
+      createChat();
     }
+
 
     // Navigate to the map route with the destination coordinates
     router.push(`/dashboard/mechanic/${userId}/map/${requestId}?destLat=${request.location.latitude}&destLng=${request.location.longitude}`)

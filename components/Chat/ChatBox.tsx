@@ -1,13 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-// import {
-//   getAvailableMechanicsListAction,
-// } from "@/app/actions/mechanic/get-available-mechanics-list.action"
-// import { Mechanic, User } from "@prisma/client"
 import { DynamicAvatar } from "@/components/DynamicAvatar/DynamicAvatar"
 import { Button } from "@/components/ui/button"
-// import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
 import { Input } from "@/components/ui/input"
 import { createMessageAction } from "@/app/actions/chats/create-message.action"
 import { RealtimeChannel } from "@supabase/supabase-js"
@@ -17,20 +12,19 @@ import { Separator } from "@/components/ui/separator"
 import { MessageCircle } from "lucide-react"
 import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action"
 import supabase from "@/utils/supabase/specialClient"
-import { useAuth } from '@clerk/clerk-react'
-import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
 import { getUserToken } from "@/app/actions/getUserToken"
+import { HalfSheet } from "../ui/HalfSheet"
+import useUserFirstName from "@/hooks/useUserFirstName"
 
 type ChatBoxProps = {
   mechanicId: string
+  userId: string
 }
 
-export const ChatBox = ({mechanicId}: ChatBoxProps) => {
-  const { userId } = useAuth()
+export const ChatBox = ({mechanicId, userId}: ChatBoxProps) => {
 
   const [isOpen, setIsOpen] = useState(false)
-  // const supabase = createClient()
-  // managing the chat identidier
+  const useFirstName = useUserFirstName(mechanicId!)
   const [chatId, setChatId] = useState(null as number | null)
   // messages based on chat based in user (creating in client)
   const [messages, setMessages] = useState<
@@ -52,20 +46,6 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
   }[]>([])
   const { user: currentUser } = useUser()
   const channelRef = useRef<RealtimeChannel | null>(null)
-
-  const createChat = async (userId: string, mechanicId: string) => {
-    try {
-      const chat = await createChatWithUserAction(userId, mechanicId)
-      if (chat) {
-        setChatId(chat.chat!.id)
-      } else {
-        console.error("Error creating chat")
-      }
-      return null
-    } catch (error) {
-      throw new Error(`Error creating chat: ${error}`)
-    }
-  }
 
   const createNewMessage = async (message: {
     userId: string
@@ -112,9 +92,9 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
   const fetchChat = async () => {
     const chat = await getChatByUserIdAction(
       userId!,
-      mechanicId
+      mechanicId!
     );
-    if (chat.chat?.id) {
+    if (chat?.chat?.id) {
       setChatId(chat.chat.id)
       if(chatId) {
         await fetchMessages(chatId!)
@@ -126,13 +106,7 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
   }
 
   const realTimeSubscription = async () => {
-    
-    if (!chatId) {
-      await createChat(userId!, mechanicId)
-    } else {
-      await fetchChat()
-    }
-
+    await fetchChat();
     const token = await getUserToken()
     if (!token) {
       console.log("No token available")
@@ -141,9 +115,7 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
     supabase.realtime.setAuth(token)
 
     channelRef.current = supabase.channel('realtime:public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, async (payload: any) => {
-      setTimeout(async () => {
-        await fetchMessages(chatId!)
-      }, 2000)
+      payload.new.authorId === userId ? setUserMessages((prevMessages: any) => [...prevMessages, payload.new]) : setMechanicMessages((prevMessages: any) => [...prevMessages, payload.new])
     }).subscribe()
     console.log("Channel: ", channelRef.current)
     return () => {
@@ -153,7 +125,7 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
 
   useEffect(() => {
     realTimeSubscription()
-  }, [channelRef])
+  }, [channelRef, chatId])
 
 
 
@@ -165,44 +137,69 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
       >
         <MessageCircle size={24} />
       </Button>
+      {isOpen === true && (
+        <HalfSheet
+          className={`z-50 bg-background p-4 h-[-webkit-fill-available] ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}
+        >
+          {chatId && (
+            <div className="flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-4 py-4">
+                <h1 className="bg-secondary text-secondary-foreground p-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                  Chat
+                </h1>
+                <Button className="" onClick={() => setIsOpen(false)}>
+                  Close
+                </Button>
+              </div>
+              <Separator />
+              <div className="grid gap-4 my-4">
+                {mechanicMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="place-self-start h-auto gap-4 w-fit flex flex-row items-center justify-center"
+                  >
+                    <DynamicAvatar
+                      className="border-2"
+                      // src={
+                      //   typeof currentUser?.username === "string"
+                      //     ? currentUser.username
+                      //     : undefined
+                      // }
+                      fallbackText={
+                        useFirstName
+                          ? useFirstName.slice(0, 2)
+                          : "NA"
+                      }
+                    />
+                    <p className="text-white bg-slate-600 p-2 rounded-lg">
+                      {msg.content}
+                    </p>
+                  </div>
+                ))}
 
-      <div className={`z-10 absolute left-0 right-0 justify-center bg-slate-600 text-white p-2 rounded-md duration-300 h-auto overflow-y-scroll w-[70dvw] md:w-[20dvw] border-2 hover:border-slate-400 transition-all ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}>
-        {chatId && (
-          <div className="flex flex-col justify-between">
-            <h1 className="p-2 bg-slate-600 text-white rounded-md w-fit my-4">
-              Chat with user
-            </h1>
-            <Separator />
-            <div className="grid gap-4 my-4">
-              {mechanicMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="place-self-start h-auto gap-4 w-24 flex flex-row items-center justify-center"
-                >
-                  <DynamicAvatar className="border-2" src={typeof currentUser?.username === 'string' ? currentUser.username : undefined} fallbackText={currentUser?.firstName ? currentUser.firstName.slice(0, 2) : "NA"} />
-                  <div className="flex w-[-webkit-fill-available]">
+                {userMessages.map((msg, index) => (
+                  <div
+                    key={`${msg.id}-${index}`}
+                    className="place-self-end h-auto gap-4 w-fit flex flex-row items-center justify-center"
+                  >
                     <p className="text-white bg-slate-600 p-2 rounded-lg">
                       {msg.content}
                     </p>
+                    <DynamicAvatar
+                      className="border-2"
+                      // src={
+                      //   typeof currentUser?.username === "string"
+                      //     ? currentUser.username
+                      //     : undefined
+                      // }
+                      fallbackText={
+                        currentUser?.firstName
+                          ? currentUser.firstName.slice(0, 2)
+                          : "NA"
+                      }
+                    />
                   </div>
-                </div>
-              ))}
-              {userMessages.map((msg, index) => (
-                <div
-                  key={`${msg.id}-${index}`}
-                  className="place-self-end h-auto w-24 flex flex-row items-center justify-center"
-                >
-                  <div className="flex w-[-webkit-fill-available]">
-                    <p className="text-white bg-slate-600 p-2 rounded-lg">
-                      {msg.content}
-                    </p>
-                  </div>
-                  <div className="flex w-32">
-                    <DynamicAvatar className="border-2" src={typeof currentUser?.username === 'string' ? currentUser.username : undefined} fallbackText={currentUser?.firstName ? currentUser.firstName.slice(0, 2) : "NA"} />
-                  </div>
-                </div>
-              ))}
-              {chatId && (
+                ))}
                 <div className="flex gap-4 my-4">
                   <Input
                     placeholder="Type a message"
@@ -210,21 +207,23 @@ export const ChatBox = ({mechanicId}: ChatBoxProps) => {
                   />
                   <Button
                     variant={"secondary"}
-                    onClick={() => createNewMessage({
-                      userId: currentUser!.id!,
-                      chatId: chatId,
-                      authorId: currentUser!.id!,
-                      content: messages[messages.length - 1].message
-                    })}
+                    onClick={() =>
+                      createNewMessage({
+                        userId: currentUser!.id!,
+                        chatId: chatId,
+                        authorId: currentUser!.id!,
+                        content: messages[messages.length - 1].message,
+                      })
+                    }
                   >
                     Send
                   </Button>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </HalfSheet>
+      )}
     </div>
-  )
+  );
 }

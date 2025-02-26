@@ -189,13 +189,13 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
 
   return (
     <div className="flex flex-col space-y-4 p-4 md:p-6">
-      {isSubscribed !== null && (
+      {isSubscribed === null && (
         <Button
           onClick={handleSubscribe}
           className="sticky w-fit z-50 p-4 flex"
         >
           <Magnet size={24} />
-          <span className="ml-2">Subscribe to Pro</span>
+          <span className="ml-2">Subscribe</span>
         </Button>
       )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

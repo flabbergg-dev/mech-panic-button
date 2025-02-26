@@ -215,7 +215,12 @@ export function ClientDashboard() {
             {activeRequest?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
                 <ServiceCardLayout>
-                  {activeRequest.mechanicId && <ChatBox mechanicId={activeRequest.mechanicId} />}
+                  {activeRequest.mechanicId && (
+                    <ChatBox
+                      mechanicId={activeRequest.mechanicId}
+                      userId={activeRequest.clientId}
+                    />
+                  )}
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
                     <h2 className="text-xl font-semibold mb-2">
                       Mechanic on their way

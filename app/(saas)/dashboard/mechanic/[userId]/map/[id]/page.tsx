@@ -20,7 +20,9 @@ import { PinInput } from '@/components/ui/PinInput'
 import { verifyCompletionCodeAction } from '@/app/actions/verifyCompletionCodeAction'
 import { updateMechanicLocation } from '@/app/actions/updateMechanicLocation'
 import { useToast } from '@/hooks/use-toast'
-
+import { ChatBox } from '@/components/Chat/ChatBox'
+import { useAuth } from "@clerk/clerk-react";
+import useMechanicId from '@/hooks/useMechanicId'
 interface Location {
   latitude: number
   longitude: number
@@ -44,6 +46,8 @@ type ServiceRequestWithClient = ServiceRequest & {
    */
 export default function MechanicMapPage() {
   const params = useParams()
+  const { userId } = useAuth();
+  const mechanicId = useMechanicId(userId!)
   const searchParams = useSearchParams()
   const { id: requestId } = params
   const destLat = searchParams.get('destLat')
@@ -386,7 +390,7 @@ export default function MechanicMapPage() {
     <div className="relative min-h-screen">
       {/* Map */}
       <div className="fixed inset-0 z-0">
-        <ServiceRequestMap 
+        <ServiceRequestMap
           serviceRequest={{ id: requestId } as any}
           customerLocation={customerLocation}
           mechanicLocation={mechanicLocation ?? undefined}
@@ -399,44 +403,50 @@ export default function MechanicMapPage() {
       {/* Controls */}
       <HalfSheet>
         <ServiceCardLayout>
+          {request.status === "IN_ROUTE" && (
+            <ChatBox mechanicId={mechanicId!} userId={request.clientId} />
+          )}
           <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-lg border border-border/50 transform transition-all duration-300 ease-in-out">
-            <h2 className="text-xl font-semibold mb-2">{request.status === "SERVICING" ? "Service in Progress" : "Navigation"}</h2>
+            <h2 className="text-xl font-semibold mb-2">
+              {request.status === "SERVICING"
+                ? "Service in Progress"
+                : "Navigation"}
+            </h2>
 
             {/* Estimated Time */}
             {estimatedTime && request.status === "IN_ROUTE" ? (
               <p className="text-muted-foreground mb-4">
-                Estimated arrival time: {estimatedTime } minutes
-              </p> 
+                Estimated arrival time: {estimatedTime} minutes
+              </p>
             ) : estimatedTime === 0 && request.status === "IN_ROUTE" ? (
               <p className="text-muted-foreground mb-4">
                 Estimated arrival time: Less than 1 minute
               </p>
-            ) : (
-              null
-            )
-          }
-            
+            ) : null}
+
             <div className="space-y-4">
-              { request.status === "PAYMENT_AUTHORIZED" && (
-              <Button
-                className={cn(
-                  "w-full",
-                  isLoading && "cursor-not-allowed",
-                  showRoute && "hidden"
-                )}
-                onClick={handleStartRoute}
-                disabled={isLoading || showRoute}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                    Starting...
-                  </>
-                ) : showRoute ? ("Route Started") : ("Start Route")
-        
-                }
-              </Button>)
-              }
+              {request.status === "PAYMENT_AUTHORIZED" && (
+                <Button
+                  className={cn(
+                    "w-full",
+                    isLoading && "cursor-not-allowed",
+                    showRoute && "hidden"
+                  )}
+                  onClick={handleStartRoute}
+                  disabled={isLoading || showRoute}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                      Starting...
+                    </>
+                  ) : showRoute ? (
+                    "Route Started"
+                  ) : (
+                    "Start Route"
+                  )}
+                </Button>
+              )}
 
               {/* Arrival Button */}
               {!isLoading && !arrivalCode && showRoute && (
@@ -444,24 +454,28 @@ export default function MechanicMapPage() {
                   I&apos;ve Arrived
                 </Button>
               )}
-              
+
               {arrivalCode && request.status === "IN_PROGRESS" && (
                 <Card className="w-full bg-card/80 text-card-foreground backdrop-blur-sm shadow-lg p-4 rounded-lg border-none transform transition-all duration-300 ease-in-out">
-                  <h3 className="text-lg font-semibold mb-2 text-start">Arrival Code</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-start">
+                    Arrival Code
+                  </h3>
                   <div className="flex items-center justify-center gap-2">
-                    <p className="text-2xl font-bold text-center">{arrivalCode}</p>
+                    <p className="text-2xl font-bold text-center">
+                      {arrivalCode}
+                    </p>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => {
-                        navigator.clipboard.writeText(arrivalCode)
-                        setIsCopied(true)
+                        navigator.clipboard.writeText(arrivalCode);
+                        setIsCopied(true);
                         toast({
                           title: "Copied!",
                           description: "Arrival code copied to clipboard",
-                        })
-                        setTimeout(() => setIsCopied(false), 1000)
+                        });
+                        setTimeout(() => setIsCopied(false), 1000);
                       }}
                     >
                       {isCopied ? (
@@ -471,49 +485,60 @@ export default function MechanicMapPage() {
                       )}
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2 text-center">Share this code with your client to begin service</p>
+                  <p className="text-sm text-muted-foreground mt-2 text-center">
+                    Share this code with your client to begin service
+                  </p>
                 </Card>
               )}
 
               {request.status === "SERVICING" && (
-                <Button onClick={handleEndService} className={cn("w-full", isLoading && "cursor-not-allowed opacity-50")}>
-                  {isLoading ? (<>
-                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                    Completing...
-                  </>
-                  ) : ("Complete Service")}
+                <Button
+                  onClick={handleEndService}
+                  className={cn(
+                    "w-full",
+                    isLoading && "cursor-not-allowed opacity-50"
+                  )}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                      Completing...
+                    </>
+                  ) : (
+                    "Complete Service"
+                  )}
                 </Button>
               )}
-
-
-
-
             </div>
           </div>
         </ServiceCardLayout>
-      </HalfSheet>{request.status === "IN_COMPLETION" && (
-               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
-               <div className="flex flex-col h-full p-6">
-                 <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                   <div className="text-center space-y-4 max-w-md">
-                     <h2 className="text-2xl font-semibold">Enter Completion Code</h2>
-                     <p className="text-muted-foreground">
-                       Please enter the 6-digit code provided by your client to complete the service
-                     </p>
-                     <div className="mt-8">
-                       <PinInput onComplete={handleCompletionCode} />
-                     </div>
-                     {isVerifyingCode && (
-                       <div className="flex items-center justify-center mt-4">
-                         <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
-                         <span>Verifying code...</span>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               </div>
-             </div>
-            ) }
+      </HalfSheet>
+      {request.status === "IN_COMPLETION" && (
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
+          <div className="flex flex-col h-full p-6">
+            <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+              <div className="text-center space-y-4 max-w-md">
+                <h2 className="text-2xl font-semibold">
+                  Enter Completion Code
+                </h2>
+                <p className="text-muted-foreground">
+                  Please enter the 6-digit code provided by your client to
+                  complete the service
+                </p>
+                <div className="mt-8">
+                  <PinInput onComplete={handleCompletionCode} />
+                </div>
+                {isVerifyingCode && (
+                  <div className="flex items-center justify-center mt-4">
+                    <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
+                    <span>Verifying code...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
