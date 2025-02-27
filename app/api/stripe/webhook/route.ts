@@ -25,6 +25,9 @@ export async function POST(req: Request) {
 
   // console.log('Received webhook body:', body);
   // console.log('Received headers:', headersList);
+  for (const [key, value] of headersList.entries()) {
+  console.log(`${key}: ${value}`);
+}
 
   let event: Stripe.Event;
 
