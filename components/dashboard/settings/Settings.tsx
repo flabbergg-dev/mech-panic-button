@@ -26,6 +26,9 @@ import { PersonalInfoForm } from "./PersonalInfo"
 import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
 import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id"
+import { ConnectComponentsProvider, ConnectBalances, ConnectPayments } from "@stripe/react-connect-js"
+import { loadConnectAndInitialize } from "@stripe/connect-js/pure";
+
 const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
   { 
     id: "personal", 
@@ -77,9 +80,6 @@ const SettingsPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const isSubscribed = useIsUserSubscribed()
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null)
-  const [currentAvailableBalance, setCurrentAvailableBalance] = useState<
-    number | null
-  >(null);
 
   // get customer data from stripe
   const fetchData = async () => {
@@ -132,56 +132,88 @@ const SettingsPage = () => {
     }
   }
 
-  const handleWithdrawFunds = async () => {
-    fetch(`/api/stripe/connect-withdraw-funds`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        // TODO: add amount to withdraw
-        amount: 400,
-        destination: stripeConnectId,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  }
+  // const handleWithdrawFunds = async () => {
+  //   fetch(`/api/stripe/connect-withdraw-funds`, {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     body: JSON.stringify({
+  //       // TODO: add amount to withdraw
+  //       amount: 400,
+  //       destination: stripeConnectId,
+  //     }),
+  //   })
+  //     .then((response) => response.json())
+  //     .then((data) => {
+  //       console.log(data);
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error:", error);
+  //     });
+  // }
 
-  const fetchBalance = async () => {
-    fetch(`/api/stripe/connect-balance-funds`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        destinationAccount: stripeConnectId,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
-        setCurrentAvailableBalance(data.balance);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  }
+  // const fetchBalance = async () => {
+  //   fetch(`/api/stripe/connect-balance-funds`, {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     body: JSON.stringify({
+  //       destinationAccount: stripeConnectId,
+  //     }),
+  //   })
+  //     .then((response) => response.json())
+  //     .then((data) => {
+  //       console.log(data);
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error:", error);
+  //     });
+  // }
 
   useEffect(() => {
-    console.log("isSubscribed: ", isSubscribed.subscriptionId)
-
     fetchStripeConnectId()
     if(isSubscribed.isSubscribed !== null) {
       fetchData()
-      fetchBalance()
     }
   }, [isSubscribed, stripeConnectId])
+
+  const [stripeConnectInstance] = useState(() => {
+    const fetchClientSecret = async () => {
+      // Fetch the AccountSession client secret
+      const response = await fetch(`/api/stripe/connect-balance-funds`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          destinationAccount: "acct_1QujAJ2cSHH6rH1A",
+        }),
+      });
+      if (!response.ok) {
+        // Handle errors on the client side here
+        const { error } = await response.json();
+        console.log("An error occurred: ", error);
+        return undefined;
+      } else {
+        const { client_secret: clientSecret } = await response.json();
+        return clientSecret;
+      }
+    };
+    return loadConnectAndInitialize({
+      // This is your test publishable API key.
+      publishableKey:
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      fetchClientSecret: fetchClientSecret,
+      appearance: {
+        overlays: "dialog",
+        variables: {
+          colorPrimary: "#625afa",
+        },
+      },
+    });
+  });
 
     // TODO: review this logic
   if (isBilling === true) {
@@ -248,15 +280,17 @@ const SettingsPage = () => {
                       <div className="flex flex-col gap-4">
                         <div className="flex justify-between items-center">
                           <p>subscription:</p>
-                          <p>Pro</p>
+                          <p>{isSubscribed?.subscriptionPlan}</p>
                         </div>
                         <div className="flex justify-between items-center">
                           <p>Status:</p>
-                          <p>active</p>
+                          <p>{isSubscribed?.subscriptionStatus}</p>
                         </div>
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between gap-4 items-center">
                           <p>your next payment is:</p>
-                          <p>April 1st, 2022</p>
+                          <p>
+                            {isSubscribed?.subscriptionEndingPeriod?.toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
                       <div className="w-full pt-4">
@@ -268,26 +302,12 @@ const SettingsPage = () => {
                         </Button>
                       </div>
                     </div>
-                    <div className="flex flex-col justify-between items-center border-2 rounded-md p-4 mt-4 md:mt-0 md:ml-4">
-                      <div>
-                        <p>Invoice History:</p>
-                        <Button className="w-full">View Invoices</Button>
-                      </div>
-                      {/* TODO: Change to modal where they choose amount to withdraw */}
-                      <div className="flex gap-16">
-                        <p>Total:</p>
-                        <p>{currentAvailableBalance}</p>
-                      </div>
-                      <div>
-                        <p>Withdraw</p>
-                        <Button
-                          className="w-full"
-                          onClick={() => handleWithdrawFunds()}
-                        >
-                          Withdraw Funds
-                        </Button>
-                      </div>
-                    </div>
+                      <ConnectComponentsProvider
+                        connectInstance={stripeConnectInstance}
+                      >
+                        <ConnectBalances />
+                        {/* <ConnectPayments /> */}
+                      </ConnectComponentsProvider>
                   </div>
                 </motion.div>
               ) : (

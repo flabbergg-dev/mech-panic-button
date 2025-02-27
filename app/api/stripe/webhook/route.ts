@@ -168,16 +168,13 @@ export async function POST(req: Request) {
       }
 
       case "invoice.payment_succeeded": {
-        const invoice = event.data.object as unknown as Stripe.InvoicePaidEvent
-
-        if (invoice) {
-          await prisma.user.update({
-            where: { email: invoice.data.object.customer_email! },
-            data: {
-              lastTransactionId: typeof invoice.data.object.charge === 'string' ? invoice.data.object.charge : null,
-            }
-          })
-        }
+        const invoice = event.data.object
+        await prisma.user.update({
+          where: { email: invoice.customer_email! },
+          data: {
+            lastTransactionId: typeof invoice.charge === 'string' ? invoice.charge : null,
+          }
+        })
       }
 
       default:
