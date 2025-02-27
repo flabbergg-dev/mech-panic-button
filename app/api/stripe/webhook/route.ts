@@ -5,11 +5,12 @@ import { prisma } from '@/lib/prisma'
 import { ServiceStatus, SubscriptionPlan, SubscriptionStatus } from '@prisma/client'
 import { sendInvoiceEmail } from '@/utils/emailNotifications'
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// deprecated
+// export const config = {
+//   api: {
+//     bodyParser: false,
+//   },
+// };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-01-27.acacia",
@@ -22,14 +23,14 @@ export async function POST(req: Request) {
   const headersList = await headers();
   const sig = headersList.get('stripe-signature');
 
-  console.log('Received webhook body:', body);
-  console.log('Received headers:', headersList);
+  // console.log('Received webhook body:', body);
+  // console.log('Received headers:', headersList);
 
   let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(body, sig!, endpointSecret);
-    console.log('Webhook event verified:', event.type);
+    // console.log('Webhook event verified:', event.type);
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
