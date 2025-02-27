@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ServiceRequestMap } from "@/components/MapBox/ServiceRequestMap"
 import { useUser } from "@clerk/nextjs"
 import { ServiceRequest, ServiceStatus } from "@prisma/client"
 import { useServiceRequestStore } from "@/store/serviceRequestStore"
 import { toast } from "@/hooks/use-toast"
+import ServiceRequestMap from "@/components/MapBox/ServiceRequestMap"
 
 interface Location {
   latitude: number

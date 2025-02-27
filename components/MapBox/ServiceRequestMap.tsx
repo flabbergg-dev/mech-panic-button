@@ -1,9 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useCallback, useState, useMemo, memo } from "react"
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
+import toMapboxLngLat from "@/utils/toMapboxLngLat"
 import { ServiceRequest, ServiceStatus } from "@prisma/client"
+
+import { getMechanicLocation } from "@/app/actions/location"
 
 interface ServiceRequestMapProps {
   serviceRequest: ServiceRequest
@@ -12,14 +15,6 @@ interface ServiceRequestMapProps {
   showMechanicLocation?: boolean
   showRoute?: boolean
   onRouteCalculated?: (duration: number, distance: number) => void
-}
-
-// Helper function to convert location to Mapbox LngLat format
-const toMapboxLngLat = (location: { latitude: number; longitude: number } | undefined): [number, number] | null => {
-  if (!location || typeof location.longitude !== 'number' || typeof location.latitude !== 'number') {
-    return null
-  }
-  return [location.longitude, location.latitude]
 }
 
 // Helper functions for localStorage
@@ -67,12 +62,55 @@ const ServiceRequestMap = ({
   const mechanicMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const routeRef = useRef<mapboxgl.GeoJSONSource | null>(null)
   const [mapReady, setMapReady] = useState(false)
-  const previousMechanicLocation = useRef(mechanicLocation)
-  const routeUpdateTimeoutRef = useRef<NodeJS.Timeout>()
+  const previousMechanicLocation = useRef<LocationType | undefined>(mechanicLocation)
+  const routeUpdateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Store locations in state with localStorage backup
   const [storedCustomerLocation, setStoredCustomerLocation] = useState<LocationType | undefined>(undefined)
   const [storedMechanicLocation, setStoredMechanicLocation] = useState<LocationType | undefined>(undefined)
+
+  // For polling mechanic location
+  const locationPollingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
+
+  // Fetch mechanic location using server action
+  const fetchMechanicLocation = async () => {
+    if (serviceRequest.status === ServiceStatus.IN_ROUTE && serviceRequest.mechanicId) {
+      try {
+        const location = await getMechanicLocation(serviceRequest.mechanicId)
+        if (location) {
+          // Only update if location has changed
+          if (!previousMechanicLocation.current || 
+              previousMechanicLocation.current.latitude !== location.latitude || 
+              previousMechanicLocation.current.longitude !== location.longitude) {
+            setStoredMechanicLocation(location)
+            setStoredLocation(STORAGE_KEYS.MECHANIC_LOCATION(serviceRequest.id), location)
+            previousMechanicLocation.current = location
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching mechanic location:", error)
+      }
+    }
+  }
+
+  // Start polling for mechanic location updates
+  useEffect(() => {
+    // Initial fetch
+    fetchMechanicLocation()
+    
+    // Set up polling interval
+    if (serviceRequest.status === ServiceStatus.IN_ROUTE && !locationPollingIntervalRef.current) {
+      locationPollingIntervalRef.current = setInterval(fetchMechanicLocation, 5000)
+    }
+    
+    // Clean up interval on unmount or status change
+    return () => {
+      if (locationPollingIntervalRef.current) {
+        clearInterval(locationPollingIntervalRef.current)
+        locationPollingIntervalRef.current = undefined
+      }
+    }
+  }, [serviceRequest.status, serviceRequest.mechanicId])
 
   // Initialize stored locations only once when component mounts
   useEffect(() => {
@@ -356,4 +394,4 @@ const ServiceRequestMap = ({
   return <div ref={mapContainerRef} className="w-full h-full" />
 }
 
-export default memo(ServiceRequestMap)
+export default ServiceRequestMap

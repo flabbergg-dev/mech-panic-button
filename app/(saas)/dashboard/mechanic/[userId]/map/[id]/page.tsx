@@ -167,10 +167,13 @@ export default function MechanicMapPage() {
     };
 
     // Get initial location with better error handling
-    const getInitialLocation = () => {
+    const getInitialLocation = (): Promise<void> => {
+      setIsGettingLocation(true);
+      
       return new Promise<void>((resolve) => {
-        let timeoutId: NodeJS.Timeout;
-
+        // Initialize with undefined to ensure it exists before potential use in catch block
+        let timeoutId: NodeJS.Timeout | undefined;
+        
         try {
           timeoutId = setTimeout(() => {
             console.warn("Location request taking longer than expected...");
@@ -214,7 +217,7 @@ export default function MechanicMapPage() {
                   toast({
                     title: "Using Last Known Location",
                     description: "Current location unavailable. Using last known position.",
-                    variant: "warning",
+                    variant: "default",
                     duration: 5000
                   });
                 } else {
@@ -244,10 +247,15 @@ export default function MechanicMapPage() {
             }
           );
         } catch (e) {
-          clearTimeout(timeoutId);
           console.error("Unexpected error in getInitialLocation:", e);
+          // Only clear timeout if it's defined
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           setIsGettingLocation(false);
           resolve();
+        } finally {
+          setIsGettingLocation(false);
         }
       });
     };
@@ -501,11 +509,24 @@ export default function MechanicMapPage() {
       });
 
       // Send email notification to client
-      await sendEmail({
-        to: request?.client.email,
-        subject: "Mechanic En Route",
-        text: `Your mechanic is on the way! Estimated arrival time: ${estimatedTime} minutes.`,
-      });
+      try {
+        if (!request) {
+          toast({
+            title: "Error",
+            description: "Client email not found",
+            variant: "destructive",
+          });
+          return;
+        }
+        await sendEmail({
+          to: request.client.email,
+          subject: "Mechanic En Route",
+          message: `Your mechanic is on the way! Estimated arrival time: ${estimatedTime} minutes.`,
+        });
+        
+      } catch (error) {
+        
+      }
 
     } catch (error) {
       console.error("Error starting route:", error);
