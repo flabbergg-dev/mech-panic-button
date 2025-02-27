@@ -11,7 +11,8 @@ const onboardingSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   role: z.enum(["Customer", "Mechanic"]),
-  stripeAccountId: z.string().optional(),
+  stripeCustomerId: z.string().optional(),
+  stripeConnectId: z.string().optional(),
 })
 
 type OnboardingData = z.infer<typeof onboardingSchema>
@@ -66,7 +67,8 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
       profileImage: clerkUser.imageUrl,
       documentsUrl: [],
       currentLocation: undefined,
-      stripeCustomerId: validatedData.stripeAccountId || null,
+      stripeCustomerId: validatedData.stripeCustomerId || null,
+      stripeConnectId: validatedData.stripeConnectId || null,
       },
     })
 

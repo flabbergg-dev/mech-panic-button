@@ -25,7 +25,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 import { PersonalInfoForm } from "./PersonalInfo"
 import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
-import { getStripeCustomerId } from "@/app/actions/user/get-stripe-customer-id"
+import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id"
 const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
   { 
     id: "personal", 
@@ -99,11 +99,11 @@ const SettingsPage = () => {
   }
 
   const fetchStripeConnectId = async () => {
-    const response = await getStripeCustomerId()
+    const response = await getStripeConnectId()
 
     if (response) {
-      setStripeConnectId(response.stripeCustomerId)
-      console.log("Stripe Connect ID: ", response.stripeCustomerId)
+      setStripeConnectId(response.stripeConnectId)
+      console.log("Stripe Connect ID: ", response.stripeConnectId)
     } else {
       console.error("Error fetching Stripe Connect ID")
     }

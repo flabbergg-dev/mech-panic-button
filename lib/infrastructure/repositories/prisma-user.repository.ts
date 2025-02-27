@@ -38,6 +38,7 @@ export class PrismaUserRepository implements IUserRepository {
         dob: true,
         phoneNumber: true,
         stripeCustomerId: true,
+        stripeConnectId: true,
         stripeSubscriptionId: true,
         currentLocation: true,
        
@@ -125,6 +126,7 @@ export class PrismaUserRepository implements IUserRepository {
           profileImage: true,
           dob: true,
           phoneNumber: true,
+          stripeConnectId: true,
           stripeCustomerId: true,
           stripeSubscriptionId: true,
           currentLocation: true,

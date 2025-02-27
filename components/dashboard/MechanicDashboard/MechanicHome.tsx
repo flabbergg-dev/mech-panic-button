@@ -23,7 +23,7 @@ import { supabase } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Loader } from "@/components/loader";
-import { getStripeCustomerId } from "@/app/actions/user/get-stripe-customer-id";
+import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id";
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed";
 import { Magnet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -128,11 +128,11 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
   };
 
   const fetchStripeConnectId = async () => {
-    const response = await getStripeCustomerId();
+    const response = await getStripeConnectId();
 
     if (response) {
-      setStripeConnectId(response.stripeCustomerId);
-      console.log("Stripe Connect ID: ", response.stripeCustomerId);
+      setStripeConnectId(response.stripeConnectId);
+      console.log("Stripe Connect ID: ", response.stripeConnectId);
     } else {
       console.error("Error fetching Stripe Connect ID");
     }

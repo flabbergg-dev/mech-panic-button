@@ -11,11 +11,11 @@ interface MechanicOnboardingProps {
   };
   currentStep: "documents" | "StripeAccountSetup";
   setCurrentStep: (step: "documents" | "StripeAccountSetup") => void;
-  stripeAccountId: string | null;
-  setStripeAccountId: (stripeAccountId: string) => void;
+  stripeConnectId: string | null;
+  setStripeConnectId: (stripeConnectId: string) => void;
 }
 
-export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, stripeAccountId, setStripeAccountId}: MechanicOnboardingProps) => {
+export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, stripeConnectId, setStripeConnectId}: MechanicOnboardingProps) => {
 
     const renderedContent = React.useMemo(
       () => (
@@ -23,14 +23,14 @@ export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, strip
           {currentStep === "StripeAccountSetup" && (
             <StripeOnboarding
               setCurrentStep={setCurrentStep}
-              stripeAccountId={stripeAccountId}
-              setStripeAccountId={setStripeAccountId}
+              stripeConnectId={stripeConnectId}
+              setStripeConnectId={setStripeConnectId}
             />
           )}
           {currentStep === "documents" && (
             <MechanicDocuments
               formData={formData}
-              stripeAccountId={stripeAccountId}
+              stripeConnectId={stripeConnectId}
             />
           )}
         </HalfSheet>
@@ -38,9 +38,9 @@ export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, strip
       [
         currentStep,
         formData,
-        stripeAccountId,
+        stripeConnectId,
         setCurrentStep,
-        setStripeAccountId,
+        setStripeConnectId,
       ]
     );
 

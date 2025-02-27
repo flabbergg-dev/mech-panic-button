@@ -40,7 +40,7 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState<
     "StripeAccountSetup" | "documents"
   >("StripeAccountSetup");
-  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
+  const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
 
   // verify if the user is already a customer or mechanic
   useEffect(() => {
@@ -235,8 +235,8 @@ export default function OnboardingPage() {
               formData={formData}
               currentStep={currentStep}
               setCurrentStep={setCurrentStep}
-              stripeAccountId={stripeAccountId}
-              setStripeAccountId={setStripeAccountId}
+              stripeConnectId={stripeConnectId}
+              setStripeConnectId={setStripeConnectId}
             />
           )}
         </div>

@@ -8,16 +8,20 @@ import { Button } from "../ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 type StripeOnboardingProps = {
-  stripeAccountId: string | null;
-  setStripeAccountId: (stripeAccountId: string) => void;
+  stripeConnectId: string | null;
+  setStripeConnectId: (stripeConnectId: string) => void;
   setCurrentStep: (step: "documents" | "StripeAccountSetup") => void;
 };
 
-export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurrentStep} : StripeOnboardingProps) => {
+export const StripeOnboarding = ({
+  stripeConnectId,
+  setStripeConnectId,
+  setCurrentStep,
+}: StripeOnboardingProps) => {
   const [accountCreatePending, setAccountCreatePending] = useState(false);
   const [onboardingExited, setOnboardingExited] = useState(false);
   const [error, setError] = useState(false);
-  const stripeConnectInstance = useStripeConnect(stripeAccountId);
+  const stripeConnectInstance = useStripeConnect(stripeConnectId);
   const { toast } = useToast();
 
   const handleOnClickEvent = async () => {
@@ -33,7 +37,7 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
         const { account, error } = json;
 
         if (account) {
-          setStripeAccountId(account);
+          setStripeConnectId(account);
         }
 
         if (error) {
@@ -46,25 +50,25 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
           });
         }
       });
-  }
+  };
 
   const handleExit = () => {
-      setOnboardingExited(true);
-      setCurrentStep("documents");
-      console.log("Stripe account created:", stripeAccountId);
-      toast({
-        title: "Success",
-        description: "Your account has been created",
-      })
+    setOnboardingExited(true);
+    setCurrentStep("documents");
+    console.log("Stripe account created:", stripeConnectId);
+    toast({
+      title: "Success",
+      description: "Your account has been created",
+    });
   };
 
   return (
     <div className="container h-[35dvh]">
       <div className="content">
-        {stripeAccountId && !stripeConnectInstance && (
+        {stripeConnectId && !stripeConnectInstance && (
           <h2>Add information to start accepting money</h2>
         )}
-        {!accountCreatePending && !stripeAccountId && (
+        {!accountCreatePending && !stripeConnectId && (
           <div>
             <Button
               onClick={() => {
@@ -83,12 +87,12 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
           </div>
         )}
         {error && <p className="error">Something went wrong!</p>}
-        {(stripeAccountId || accountCreatePending || onboardingExited) && (
+        {(stripeConnectId || accountCreatePending || onboardingExited) && (
           <div className="dev-callout">
-            {/* {stripeAccountId && (
+            {/* {stripeConnectId && (
               <p>
                 Your connected account ID is:{" "}
-                <code className="bold">{stripeAccountId}</code>
+                <code className="bold">{stripeConnectId}</code>
               </p>
             )} */}
             {accountCreatePending && <p>Creating a connected account...</p>}
@@ -100,4 +104,4 @@ export const StripeOnboarding = ({stripeAccountId, setStripeAccountId, setCurren
       </div>
     </div>
   );
-}
+};

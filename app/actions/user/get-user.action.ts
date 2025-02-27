@@ -20,6 +20,7 @@ export async function getUserAction(userId: string) {
             currentLocation: true,
             createdAt: true,
             updatedAt: true,
+            stripeConnectId: true,
             stripeCustomerId: true,
             stripeSubscriptionId: true,
             stripeSubscriptionStatus: true,

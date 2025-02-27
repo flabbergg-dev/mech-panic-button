@@ -9,33 +9,36 @@ datasource db {
 }
 
 model User {
-  id                       String              @id @default(uuid())
-  createdAt                DateTime            @default(now())
-  updatedAt                DateTime            @updatedAt
-  email                    String              @unique
-  lastName                 String
-  role                     UserRole?
-  firstName                String
-  profileImage             String?
-  dob                      DateTime?
-  phoneNumber              String?
-  stripeCustomerId         String?
-  stripeSubscriptionId     String?
-  currentLocation          Json?
-  stripeSubscriptionPlan   SubscriptionPlan?
-  stripeSubscriptionStatus SubscriptionStatus?
-  notificationsEmailEnabled Boolean @default(true)
-  documentsUrl             String[]
-  bookings                 Booking[]
-  ChatUser                 ChatUser[]
-  mechanic                 Mechanic?
-  Message                  Message[]
-  chatMessages             Message[]           @relation("UserMessages")
-  pushSubscriptions        PushSubscription[]
-  reviews                  Review[]
-  serviceRequests          ServiceRequest[]
-  Vehicle                  Vehicle[]
+  id                        String              @id @default(uuid())
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  email                     String              @unique
+  lastName                  String
+  role                      UserRole?
+  firstName                 String
+  profileImage              String?
+  dob                       DateTime?
+  phoneNumber               String?
+  stripeCustomerId          String?
+  stripeSubscriptionId      String?
+  currentLocation           Json?
+  stripeSubscriptionPlan    SubscriptionPlan?
+  stripeSubscriptionStatus  SubscriptionStatus?
+  documentsUrl              String[]
+  notificationsEmailEnabled Boolean             @default(true)
+  stripeConnectId           String?             @default("")
+  stripeSubEndingDate       DateTime?
+  lastTransactionId         String?             @default("")
+  bookings                  Booking[]
   Chat                      Chat[]
+  ChatUser                  ChatUser[]
+  mechanic                  Mechanic?
+  Message                   Message[]
+  chatMessages              Message[]           @relation("UserMessages")
+  pushSubscriptions         PushSubscription[]
+  reviews                   Review[]
+  serviceRequests           ServiceRequest[]
+  Vehicle                   Vehicle[]
 }
 
 model Mechanic {
@@ -53,13 +56,14 @@ model Mechanic {
   location            Json?
   serviceArea         Json?
   servicesOffered     ServiceType[]
+  isApproved          Boolean           @default(false)
   bookings            Booking[]
+  Chat                Chat[]
   earnings            Earning[]
   user                User              @relation(fields: [userId], references: [id])
   services            MechanicService[]
   ServiceOffer        ServiceOffer[]
   serviceRequests     ServiceRequest[]
-  Chat                Chat[]
 }
 
 model Vehicle {

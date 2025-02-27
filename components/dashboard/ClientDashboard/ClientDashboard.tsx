@@ -364,7 +364,7 @@ export function ClientDashboard() {
                         console.log("Debug customer location:", customerLocation),
                       <ServiceOfferCard
                         mechanicId={offer.mechanic!.id}
-                        mechanicConnectId={offer.mechanic!.user?.stripeCustomerId}
+                        mechanicConnectId={offer.mechanic!.user?.stripeConnectId}
                         key={offer.id}
                         serviceRequestId={offer.serviceRequestId}
                         mechanicName={offer.mechanic?.user ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}` : 'Unknown Mechanic'}

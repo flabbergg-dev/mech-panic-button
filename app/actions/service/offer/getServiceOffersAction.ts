@@ -21,6 +21,7 @@ export type EnrichedServiceOffer = {
       firstName: string
       lastName: string
       stripeCustomerId: string | null | undefined
+      stripeConnectId: string | null | undefined
     } | null
   } | null
 }
@@ -60,7 +61,8 @@ export async function getServiceOffersForClient(serviceRequestId: string) {
             select: {
               firstName: true,
               lastName: true,
-              stripeCustomerId: true
+              stripeCustomerId: true,
+              stripeConnectId: true
             }
           }
         }

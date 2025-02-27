@@ -55,6 +55,7 @@ export interface UserProfileEntity {
   dob: Date | null
   phoneNumber: string | null
   stripeCustomerId: string | null
+  stripeConnectId: string | null
   stripeSubscriptionId: string | null
   currentLocation: any | null // Json in Prisma
   stripeSubscriptionPlan: SubscriptionPlan | null

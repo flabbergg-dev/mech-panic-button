@@ -56,6 +56,7 @@ export async function POST(req: Request) {
 
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
+        const paymentEmail = paymentIntent.receipt_email;
         console.log('paymentIntent succeeded:', paymentIntent)
         // Find service request with this payment hold ID
         // const serviceRequest = await prisma.serviceRequest.findFirst({
@@ -71,9 +72,10 @@ export async function POST(req: Request) {
         //     }
         //   })
         // }
+
         break
       }
-      
+
 
       case 'checkout.session.completed': {
         const session = await stripe.checkout.sessions.retrieve(
@@ -123,8 +125,10 @@ export async function POST(req: Request) {
           where: { email: customerEmail! },
           data: {
             stripeSubscriptionId: subscription.id,
+            stripeCustomerId: customerId,
             stripeSubscriptionPlan: planName as SubscriptionPlan,
-            stripeSubscriptionStatus: subscription.id ? 'ACTIVE' as SubscriptionStatus : null
+            stripeSubscriptionStatus: subscription.id ? 'ACTIVE' as SubscriptionStatus : null,
+            stripeSubEndingDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
           }
         });
 
@@ -161,6 +165,19 @@ export async function POST(req: Request) {
           console.log('User subscription revoked');
         }
         break;
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as unknown as Stripe.InvoicePaidEvent
+
+        if (invoice) {
+          await prisma.user.update({
+            where: { email: invoice.data.object.customer_email! },
+            data: {
+              lastTransactionId: typeof invoice.data.object.charge === 'string' ? invoice.data.object.charge : null,
+            }
+          })
+        }
       }
 
       default:

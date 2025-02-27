@@ -17,7 +17,7 @@ interface MechanicDocumentsProps {
     lastName: string;
     email: string;
   };
-  stripeAccountId: any;
+  stripeConnectId: any;
 }
 
 interface MechanicDocuments {
@@ -27,7 +27,7 @@ interface MechanicDocuments {
 
 export const MechanicDocuments = ({
   formData,
-  stripeAccountId,
+  stripeConnectId,
 }: MechanicDocumentsProps) => {
   const router = useRouter();
   const { user } = useUser();
@@ -58,12 +58,12 @@ export const MechanicDocuments = ({
 
     try {
       // Only onboard if this is the first document being uploaded
-      if(stripeAccountId) {
-      // if (!hasDriversLicense && !hasMerchantDocument && !stripeAccountId) {
+      if(stripeConnectId) {
+      // if (!hasDriversLicense && !hasMerchantDocument && !stripeConnectId) {
         const onboardResult = await onboardUserAction({
           ...formData,
           role: "Mechanic" as const,
-          stripeAccountId: stripeAccountId,
+          stripeConnectId: stripeConnectId,
         });
 
         if (!onboardResult.success) {
@@ -104,7 +104,7 @@ export const MechanicDocuments = ({
       });
 
       // Only redirect if both documents are uploaded
-      if(stripeAccountId) {
+      if(stripeConnectId) {
       // if (result.hasAllDocuments) {
         router.push("/dashboard");
       } else if (hasDriversLicense && country === "United States") {
