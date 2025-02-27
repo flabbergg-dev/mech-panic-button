@@ -100,9 +100,10 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
       const bookingsResponse = await fetch("/api/bookings");
       const bookingsData = await bookingsResponse.json();
       setScheduledBookings(bookingsData);
-      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
+    }
+    finally {
       setIsLoading(false);
     }
   };

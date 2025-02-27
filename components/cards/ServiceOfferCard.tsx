@@ -22,8 +22,8 @@ const stripePromise = loadStripe(
 );
 
 interface Location {
-  latitude: number
   longitude: number
+  latitude: number
 }
 
 interface ServiceOfferCardProps {
@@ -38,12 +38,12 @@ interface ServiceOfferCardProps {
   onOfferHandled?: () => void
   userId: string
   mechanicLocation: {
-    latitude: number
     longitude: number
+    latitude: number
   } | null
   customerLocation: {
-    latitude: number
     longitude: number
+    latitude: number
   } | null
 }
 
@@ -72,6 +72,8 @@ export function ServiceOfferCard({
   const [mechanicUserId, setMechanicUserId] = useState("")
   const [offerAccepted, setOfferAccepted] = useState(false)
   const [expirationTime, setExpirationTime] = useState<string | null>(null)
+const [paymentCompleted, setPaymentCompleted] = useState(false)
+
   interface SessionDetails {
     payment_status: string;
   }
@@ -99,7 +101,11 @@ export function ServiceOfferCard({
   useEffect(() => {
     const catchSearhOnPayment = async () => {
       try {
-        await updateServiceRequestByIdAction(serviceRequestId)
+        const response = await updateServiceRequestByIdAction(serviceRequestId)
+
+        if(!response.success) return
+
+        setPaymentCompleted(response.success)
       } catch (error) {
         console.error("Error updating service request:", error)
       }
@@ -113,14 +119,37 @@ export function ServiceOfferCard({
   // Get estimated time
   useEffect(() => {
     const getEstimatedTime = async () => {
-      console.log("Getting estimated time:", mechanicLocation, customerLocation)
-      if (mechanicLocation && customerLocation) {
+      try {
+        console.log("Debug: Location data in ServiceOfferCard:", {
+          mechanicLocation,
+          customerLocation,
+          hasValidMechanicLocation: mechanicLocation && 'latitude' in mechanicLocation && 'longitude' in mechanicLocation,
+          hasValidCustomerLocation: customerLocation && 'latitude' in customerLocation && 'longitude' in customerLocation
+        });
+
+        if (!mechanicLocation || !customerLocation) {
+          console.error("Debug: Missing location data");
+          setEstimatedTime("Location data unavailable");
+          return;
+        }
+
+        if (!('latitude' in mechanicLocation) || !('longitude' in mechanicLocation) ||
+            !('latitude' in customerLocation) || !('longitude' in customerLocation)) {
+          console.error("Debug: Invalid location format");
+          setEstimatedTime("Invalid location format");
+          return;
+        }
+
         const time = await calculateEstimatedTime(mechanicLocation, customerLocation);
         setEstimatedTime(time);
+      } catch (error) {
+        console.error("Debug: Error in getEstimatedTime:", error);
+        setEstimatedTime("Error calculating time");
       }
     };
+
     getEstimatedTime();
-  }, [mechanicLocation, customerLocation])
+  }, [mechanicLocation, customerLocation]);
 
   {useEffect(() => {
     if (!expiresAt) return;
@@ -167,7 +196,7 @@ export function ServiceOfferCard({
         }
         return;
       }
-
+      setPaymentCompleted(false)
       // Handle offer acceptance
       const offerResponse = await handleServiceOfferAction(
         serviceRequestId,
@@ -256,9 +285,14 @@ export function ServiceOfferCard({
     }
   }
 
-  if (mechanicConnectId === null || mechanicConnectId === undefined) {
-    return null
-  }
+  if (mechanicConnectId === null || mechanicConnectId === undefined) { return <motion.div
+    layout
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    className="w-full"
+  >
+    <Card className="p-4"> <span className="text-red-500"> Waiting for another mechanic.</span> </Card></motion.div> }
 
   return (
     <motion.div
@@ -322,13 +356,13 @@ export function ServiceOfferCard({
               </Button>
             </>
           ) : (
-            <Button
+            paymentCompleted ? null : (<Button
               onClick={handleCheckout}
               disabled={isLoading}
               className="bg-green-600 hover:bg-green-700"
             >
               Proceed to Checkout
-            </Button>
+            </Button>)
           )}
         </div>
       </Card>

@@ -23,6 +23,7 @@ import { deleteServiceOfferAction } from "@/app/actions/service/offer/deleteServ
 import { useEmailNotification } from "@/hooks/useEmailNotification"
 import { cn } from "@/lib/utils"
 import { updateOfferStatus } from "@/app/actions/updateOfferStatusAction"
+import { Card } from "../ui/card"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -360,8 +361,8 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     <div className="relative h-screen">
       {coordinates && <MapboxMapComp userCords={coordinates} />}
 
-      <HalfSheet>
-        <div className="p-4 space-y-6">
+      <HalfSheet >
+        <Card className="p-4 space-y-6 bg-card/80 text-card-foreground">
           <div className="flex items-center space-x-4">
             <Avatar>
               <AvatarImage
@@ -488,8 +489,10 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
                   request.status === "ACCEPTED"
                 }
               >
-                Go to Map
-              </Button>
+{request.status === "REQUESTED"  ? "Go to Map" : null}      
+{request.status === "ACCEPTED" ? "Waiting for customer to pay!" : null}  
+{request.status === "PAYMENT_AUTHORIZED" ? "Go to map" : null}
+      </Button>
             ) : null}
             {/* Button if there's no offer or offer is expired */}
             {!serviceOffer ? (
@@ -502,7 +505,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
               </Button>
             ) : null}
           </div>
-        </div>
+        </Card>
       </HalfSheet>
     </div>
   );
