@@ -26,7 +26,7 @@ import { PersonalInfoForm } from "./PersonalInfo"
 import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
 import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id"
-import { ConnectComponentsProvider, ConnectBalances } from "@stripe/react-connect-js"
+import { ConnectComponentsProvider, ConnectBalances, ConnectAccountManagement, ConnectPayouts } from "@stripe/react-connect-js"
 import { loadConnectAndInitialize } from "@stripe/connect-js/pure";
 
 const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
@@ -78,6 +78,7 @@ const SettingsPage = () => {
   const isBilling = path.includes("billing")
   const isMechanic = path.includes("mechanic")
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const isSubscribed = useIsUserSubscribed()
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null)
 
@@ -174,21 +175,24 @@ const SettingsPage = () => {
 
   useEffect(() => {
     fetchStripeConnectId()
+    setIsLoading(true)
     if(isSubscribed.isSubscribed !== null) {
       fetchData()
+      setIsLoading(false)
     }
-  }, [isSubscribed, stripeConnectId])
+  }, [isSubscribed, stripeConnectId, isLoading])
 
   const [stripeConnectInstance] = useState(() => {
     const fetchClientSecret = async () => {
       // Fetch the AccountSession client secret
+
       const response = await fetch(`/api/stripe/connect-balance-funds/embed`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          destinationAccount: "acct_1QujAJ2cSHH6rH1A",
+          destinationAccount: stripeConnectId!,
         }),
       });
       if (!response.ok) {
@@ -205,6 +209,41 @@ const SettingsPage = () => {
       // This is your test publishable API key.
       publishableKey:
         process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      fetchClientSecret: fetchClientSecret,
+      appearance: {
+        overlays: "dialog",
+        variables: {
+          colorPrimary: "#625afa",
+        },
+      },
+    });
+  });
+
+  const [stripeConnectInstanceAccount] = useState(() => {
+    const fetchClientSecret = async () => {
+      // Fetch the AccountSession client secret
+      const response = await fetch(`/api/stripe/account_management`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          stripeConnectAccount: stripeConnectId!,
+        }),
+      });
+      if (!response.ok) {
+        // Handle errors on the client side here
+        const { error } = await response.json();
+        console.log("An error occurred: ", error);
+        return undefined;
+      } else {
+        const { client_secret: clientSecret } = await response.json();
+        return clientSecret;
+      }
+    };
+    return loadConnectAndInitialize({
+      // This is your test publishable API key.
+      publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
       fetchClientSecret: fetchClientSecret,
       appearance: {
         overlays: "dialog",
@@ -264,71 +303,89 @@ const SettingsPage = () => {
         case "billing":
           return (
             <div>
-              {isSubscribed?.subscriptionPlan === "BASIC" ||
-              isSubscribed?.subscriptionPlan === "PRO" ? (
-                <motion.div>
-                  <div className="flex flex-col items-start justify-start space-y-4">
-                    <h2 className="text-2xl font-semibold tracking-tight">
-                      Billing Information
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Manage your subscription and payment methods
-                    </p>
-                  </div>
-                  <div className="pt-4 flex md:flex-row flex-col gap-10">
-                    <div className="flex flex-col justify-between items-center border-2 rounded-md p-4">
-                      <div className="flex flex-col gap-4">
-                        <div className="flex justify-between items-center">
-                          <p>subscription:</p>
-                          <p>{isSubscribed?.subscriptionPlan}</p>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <p>Status:</p>
-                          <p>{isSubscribed?.subscriptionStatus}</p>
-                        </div>
-                        <div className="flex justify-between gap-4 items-center">
-                          <p>your next payment is:</p>
-                          <p>
-                            {isSubscribed?.subscriptionEndingPeriod?.toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="w-full pt-4">
-                        <Button
-                          className="w-full"
-                          onClick={() => handleSubscriptionCancel()}
-                        >
-                          Cancel Subscription
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="pt-4 flex md:flex-row flex-col gap-10">
-                    <div className="bg-white w-fit h-fit p-10 rounded-md border-2 border-primary">
-                      <ConnectComponentsProvider
-                        connectInstance={stripeConnectInstance}
-                      >
-                        <ConnectBalances />
-                      </ConnectComponentsProvider>
-                    </div>
-                  </div>
-                </motion.div>
+              {isLoading ? (
+                <div>Loading...</div>
               ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <div className="flex flex-col space-y-1.5">
-                    <h2 className="text-2xl font-semibold tracking-tight">
-                      Subscribe to Pro
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Unlock premium features and support the app
-                    </p>
-                  </div>
-                  <StripeSubscribe />
-                </motion.div>
+                <>
+                  {isSubscribed?.subscriptionPlan === "BASIC" ||
+                  isSubscribed?.subscriptionPlan === "PRO" ? (
+                    <motion.div>
+                      <div className="flex flex-col items-start justify-start space-y-4">
+                        <h2 className="text-2xl font-semibold tracking-tight">
+                          Billing Information
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          Manage your subscription and payment methods
+                        </p>
+                      </div>
+                      <div className="pt-4 flex md:flex-row flex-col gap-10">
+                        <div className="flex flex-col justify-between items-center border-2 rounded-md p-4">
+                          <div className="flex flex-col gap-4">
+                            <div className="flex justify-between items-center">
+                              <p>subscription:</p>
+                              <p>{isSubscribed?.subscriptionPlan}</p>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <p>Status:</p>
+                              <p>{isSubscribed?.subscriptionStatus}</p>
+                            </div>
+                            <div className="flex justify-between gap-4 items-center">
+                              <p>your next payment is:</p>
+                              <p>
+                                {isSubscribed?.subscriptionEndingPeriod?.toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="w-full pt-4">
+                            <Button
+                              className="w-full"
+                              onClick={() => handleSubscriptionCancel()}
+                            >
+                              Cancel Subscription
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pt-4 flex md:flex-row flex-col gap-10">
+                        <div className="bg-white w-fit h-fit p-10 rounded-md border-2 border-primary">
+                          <ConnectComponentsProvider
+                            connectInstance={stripeConnectInstance}
+                          >
+                            <ConnectBalances />
+                            {/* <ConnectPayouts /> */}
+                          </ConnectComponentsProvider>
+                          <ConnectComponentsProvider
+                            connectInstance={stripeConnectInstanceAccount}
+                          >
+                            <ConnectAccountManagement
+                              // Optional:
+                              collectionOptions={{
+                                fields: "eventually_due",
+                                futureRequirements: "include",
+                              }}
+                            />
+                          </ConnectComponentsProvider>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="flex flex-col space-y-1.5">
+                        <h2 className="text-2xl font-semibold tracking-tight">
+                          Subscribe to Pro
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          Unlock premium features and support the app
+                        </p>
+                      </div>
+                      <StripeSubscribe />
+                    </motion.div>
+                  )}
+                </>
               )}
             </div>
           );

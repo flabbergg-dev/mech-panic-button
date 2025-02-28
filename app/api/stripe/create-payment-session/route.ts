@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       payment_intent_data: {
         application_fee_amount: Math.round((data[0]?.price as number) * 100) * 0.1,
         transfer_data: {
-          destination: 'acct_1QuI5YGgvb4NdUsj', // mechanicConnectId as string
+          destination: mechanicConnectId, // mechanicConnectId as string
         },
         metadata: {
           serviceRequestId,

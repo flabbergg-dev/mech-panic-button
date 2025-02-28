@@ -11,6 +11,7 @@ import {
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
 import { Button } from "@/components/ui/button"
+import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id"
 
 interface ServiceHistory {
   id: string
@@ -31,7 +32,7 @@ export const MechanicHistory = () => {
       try {
         const response = await getServiceHistory()
         setServiceHistory(response)
-        setTotalEarnings(response.reduce((sum, service) => 
+        setTotalEarnings(response.reduce((sum, service) =>
           service.status === 'COMPLETED' ? sum + service.amount : sum, 0
         ))
       } catch (error) {
@@ -44,6 +45,7 @@ export const MechanicHistory = () => {
 
     const [stripeConnectInstance] = useState(() => {
       const fetchClientSecret = async () => {
+        let userId = await getStripeConnectId()
         // Fetch the AccountSession client secret
         const response = await fetch(`/api/stripe/tx-history`, {
           method: "POST",
@@ -51,7 +53,7 @@ export const MechanicHistory = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            destinationAccount: "acct_1QujAJ2cSHH6rH1A",
+            destinationAccount: userId,
           }),
         });
         if (!response.ok) {

@@ -163,6 +163,7 @@ export function ClientDashboard() {
     return <div className="text-red-500 p-4">Error: {error}</div>
   }
 
+
   const renderContent = () => {
 
     switch (activeTab) {
@@ -356,30 +357,37 @@ export function ClientDashboard() {
 
               {offers.length > 0 && (
                 <div>
-                  <h2 className="text-xl font-semibold mb-4">Mechanic Offers</h2>
+                  <h2 className="text-xl font-semibold mb-4 text-primary">Mechanic Offers</h2>
                   <div className="space-y-4">
                     {offers
                       .slice() // Create a copy to avoid mutating the original array
-                      .map((offer: EnrichedServiceOffer) => (
-                        console.log("Debug offer:", offer),
-                        // console.log("Debug offer mechanic:", offer.mechanic),
-                        console.log("Debug customer location:", customerLocation),
-                      <ServiceOfferCard
-                        mechanicId={offer.mechanic!.id}
-                        mechanicConnectId={offer.mechanic!.user?.stripeConnectId}
-                        key={offer.id}
-                        serviceRequestId={offer.serviceRequestId}
-                        mechanicName={offer.mechanic?.user ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}` : 'Unknown Mechanic'}
-                        mechanicRating={offer.mechanic?.rating || undefined}
-                        price={offer.price || 0}
-                        note={offer.note || undefined}
-                        expiresAt={offer.expiresAt || undefined}
-                        onOfferHandled={refetch}
-                        userId={user.id}
-                        mechanicLocation={offer.location || null}
-                        customerLocation={customerLocation || null  }
-                      />
-                    ))}
+                      .map((offer: EnrichedServiceOffer) => {
+                        console.log('Debug: Offer data:', {
+                          offer,
+                          location: offer.location,
+                          customerLocation
+                        });
+
+                        return !offer.mechanic || !offer.mechanic.user ? (
+                          <span key={offer.id} className="text-red-500"> No mechanic found in this offer</span>
+                        ) : (
+                          <ServiceOfferCard
+                            mechanicId={offer.mechanic.id}
+                            mechanicConnectId={offer.mechanic.user.stripeCustomerId}
+                            key={offer.id}
+                            serviceRequestId={offer.serviceRequestId}
+                            mechanicName={offer.mechanic.user ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}` : 'Unknown Mechanic'}
+                            mechanicRating={offer.mechanic.rating || undefined}
+                            price={offer.price || 0}
+                            note={offer.note || undefined}
+                            expiresAt={offer.expiresAt || undefined}
+                            onOfferHandled={refetch}
+                            userId={user.id}
+                            mechanicLocation={offer.location}
+                            customerLocation={customerLocation}
+                          />
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -456,9 +464,10 @@ export function ClientDashboard() {
           activeRequest 
             ? activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED 
               ? ["home"] // Only disable home when payment authorized
-              : ["home", "map"] // Disable both when in other active states
+              : ["home", "map", "requests", "history", "settings", "profile"] // Disable both when in other active states
             : [] // No disabled tabs when no active request
         }
+        hiddenNavigation={activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED || activeRequest?.status === ServiceStatus.IN_ROUTE || activeRequest?.status === ServiceStatus.IN_PROGRESS || activeRequest?.status === ServiceStatus.SERVICING || activeRequest?.status === ServiceStatus.IN_COMPLETION} 
       />
     </div>
   )
