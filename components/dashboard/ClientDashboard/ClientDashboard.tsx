@@ -29,6 +29,7 @@ import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffe
 import { ChatBox } from '@/components/Chat/ChatBox'
 // import { useServiceRequestStore } from "@/store/serviceRequestStore";
 import { calculateEstimatedTime } from '@/utils/location';
+import { Booking } from '@/components/cards/Booking'
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -179,12 +180,13 @@ export function ClientDashboard() {
                
               </Card>
             </div>
-             <div className="flex items-center   justify-center min-h-[400px] w-full">
+             <div className="flex items-center justify-center w-full">
               <RippleComp>
                 <MechPanicButton user={user} onRequestCreated={handleRequestCreated}/>
                 {/* <MechPanicButtonLogo/> */}
               </RippleComp>
             </div>
+            <Booking />
           </div>
         )
       case "map":
@@ -406,7 +408,29 @@ export function ClientDashboard() {
       case "profile":
         return <Profile />
       default:
-        return null
+        return (
+          <div className="flex items-center  min-h-screen flex-col space-y-6">
+            <div className="relative z-10 w-full max-w-md">
+              <Card className="p-6 shadow-lg bg-card/80 backdrop-blur border border-card/10">
+                <h1 className="text-2xl font-bold mb-4 text-center">
+                  Welcome, {user.firstName}!
+                </h1>
+                <p className="text-gray-600 mb-6 text-center">
+                  Need mechanical assistance? We're here to help!
+                </p>
+              </Card>
+            </div>
+            <div className="flex items-center   justify-center min-h-[400px] w-full">
+              <RippleComp>
+                <MechPanicButton
+                  user={user}
+                  onRequestCreated={handleRequestCreated}
+                />
+                {/* <MechPanicButtonLogo/> */}
+              </RippleComp>
+            </div>
+          </div>
+        );
     }
   }
 

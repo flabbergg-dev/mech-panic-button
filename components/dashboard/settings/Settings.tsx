@@ -26,7 +26,7 @@ import { PersonalInfoForm } from "./PersonalInfo"
 import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
 import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id"
-import { ConnectComponentsProvider, ConnectBalances, ConnectPayments } from "@stripe/react-connect-js"
+import { ConnectComponentsProvider, ConnectBalances } from "@stripe/react-connect-js"
 import { loadConnectAndInitialize } from "@stripe/connect-js/pure";
 
 const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
@@ -182,7 +182,7 @@ const SettingsPage = () => {
   const [stripeConnectInstance] = useState(() => {
     const fetchClientSecret = async () => {
       // Fetch the AccountSession client secret
-      const response = await fetch(`/api/stripe/connect-balance-funds`, {
+      const response = await fetch(`/api/stripe/connect-balance-funds/embed`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -275,7 +275,7 @@ const SettingsPage = () => {
                       Manage your subscription and payment methods
                     </p>
                   </div>
-                  <div className="pt-4 flex md:flex-row flex-col">
+                  <div className="pt-4 flex md:flex-row flex-col gap-10">
                     <div className="flex flex-col justify-between items-center border-2 rounded-md p-4">
                       <div className="flex flex-col gap-4">
                         <div className="flex justify-between items-center">
@@ -302,12 +302,15 @@ const SettingsPage = () => {
                         </Button>
                       </div>
                     </div>
+                  </div>
+                  <div className="pt-4 flex md:flex-row flex-col gap-10">
+                    <div className="bg-white w-fit h-fit p-10 rounded-md border-2 border-primary">
                       <ConnectComponentsProvider
                         connectInstance={stripeConnectInstance}
                       >
                         <ConnectBalances />
-                        {/* <ConnectPayments /> */}
                       </ConnectComponentsProvider>
+                    </div>
                   </div>
                 </motion.div>
               ) : (

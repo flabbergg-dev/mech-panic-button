@@ -124,7 +124,7 @@ export const Booking = () => {
   })
 
   return (
-    <div className="fixed bottom-24 left-0 right-0 md:relative md:h-full flex items-end justify-center w-full z-20 p-4">
+    <div className="md:h-full flex items-end justify-center w-full z-20 p-4 pb-24">
       <svg xmlns="http://www.w3.org/2000/svg" version="1.1" className="absolute">
         <defs>
           <filter id="goo">

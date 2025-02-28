@@ -34,9 +34,10 @@ type BookingWithService = BookingType & {
 
 type MechanicHomeProps = {
   setActiveTab: (tab: string) => void;
+  isApproved: boolean;
 };
 
-export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
+export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) => {
   const { user } = useUser();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -144,38 +145,39 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
     if (stripeConnectId) {
       fetchBalance();
     }
-
-    const setupRealtimeSubscription = async () => {
-      const token = await getUserToken();
-      if (!token) {
-        console.log("No token available");
-        return;
-      }
-      // Set the authentication token from Clerk for the realtime client
-      supabase.realtime.setAuth(token);
-
-      const subscribeServiceRequestToChannel = supabase
-        .channel('service_request', {
-          config: {
-            broadcast: { self: true }
-          }
-        })
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "ServiceRequest" },
-          (payload) => {
-            console.log("Request Received payload:", payload);
-            fetchData();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(subscribeServiceRequestToChannel);
+    if(isApproved === true) {
+      const setupRealtimeSubscription = async () => {
+        const token = await getUserToken();
+        if (!token) {
+          console.log("No token available");
+          return;
+        }
+        // Set the authentication token from Clerk for the realtime client
+        supabase.realtime.setAuth(token);
+  
+        const subscribeServiceRequestToChannel = supabase
+          .channel('service_request', {
+            config: {
+              broadcast: { self: true }
+            }
+          })
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "ServiceRequest" },
+            (payload) => {
+              console.log("Request Received payload:", payload);
+              fetchData();
+            }
+          )
+          .subscribe();
+  
+        return () => {
+          supabase.removeChannel(subscribeServiceRequestToChannel);
+        };
       };
-    };
 
-    setupRealtimeSubscription();
+      setupRealtimeSubscription();
+    }
     fetchData();
   }, [user, router]);
 
@@ -193,7 +195,7 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
 
   return (
     <div className="flex flex-col space-y-4 p-4 md:p-6">
-      {isSubscribed === null && (
+      {isApproved === true && isSubscribed === null && (
         <Button
           onClick={handleSubscribe}
           className="sticky w-fit z-50 p-4 flex"
@@ -209,14 +211,21 @@ export const MechanicHome = ({ setActiveTab }: MechanicHomeProps) => {
               Welcome, {user.firstName}!
             </h1>
             <p className="text-muted-foreground mb-6 text-center">
-              Ready to assist today?
+              {isApproved
+                ? isSubscribed
+                  ? "Ready to assist today?"
+                  : "Please subscribe to start receiving service requests."
+                : "You are not yet approved to start working."}
             </p>
           </Card>
         </div>
       </div>
       <BalanceCard currentAvailableBalance={currentAvailableBalance} />
 
-      {serviceRequests.length === 0 && scheduledBookings.length === 0 ? (
+      {isApproved === true &&
+      isSubscribed &&
+      serviceRequests.length === 0 &&
+      scheduledBookings.length === 0 ? (
         <div className="flex flex-col items-center justify-center space-y-4 py-8">
           <img
             src="/icons/car.svg"

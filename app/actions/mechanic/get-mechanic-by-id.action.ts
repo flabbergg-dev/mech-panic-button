@@ -29,6 +29,7 @@ export async function getMechanicByIdAction(userId: string) {
             serviceArea: true,
             createdAt: true,
             updatedAt: true,
+            isApproved: true,
             }
         })
         if (!mechanic) {

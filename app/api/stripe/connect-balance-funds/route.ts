@@ -5,25 +5,16 @@ export async function POST(req: Request) {
     try {
         const { destinationAccount } = await req.json();
 
-        const accountSession = await stripe.accountSessions.create({
-        account: destinationAccount,
-        components: {
-            balances: {
-            enabled: true,
-            features: {
-                instant_payouts: true,
-                standard_payouts: true,
-                edit_payout_schedule: true,
-            },
-            },
-        },
+        const balance = await stripe.balance.retrieve({
+        stripeAccount: destinationAccount,
         });
 
         return NextResponse.json({
-            client_secret: accountSession.client_secret,
+            balance: balance.available[0].amount,
         });
-    } catch (error) {
+    }
+    catch (error) {
         console.error('An error occurred when calling the Stripe API to get users funds:', error);
         return new NextResponse("Internal Error", { status: 500 })
     }
-  }
+}
