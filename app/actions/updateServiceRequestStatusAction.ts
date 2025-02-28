@@ -10,6 +10,11 @@ export async function updateServiceRequestStatusAction(
   estimatedTime?: string
 ) {
   try {
+    // Generate completion code if needed
+    const completionCode = status === 'IN_COMPLETION' 
+      ? String(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'))
+      : undefined;
+      
     const updatedRequest = await prisma.serviceRequest.update({
       where: {
         id: requestId,
@@ -24,11 +29,12 @@ export async function updateServiceRequestStatusAction(
           arrivalCode: String(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'))
         }),
         ...(status === 'IN_COMPLETION' && {
-          completionCode: String(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'))
+          completionCode
         })
       },
       select: {
-        arrivalCode: true
+        arrivalCode: true,
+        completionCode: true
       }
     })
 

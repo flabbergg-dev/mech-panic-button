@@ -19,6 +19,7 @@ import { PinInput } from '@/components/ui/PinInput'
 import { verifyCompletionCodeAction } from '@/app/actions/verifyCompletionCodeAction'
 import { updateMechanicLocation } from '@/app/actions/updateMechanicLocation'
 import { useToast } from '@/hooks/use-toast'
+import { RealtimePostgresChangesPayload } from '@/types/supabase'
 import ServiceRequestMap from '@/components/MapBox/ServiceRequestMap'
 
 interface Location {
@@ -53,13 +54,15 @@ export default function MechanicMapPage() {
   const { sendEmail } = useEmailNotification();
   const [isLoading, setIsLoading] = useState(false)
   const [showRoute, setShowRoute] = useState(false)
+  const [showMechanicLocation, setShowMechanicLocation] = useState(false)
+  const [key, setKey] = useState(0) // Add key for forcing re-renders
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
   const [distance, setDistance] = useState<number | null>(null)
   const [mechanicLocation, setMechanicLocation] = useState<Location | null>(null)
-  const [arrivalCode, setArrivalCode] = useState<string>('')
-  const [completionCode, setCompletionCode] = useState<string>('')
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
+  const [arrivalCode, setArrivalCode] = useState<string | null>(null);
+  const [completionCode, setCompletionCode] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [request, setRequest] = useState<ServiceRequestWithClient | null>(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const router = useRouter()
@@ -108,235 +111,226 @@ export default function MechanicMapPage() {
 
   // Update showRoute based on request status
   useEffect(() => {
+    console.log("Request status changed to:", request?.status);
+    
     if (request?.status === "IN_ROUTE") {
       setShowRoute(true);
+      setShowMechanicLocation(true);
       // Start location tracking if we're in route
       startLocationTracking();
+    } else if (request?.status === "PAYMENT_AUTHORIZED") {
+      // Make sure we're showing the mechanic location for PAYMENT_AUTHORIZED status
+      setShowRoute(true);
+      setShowMechanicLocation(true);
+      // Refresh the map to ensure it updates with the new status
+      if (request && customerLocation) {
+        console.log("Refreshing map for PAYMENT_AUTHORIZED status");
+        // Force a re-render of the map component
+        setKey(prev => prev + 1);
+      }
     }
-  }, [request?.status]);
+  }, [request?.status, customerLocation]);
 
   const startLocationTracking = () => {
     if (!navigator.geolocation) {
       toast({
         title: "Error",
-        description: "Geolocation is not supported by your browser",
+        description: "Geolocation is not supported by your browser.",
         variant: "destructive",
       });
       return;
     }
 
-    setIsGettingLocation(true);
-
-    // Helper to stringify error for better logging
-    const getErrorDetails = (error: GeolocationPositionError) => {
-      return {
-        code: error.code,
-        message: error.message,
-        PERMISSION_DENIED: error.PERMISSION_DENIED,
-        POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
-        TIMEOUT: error.TIMEOUT
-      };
-    };
-
-    // Helper to handle location errors
-    const handleLocationError = (error: GeolocationPositionError, context: string) => {
-      let errorMessage = "Unable to get your location.";
-      
-      try {
-        const errorDetails = getErrorDetails(error);
-        console.error(`${context} - Full error details:`, errorDetails);
-
-        switch (error.code) {
-          case GeolocationPositionError.PERMISSION_DENIED:
-            errorMessage = "Location access was denied. Please check your browser settings and ensure location access is enabled.";
-            break;
-          case GeolocationPositionError.POSITION_UNAVAILABLE:
-            errorMessage = "Location information is currently unavailable. Please check your device's location services.";
-            break;
-          case GeolocationPositionError.TIMEOUT:
-            errorMessage = "Location request timed out. Please check your internet connection and try again.";
-            break;
-          default:
-            errorMessage = `Location error: ${error.message || 'Unknown error'}`;
-        }
-      } catch (e) {
-        console.error(`Error handling location error: ${e}`);
-      }
-
-      return errorMessage;
-    };
-
-    // Get initial location with better error handling
-    const getInitialLocation = (): Promise<void> => {
-      setIsGettingLocation(true);
-      
+    console.log("Starting location tracking");
+    
+    // Get initial location immediately with a timeout
+    const getInitialLocation = () => {
       return new Promise<void>((resolve) => {
-        // Initialize with undefined to ensure it exists before potential use in catch block
-        let timeoutId: NodeJS.Timeout | undefined;
-        
-        try {
-          timeoutId = setTimeout(() => {
-            console.warn("Location request taking longer than expected...");
-            toast({
-              title: "Location Request",
-              description: "Attempting to get your location... This may take a moment.",
-              duration: 3000,
-            });
-          }, 3000);
-
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              clearTimeout(timeoutId);
-              try {
-                const newLocation = {
-                  latitude: position.coords.latitude,
-                  longitude: position.coords.longitude,
-                };
-                console.log("Successfully got initial location:", {
-                  accuracy: position.coords.accuracy,
-                  timestamp: new Date(position.timestamp).toISOString(),
-                });
-                setMechanicLocation(newLocation);
-                localStorage.setItem('mechanic_last_location', JSON.stringify(newLocation));
-                setIsGettingLocation(false);
-              } catch (e) {
-                console.error("Error processing position:", e);
-              }
-              resolve();
-            },
-            (error) => {
-              clearTimeout(timeoutId);
-              const errorMessage = handleLocationError(error, "Initial location error");
-              
-              // Try to get last known location from localStorage
-              try {
-                const lastLocation = localStorage.getItem('mechanic_last_location');
-                if (lastLocation) {
-                  const parsed = JSON.parse(lastLocation);
-                  setMechanicLocation(parsed);
-                  toast({
-                    title: "Using Last Known Location",
-                    description: "Current location unavailable. Using last known position.",
-                    variant: "default",
-                    duration: 5000
-                  });
-                } else {
-                  toast({
-                    title: "Location Error",
-                    description: errorMessage,
-                    variant: "destructive",
-                    duration: 7000
-                  });
-                }
-              } catch (e) {
-                console.error("Error handling fallback location:", e);
-                toast({
-                  title: "Location Error",
-                  description: errorMessage,
-                  variant: "destructive",
-                  duration: 7000
-                });
-              }
-              setIsGettingLocation(false);
-              resolve();
-            },
-            {
-              enableHighAccuracy: true,
-              timeout: 15000, // Increased timeout
-              maximumAge: 5000
-            }
-          );
-        } catch (e) {
-          console.error("Unexpected error in getInitialLocation:", e);
-          // Only clear timeout if it's defined
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-          }
-          setIsGettingLocation(false);
+        const timeoutId = setTimeout(() => {
+          console.log("Initial location request timed out, continuing anyway");
           resolve();
-        } finally {
-          setIsGettingLocation(false);
-        }
-      });
-    };
-
-    // Start watching position with improved error handling
-    const startWatchingPosition = () => {
-      let errorCount = 0;
-      const MAX_ERRORS = 3;
-      const ERROR_RESET_INTERVAL = 60000; // 1 minute
-
-      // Reset error count periodically
-      const resetInterval = setInterval(() => {
-        errorCount = 0;
-      }, ERROR_RESET_INTERVAL);
-
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          try {
+        }, 5000);
+        
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            clearTimeout(timeoutId);
             const newLocation = {
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
             };
-            errorCount = 0; // Reset error count on success
+            
+            console.log("Initial location obtained:", newLocation);
             setMechanicLocation(newLocation);
-            localStorage.setItem('mechanic_last_location', JSON.stringify(newLocation));
-          } catch (e) {
-            console.error("Error processing watch position:", e);
+            
+            // Store in localStorage as a fallback
+            try {
+              localStorage.setItem('lastKnownMechanicLocation', JSON.stringify(newLocation));
+            } catch (e) {
+              console.error("Failed to store location in localStorage:", e);
+            }
+            
+            // Update location on server
+            if (requestId) {
+              try {
+                await updateMechanicLocation(
+                  requestId.toString(),
+                  newLocation
+                );
+                console.log("Initial location updated on server");
+              } catch (error) {
+                console.error("Error updating initial location:", error);
+              }
+            }
+            
+            resolve();
+          },
+          (error) => {
+            clearTimeout(timeoutId);
+            console.error("Error getting initial location:", error);
+            
+            // Try to use last known location from localStorage
+            try {
+              const storedLocation = localStorage.getItem('lastKnownMechanicLocation');
+              if (storedLocation) {
+                const parsedLocation = JSON.parse(storedLocation);
+                console.log("Using last known location from localStorage:", parsedLocation);
+                setMechanicLocation(parsedLocation);
+                
+                // Update on server
+                if (requestId) {
+                  updateMechanicLocation(
+                    requestId.toString(),
+                    parsedLocation
+                  ).catch(e => console.error("Error updating with stored location:", e));
+                }
+              }
+            } catch (e) {
+              console.error("Error retrieving stored location:", e);
+            }
+            
+            resolve();
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 5000
+          }
+        );
+      });
+    };
+    
+    // Get initial location before starting watch
+    getInitialLocation().then(() => {
+      // Then start continuous tracking
+      const watchId = navigator.geolocation.watchPosition(
+        async (position) => {
+          const newLocation = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          
+          // Only update if location has changed significantly
+          if (!mechanicLocation || 
+              Math.abs(mechanicLocation.latitude - newLocation.latitude) > 0.0001 || 
+              Math.abs(mechanicLocation.longitude - newLocation.longitude) > 0.0001) {
+            
+            console.log("Location updated:", newLocation);
+            setMechanicLocation(newLocation);
+            
+            // Store in localStorage as a fallback
+            try {
+              localStorage.setItem('lastKnownMechanicLocation', JSON.stringify(newLocation));
+            } catch (e) {
+              console.error("Failed to store location in localStorage:", e);
+            }
+            
+            // Update location on server
+            if (requestId) {
+              try {
+                await updateMechanicLocation(
+                  requestId.toString(),
+                  newLocation
+                );
+              } catch (error) {
+                console.error("Error updating location:", error);
+              }
+            }
           }
         },
         (error) => {
-          errorCount++;
-          const errorMessage = handleLocationError(error, "Watch position error");
+          const safeError = {
+            code: error?.code || 0,
+            message: error?.message || 'Unknown error',
+            toString: () => JSON.stringify({
+              code: error?.code,
+              message: error?.message
+            })
+          };
           
-          // Only show toast if we've had multiple errors
-          if (errorCount >= MAX_ERRORS) {
-            toast({
-              title: "Location Tracking Issue",
-              description: errorMessage,
-              variant: "destructive",
-              duration: 7000
-            });
-            errorCount = 0; // Reset after notifying
+          let errorMessage = "Unable to get your location. ";
+          
+          try {
+            switch (safeError.code) {
+              case 1: // PERMISSION_DENIED
+                errorMessage += "Please enable location services in your browser settings.";
+                break;
+              case 2: // POSITION_UNAVAILABLE
+                errorMessage += "Location information is unavailable.";
+                break;
+              case 3: // TIMEOUT
+                errorMessage += "Location request timed out.";
+                break;
+              default:
+                errorMessage += `An unknown error occurred (${safeError.message}).`;
+            }
+            
+            console.error("Error getting location:", safeError.toString());
+          } catch (e) {
+            console.error("Error while handling location error:", e);
+            errorMessage += "An unexpected error occurred while processing location.";
+          }
+          
+          toast({
+            title: "Location Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+          
+          // Try to use last known location from localStorage
+          try {
+            const storedLocation = localStorage.getItem('lastKnownMechanicLocation');
+            if (storedLocation) {
+              const parsedLocation = JSON.parse(storedLocation);
+              console.log("Using last known location from localStorage after error:", parsedLocation);
+              
+              // Only set if we don't already have a location
+              if (!mechanicLocation) {
+                setMechanicLocation(parsedLocation);
+                
+                // Update on server
+                if (requestId) {
+                  updateMechanicLocation(
+                    requestId.toString(),
+                    parsedLocation
+                  ).catch(e => console.error("Error updating with stored location:", e));
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error retrieving stored location:", e);
           }
         },
         {
           enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 5000
+          timeout: 30000, // Increased from 15000 to 30000
+          maximumAge: 10000 // Increased from 5000 to 10000
         }
       );
-
-      // Return cleanup function
-      return () => {
-        navigator.geolocation.clearWatch(watchId);
-        clearInterval(resetInterval);
-      };
-    };
-
-    // Main execution
-    const init = async () => {
-      try {
-        await getInitialLocation();
-        return startWatchingPosition();
-      } catch (e) {
-        console.error("Error in location tracking initialization:", e);
-        setIsGettingLocation(false);
-        return () => {}; // Return empty cleanup function
-      }
-    };
-
-    return init();
+      
+      // Store the watch ID for cleanup
+      // setLocationWatchId(watchId);
+    });
   };
-
-  // Update showRoute based on request status
-  useEffect(() => {
-    if (request?.status === "IN_ROUTE") {
-      setShowRoute(true);
-      // Start location tracking if we're in route
-      startLocationTracking();
-    }
-  }, [request?.status]);
 
   // Get mechanic's location and update database when IN_ROUTE
   useEffect(() => {
@@ -383,22 +377,38 @@ export default function MechanicMapPage() {
         }
       },
       (error) => {
+        const safeError = {
+          code: error?.code || 0,
+          message: error?.message || 'Unknown error',
+          toString: () => JSON.stringify({
+            code: error?.code,
+            message: error?.message
+          })
+        };
+        
         let errorMessage = "Unable to get your location. ";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += "Please enable location services in your browser settings.";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage += "Location information is unavailable.";
-            break;
-          case error.TIMEOUT:
-            errorMessage += "Location request timed out.";
-            break;
-          default:
-            errorMessage += "An unknown error occurred.";
+        
+        try {
+          switch (safeError.code) {
+            case 1: // PERMISSION_DENIED
+              errorMessage += "Please enable location services in your browser settings.";
+              break;
+            case 2: // POSITION_UNAVAILABLE
+              errorMessage += "Location information is unavailable.";
+              break;
+            case 3: // TIMEOUT
+              errorMessage += "Location request timed out.";
+              break;
+            default:
+              errorMessage += `An unknown error occurred (${safeError.message}).`;
+          }
+          
+          console.error("Error getting location:", safeError.toString());
+        } catch (e) {
+          console.error("Error while handling location error:", e);
+          errorMessage += "An unexpected error occurred while processing location.";
         }
         
-        console.error("Error getting location:", error);
         toast({
           title: "Location Error",
           description: errorMessage,
@@ -407,8 +417,8 @@ export default function MechanicMapPage() {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        timeout: 30000, // Increased from 15000 to 30000
+        maximumAge: 10000 // Increased from 5000 to 10000
       }
     );
 
@@ -428,7 +438,7 @@ export default function MechanicMapPage() {
         }
         supabase.realtime.setAuth(token)
   
-        const subscribeServiceRequestToChannel = supabase.channel(`service_request_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', filter: `id=eq.${requestId}`  }, payload => {
+        const subscribeServiceRequestToChannel = supabase.channel(`service_request_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', filter: `id=eq.${requestId}`  }, (payload: RealtimePostgresChangesPayload) => {
           console.log('Request Received payload:', payload)
           fetchData()
   
@@ -462,10 +472,41 @@ export default function MechanicMapPage() {
         setIsGettingLocation(false);
       },
       (error) => {
-        console.error("Error getting location:", error);
+        const safeError = {
+          code: error?.code || 0,
+          message: error?.message || 'Unknown error',
+          toString: () => JSON.stringify({
+            code: error?.code,
+            message: error?.message
+          })
+        };
+        
+        let errorMessage = "Unable to get your location. ";
+        
+        try {
+          switch (safeError.code) {
+            case 1: // PERMISSION_DENIED
+              errorMessage += "Please enable location services in your browser settings.";
+              break;
+            case 2: // POSITION_UNAVAILABLE
+              errorMessage += "Location information is unavailable.";
+              break;
+            case 3: // TIMEOUT
+              errorMessage += "Location request timed out.";
+              break;
+            default:
+              errorMessage += `An unknown error occurred (${safeError.message}).`;
+          }
+          
+          console.error("Error getting location:", safeError.toString());
+        } catch (e) {
+          console.error("Error while handling location error:", e);
+          errorMessage += "An unexpected error occurred while processing location.";
+        }
+        
         toast({
           title: "Location Error",
-          description: "Unable to get your location. Please enable location services.",
+          description: errorMessage,
           variant: "destructive"
         });
         setIsGettingLocation(false);
@@ -501,6 +542,7 @@ export default function MechanicMapPage() {
       }
 
       setShowRoute(true);
+      setShowMechanicLocation(true);
       startLocationTracking();
 
       toast({
@@ -605,40 +647,64 @@ export default function MechanicMapPage() {
  
   const handleEndService = async () => {
     try {
-      setIsLoading(true)
-      if (!requestId) return
-    
-    // Ensure requestId is a string
-    const requestIdString = requestId.toString()
-    
-      const result = await updateServiceRequestStatusAction(requestIdString, 'IN_COMPLETION')
+      setIsLoading(true);
+      if (!requestId) {
+        toast({
+          title: "Error",
+          description: "Missing request ID",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Ensure requestId is a string
+      const requestIdString = requestId.toString();
+      
+      console.log("Completing service for request ID:", requestIdString);
+      
+      const result = await updateServiceRequestStatusAction(requestIdString, 'IN_COMPLETION');
+      console.log("Service completion result:", result);
       
       if (!result.success) {
         toast({
           title: "Error",
           description: `#ERR10 : ${result.error}`,
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
+      
+      // Check if completion code was generated
+      if (!result.data?.completionCode) {
+        toast({
+          title: "Error",
+          description: "#ERR12: Failed to generate completion code",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Store the completion code
+      setCompletionCode(result.data.completionCode);
+      
+      // Refresh data to update UI
+      await fetchData();
+      
       toast({
         title: "Success",
-        description: "Service completed successfully",
-      })
-
-      redirect("/dashboard/mechanic")
-
+        description: "Service marked for completion. Please ask the client for the verification code.",
+      });
     } catch (error) {
+      console.error("Error completing service:", error);
       toast({
         title: "Error",
         description: "Failed to complete service",
         variant: "destructive",
-      })
+      });
+    } finally {
+      setIsLoading(false);
     }
-    finally {
-      setIsLoading(false)
-    }
-  }
+  };
 
   const handleCompletionCode = async (code: string) => {
     if (!requestId) return
@@ -712,10 +778,11 @@ export default function MechanicMapPage() {
       {/* Map */}
       <div className="fixed inset-0 z-0">
         <ServiceRequestMap 
+          key={key}
           serviceRequest={request}
           customerLocation={customerLocation}
           mechanicLocation={mechanicLocation ?? undefined}
-          showMechanicLocation={true}
+          showMechanicLocation={showMechanicLocation}
           showRoute={showRoute}
           onRouteCalculated={handleRouteCalculated}
         />

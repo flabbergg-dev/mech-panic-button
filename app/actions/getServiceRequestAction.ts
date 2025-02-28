@@ -7,20 +7,24 @@ import { ServiceStatus } from "@prisma/client"
 export async function getServiceRequestsForClient(userId: string) {
   console.log('Fetching requests for user:', userId)
   
-  const requests = await prisma.serviceRequest.findMany({
-    where: {
-      clientId: userId,
-      NOT: [
-        {status: ServiceStatus.COMPLETED}
-      ]
-      
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
-  })
-  console.log('Found requests:', requests)
-  return requests
+  try {
+    const requests = await prisma.serviceRequest.findMany({
+      where: {
+        clientId: userId,
+        // Include all requests, including completed ones
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+    console.log(`Found ${requests.length} requests for user ${userId}:`, 
+      requests.map(r => ({ id: r.id, status: r.status }))
+    )
+    return requests
+  } catch (error) {
+    console.error('Error fetching service requests for client:', error)
+    return []
+  }
 }
 
 export async function getServiceRequestAction(requestId: string) {

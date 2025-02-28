@@ -1,9 +1,8 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRealtimeServiceOffers } from '@/hooks/useRealtimeServiceOffers'
 import { useRealtimeMechanicLocation } from '@/hooks/useRealtimeMechanicLocation'
-import { useRealtimeServiceRequest } from '@/hooks/useRealtimeServiceRequest'
 import { ServiceOfferCard } from '@/components/cards/ServiceOfferCard'
 import { RippleComp } from "@/components/Animated/RippleComp"
 import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
@@ -39,8 +38,6 @@ export function ClientDashboard() {
   const router = useRouter()
   const userRole = path.includes("customer") ? "Customer" : "Mechanic"
 
-  const { requests, offers, loading, error, refetch } = useRealtimeServiceOffers(user?.id || '')
-  const { serviceRequest, serviceRequestLoading, serviceRequestError, refetchServiceRequest } = useRealtimeServiceRequest(user?.id || '')
   const [activeTab, setActiveTab] = useState<string>(tab || "home")
   const [customerLocation, setCustomerLocation] = useState<{latitude: number; longitude: number} | null>(null)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
@@ -117,6 +114,8 @@ export function ClientDashboard() {
     }
   }, [customerLocation]);
 
+  const { requests, offers, loading, error, refetch } = useRealtimeServiceOffers(user?.id || '')
+
   // Helper function to check if a status is considered "active"
   const ACTIVE_STATUSES = [
     ServiceStatus.REQUESTED,
@@ -135,7 +134,7 @@ export function ClientDashboard() {
   }
 
   // Check if there's an active request
-  const activeRequest = serviceRequest || requests.find((request: ServiceRequest) =>
+  const activeRequest = requests.find((request: ServiceRequest) =>
     isActiveStatus(request.status)
   )
 
@@ -147,11 +146,10 @@ export function ClientDashboard() {
         userId: user?.id,
         requestsCount: requests.length, 
         offersCount: offers.length,
-        serviceRequestFromHook: serviceRequest?.status,
         error
       });
     }
-  }, [requests.length, offers.length, loading, error, user?.id, serviceRequest?.status]);
+  }, [requests.length, offers.length, loading, error, user?.id]);
 
   // Add debugging for active request
   useEffect(() => {
@@ -159,11 +157,10 @@ export function ClientDashboard() {
       console.log('Active request detection:', {
         activeRequestFound: !!activeRequest,
         activeRequestId: activeRequest?.id,
-        activeRequestStatus: activeRequest?.status,
-        serviceRequestFromHook: serviceRequest?.status
+        activeRequestStatus: activeRequest?.status
       });
     }
-  }, [activeRequest?.id, activeRequest?.status, loading, serviceRequest?.status]);
+  }, [activeRequest?.id, activeRequest?.status, loading]);
 
   // Check for recently completed requests that need a review
   useEffect(() => {
@@ -239,27 +236,22 @@ export function ClientDashboard() {
 
   const handleCancelRequest = async (requestId: string) => {
     try {
-      // Call the server action to cancel the request
       const result = await cancelServiceRequest(requestId)
-      
       if (result.success) {
+        refetch() // Refresh the requests list
         toast({
           title: 'Request cancelled successfully',
           description: 'Your request has been cancelled',
           className: 'bg-green-500 text-white'
         })
-        
-        // Force a hard refresh of the page
-        window.location.reload();
       }
-      
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to cancel request',
         variant: 'destructive'
       })
-    } 
+    }
   }
 
   const handleVerifyCode = async (code: string) => {
@@ -282,7 +274,7 @@ export function ClientDashboard() {
         title: "Success",
         description: "Service started successfully",
       })
-      refetchServiceRequest()
+      refetch()
     } catch (error) {
       toast({
         title: "Error",
@@ -299,12 +291,7 @@ export function ClientDashboard() {
     setIsRefreshing(true);
     // Show loading indicator for at least 500ms to provide feedback
     const startTime = Date.now();
-    
-    // Refresh both service offers and service request
-    Promise.all([
-      refetch(),
-      refetchServiceRequest()
-    ]).finally(() => {
+    refetch().finally(() => {
       const elapsedTime = Date.now() - startTime;
       const remainingTime = Math.max(0, 500 - elapsedTime);
       // Set a small delay to show the animation
@@ -312,24 +299,23 @@ export function ClientDashboard() {
     });
   };
 
-  // Add a periodic refresh to check for new offers when on the requests tab
+  // Add a periodic refresh to ensure we get the latest data
   useEffect(() => {
-    // Only set up the interval if we're on the requests tab and have an active request
-    if (activeTab === "requests" && activeRequest && activeRequest.status === ServiceStatus.REQUESTED) {
-      console.log('Setting up periodic refresh for offers');
+    // Only set up the interval if we have an active request or if we're on the requests tab
+    if (!loading && (activeRequest || activeTab === "requests")) {
+      console.log('Setting up periodic refresh for offers and requests');
       
-      // Refresh every 5 seconds to check for new offers
+      // Refresh every 10 seconds
       const intervalId = setInterval(() => {
-        console.log('Periodic refresh for offers triggered');
+        console.log('Periodic refresh triggered');
         refetch();
-        refetchServiceRequest();
-      }, 5000);
+      }, 10000);
       
       return () => {
         clearInterval(intervalId);
       };
     }
-  }, [activeTab, activeRequest, refetch, refetchServiceRequest]);
+  }, [loading, activeRequest, activeTab, refetch]);
 
   if (!user) {
     return <Loader title="Loading Your Dashboard..." />

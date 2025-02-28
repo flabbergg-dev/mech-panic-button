@@ -1,9 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { ServiceRequest } from '@prisma/client'
+import { ServiceRequest, ServiceStatus } from '@prisma/client'
+
+// Define the interface for the API response
+interface ServiceRequestWithMechanicLocation extends Omit<ServiceRequest, 'mechanicLocation'> {
+  mechanicLocation: {
+    latitude: number;
+    longitude: number;
+  } | null;
+  mechanic?: {
+    user?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      stripeCustomerId: string | null;
+    }
+  }
+}
 
 interface UseServiceRequestReturn {
-  activeRequest: ServiceRequest | null
+  activeRequest: ServiceRequestWithMechanicLocation | null
   isLoading: boolean
   error: Error | null
   refetch: () => Promise<void>
@@ -11,7 +27,7 @@ interface UseServiceRequestReturn {
 
 export function useServiceRequest(): UseServiceRequestReturn {
   const { user } = useUser()
-  const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null)
+  const [activeRequest, setActiveRequest] = useState<ServiceRequestWithMechanicLocation | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 

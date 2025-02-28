@@ -41,6 +41,7 @@ export const MechanicDashboard = () => {
       <BottomNavigation 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
+        showMap={false}
       />
       
     </div>
