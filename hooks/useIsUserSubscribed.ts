@@ -11,8 +11,10 @@ export const useIsUserSubscribed = () => {
 
   useEffect(() => {
     checkUserSubscription().then((id) => {
-        if (id !== null) {
-            setIsSubscribed(true);
+        if (id) {
+            if(id.stripeSubscriptionId) {
+              setIsSubscribed(true);
+            }
             setSubscriptionPlan(id.stripeSubscriptionPlan);
             setSubscriptionId(id.stripeSubscriptionId);
             setSubscriptionStatus(id.stripeSubscriptionStatus);

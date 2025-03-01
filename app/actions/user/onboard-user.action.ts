@@ -11,8 +11,12 @@ const onboardingSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   role: z.enum(["Customer", "Mechanic"]),
-  stripeCustomerId: z.string().optional(),
-  stripeConnectId: z.string().optional(),
+
+  // car details
+  make: z.string().min(2, "Car make must be at least 2 characters"),
+  model: z.string().min(2, "Car model must be at least 2 characters"),
+  year: z.number().int().min(1886, "Car year must be a valid year"),
+  license: z.string().min(2, "Car license must be at least 2 characters"),
 })
 
 type OnboardingData = z.infer<typeof onboardingSchema>
@@ -57,19 +61,31 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
       }
     }
     // Create user profile in database
-    const user = await prisma.user.create({
+    const user = await prisma.$transaction(async (prisma) => {
+      const createdUser = await prisma.user.create({
       data: {
-      id: clerkUser.id,
-      firstName: validatedData.firstName,
-      lastName: validatedData.lastName,
-      email: validatedData.email,
-      role: validatedData.role,
-      profileImage: clerkUser.imageUrl,
-      documentsUrl: [],
-      currentLocation: undefined,
-      stripeCustomerId: validatedData.stripeCustomerId || null,
-      stripeConnectId: validatedData.stripeConnectId || null,
+        id: clerkUser.id,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        email: validatedData.email,
+        role: validatedData.role,
+        profileImage: clerkUser.imageUrl,
+        documentsUrl: [],
+        currentLocation: undefined,
       },
+      })
+
+      await prisma.vehicle.create({
+      data: {
+        userId: createdUser.id,
+        make: validatedData.make,
+        model: validatedData.model,
+        year: Number(validatedData.year),
+        licensePlate: validatedData.license,
+      },
+      })
+
+      return createdUser
     })
 
     // Update Clerk metadata with the user's role

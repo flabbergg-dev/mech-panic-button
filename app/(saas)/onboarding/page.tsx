@@ -36,7 +36,11 @@ export default function OnboardingPage() {
     firstName: "",
     lastName: "",
     email: "",
-  })
+    make: "",
+    model: "",
+    year: 1886,
+    license: "",
+  });
   const [currentStep, setCurrentStep] = useState<
     "StripeAccountSetup" | "documents"
   >("StripeAccountSetup");
@@ -62,7 +66,11 @@ export default function OnboardingPage() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.emailAddresses[0]?.emailAddress || "",
-      })
+        make: "",
+        model: "",
+        year: 1886,
+        license: "",
+      });
     }
   }, [user])
 
@@ -87,7 +95,7 @@ export default function OnboardingPage() {
     if (isSubmitting) return
 
     // Check if formData is fully populated
-    if (!formData.firstName || !formData.lastName || !formData.email) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.make || !formData.model || !formData.year || !formData.license) {
       toast({
         title: "Error",
         description: "Please fill in all fields before submitting.",
@@ -95,7 +103,6 @@ export default function OnboardingPage() {
       })
       return
     }
-
     console.log("Submitting form with data:", formData);
 
     try {
@@ -104,6 +111,7 @@ export default function OnboardingPage() {
       if (selectedRole === "Customer") {
         const result = await onboardUserAction({
           ...formData,
+          year: parseInt(formData.year.toString(), 10),
           role: selectedRole,
         })
 
@@ -184,6 +192,57 @@ export default function OnboardingPage() {
               onChange={handleInputChange}
               required
               readOnly
+            />
+          </div>
+
+          <p className="py-4 font-bold text-2xl">Car Details:</p>
+
+          <div>
+            <Label htmlFor="make">Car Make</Label>
+            <Input
+              id="make"
+              name="make"
+              placeholder="e.g. Toyota, Honda, etc."
+              value={formData.make}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="model">Car Model</Label>
+            <Input
+              id="model"
+              name="model"
+              placeholder="e.g. Camry, Civic, etc."
+              value={formData.model}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="year">Car Year</Label>
+            <Input
+              id="year"
+              name="year"
+              placeholder="e.g. 2015, 2020, etc."
+              type="number"
+              value={formData.year}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="license">Car License</Label>
+            <Input
+              id="license"
+              name="license"
+              placeholder="e.g. 123-ABC"
+              value={formData.license}
+              onChange={handleInputChange}
+              required
             />
           </div>
 

@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button"
 import { handleServiceOfferAction } from '@/app/actions/serviceOfferAction'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
-import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
-import { getUserAction } from '@/app/actions/user/get-user.action'
 import { loadStripe } from "@stripe/stripe-js";
 import {
   EmbeddedCheckout,
@@ -235,7 +233,7 @@ const [paymentCompleted, setPaymentCompleted] = useState(false)
   const handleCheckout = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/create-payment-session", {
+      const response = await fetch("/api/stripe/create-payment-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

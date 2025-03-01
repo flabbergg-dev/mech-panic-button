@@ -1,15 +1,13 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-
-export async function getMechanicByIdAction(userId: string) {
+import { auth } from "@clerk/nextjs/server"
+export async function getMechanicByIdAction() {
+    const { userId } = await auth()
     try {
         const mechanic = await prisma.mechanic.findFirst({
             where: {
-            OR: [
-                { userId: userId },
-                { id: userId } // Assuming userId can also be the mechanic's id
-            ]
+                userId: userId! ,
             },
             select: {
             id: true,
@@ -21,7 +19,6 @@ export async function getMechanicByIdAction(userId: string) {
             bannerImage: true,
             driversLicenseId: true,
             merchantDocumentUrl: true,
-            earnings: true,
             user: true,
             serviceRequests: true,
             availability: true,
@@ -35,11 +32,10 @@ export async function getMechanicByIdAction(userId: string) {
         if (!mechanic) {
         console.error("Mechanic not found:", userId)
         throw new Error("Mechanic not found")
-        }
-
-        return {
-        success: true,
-        mechanic,
+        } else {
+            return {
+                mechanic,
+            }
         }
     } catch (error) {
         console.error("Error in getMechanicByIdAction:", error)

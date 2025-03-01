@@ -146,7 +146,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     if (stripeConnectId) {
       fetchBalance();
     }
-    if(isApproved === true) {
+    if(isApproved === true && isSubscribed === true) {
       const setupRealtimeSubscription = async () => {
         const token = await getUserToken();
         if (!token) {
@@ -196,7 +196,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
 
   return (
     <div className="flex flex-col space-y-4 p-4 md:p-6">
-      {isApproved === true && isSubscribed === null && (
+      {isApproved === true && isSubscribed === false && (
         <Button
           onClick={handleSubscribe}
           className="sticky w-fit z-50 p-4 flex"
@@ -212,11 +212,10 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
               Welcome, {user.firstName}!
             </h1>
             <p className="text-muted-foreground mb-6 text-center">
-              {isApproved
-                ? isSubscribed
-                  ? "Ready to assist today?"
-                  : "Please subscribe to start receiving service requests."
-                : "You are not yet approved to start working."}
+              {isApproved === true
+                ? "Ready to assist today?"
+                : "You are not yet approved to start working."
+              }
             </p>
           </Card>
         </div>
@@ -224,7 +223,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
       <BalanceCard currentAvailableBalance={currentAvailableBalance} />
 
       {isApproved === true &&
-      isSubscribed &&
+      isSubscribed === true &&
       serviceRequests.length === 0 &&
       scheduledBookings.length === 0 ? (
         <div className="flex flex-col items-center justify-center space-y-4 py-8">
@@ -243,7 +242,8 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
         </div>
       ) : (
         <div className="space-y-6">
-          {serviceRequests.length > 0 && (
+          {isSubscribed &&
+            subscriptionPlan && serviceRequests.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Available Requests</h3>
               <ScrollArea
@@ -288,7 +288,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
                   <ScrollBar orientation="horizontal" />
                 </ScrollArea>
               </div>
-            )}
+          )}
         </div>
       )}
     </div>

@@ -726,17 +726,18 @@ export default function MechanicMapPage() {
         />
       </div>
 
+      {request.status === "IN_ROUTE" && (
+        <ChatBox mechanicId={mechanicId!} userId={request.clientId} />
+      )}
       {/* Controls */}
       <HalfSheet showToggle>
         <ServiceCardLayout>
-          {request.status === "IN_ROUTE" && (
-            <ChatBox mechanicId={mechanicId!} userId={request.clientId} />
-          )}
           <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-lg border border-border/50 transform transition-all duration-300 ease-in-out">
             <h2 className="text-xl font-semibold mb-2">
               {request.status === "SERVICING"
                 ? "Service in Progress"
-                : "Navigation"}
+                : "Navigation"
+              }
             </h2>
 
             {/* Service Request Details */}
@@ -779,7 +780,7 @@ export default function MechanicMapPage() {
               )}
 
               {/* Status Information */}
-              
+
               <div className="rounded-lg border p-4">
                 <div className="flex items-center gap-2">
                   {request?.status === "ACCEPTED" && (
@@ -842,8 +843,8 @@ export default function MechanicMapPage() {
                   ) : (
                     "Start Route"
                   )}
-                </Button>)
-                }
+                </Button>
+                )}
 
                 {/* Arrival Button */}
                 {!isLoading && !arrivalCode && showRoute && (
@@ -864,7 +865,7 @@ export default function MechanicMapPage() {
                     )}
                   </Button>
                 )}
-                
+
                 {arrivalCode && request.status === "IN_PROGRESS" && (
                   <Card className="w-full bg-card/80 text-card-foreground backdrop-blur-sm shadow-lg p-4 rounded-lg border-none transform transition-all duration-300 ease-in-out">
                     <h3 className="text-lg font-semibold mb-2 text-start">Arrival Code</h3>
@@ -931,7 +932,7 @@ export default function MechanicMapPage() {
                  </div>
                </div>
              </div>
-            ) }
+      )}
     </div>
   );
 }

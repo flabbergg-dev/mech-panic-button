@@ -5,22 +5,26 @@ import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicH
 import { MechanicProfileView } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { MechanicHistory } from "@/components/dashboard/MechanicDashboard/MechanicHistory"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
-import { useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import SettingsPage from "@/components/dashboard/settings/Settings"
 import { getMechanicByIdAction } from "@/app/actions/mechanic/get-mechanic-by-id.action"
 
 export const MechanicDashboard = () => {
   const params = useSearchParams()
   // get last param
-  const pathname = usePathname()
   const tab = params.get("view") || "home"
   const [activeTab, setActiveTab] = useState(tab)
   const [isApproved, setIsApproved] = useState(false)
 
+  const fetchMechanic = async () => {
+    const { mechanic } = await getMechanicByIdAction()
+    if (mechanic) {
+      setIsApproved(mechanic!.isApproved)
+    }
+  }
+
   useEffect(() => {
-    getMechanicByIdAction(pathname.split("/").slice(-1)[0]).then((res) => {
-      setIsApproved(res.mechanic!.isApproved);
-    });
+    fetchMechanic()
     setActiveTab(tab)
   }, [tab, isApproved])
 
@@ -46,12 +50,12 @@ export const MechanicDashboard = () => {
   return (
     <div className="w-full">
       {renderContent()}
-    
-      <BottomNavigation 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
+
+      <BottomNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
-      
+
     </div>
   )
 }

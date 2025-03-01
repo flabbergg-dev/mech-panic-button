@@ -123,6 +123,7 @@ const SettingsPage = () => {
       })
         .then((response) => response.json())
         .then((data) => {
+          window.location.reload()
           console.log(data);
         })
         .catch((error) => {
@@ -422,56 +423,58 @@ const SettingsPage = () => {
 
   const SidebarContent = () => (
     <div className="space-y-1.5 py-4 ">
-      {sections.map((section) => {
-        const Icon = section.icon
-        const isActive = activeSection === section.id
-        return (
-          <Button
-            key={section.id}
-            variant={isActive ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start text-left h-auto py-3 px-4 hover:bg-muted/50",
-              isActive && "bg-secondary"
-            )}
-            onClick={() => {
-              setActiveSection(section.id)
-              setIsMenuOpen(false)
-            }}
-          >
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center space-x-3">
-                <div className={cn(
-                  "p-2 rounded-md",
-                  isActive ? "bg-primary/10" : "bg-muted"
-                )}>
-                  <Icon className={cn(
-                    "h-5 w-5",
-                    isActive && "text-primary"
-                  )} />
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center space-x-2">
-                    <p className="font-medium">{section.label}</p>
-                    {section.badge && (
-                      <Badge variant={isActive ? "secondary" : "outline"} className="ml-2">
-                        {section.badge}
-                      </Badge>
-                    )}
-                  </div>
-                  <p
-                    className="text-sm text-muted-foreground hidden md:block max-w-[200px] text-wrap"
-                  >
-                    {section.description}
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform",
-                isActive && "transform rotate-90"
-              )} />
-            </div>
-          </Button>
-        )
+      {sections
+      .filter((section) => isMechanic || (section.id !== "professional" && section.id !== "billing"))
+      .map((section) => {
+      const Icon = section.icon
+      const isActive = activeSection === section.id
+      return (
+      <Button
+        key={section.id}
+        variant={isActive ? "secondary" : "ghost"}
+        className={cn(
+        "w-full justify-start text-left h-auto py-3 px-4 hover:bg-muted/50",
+        isActive && "bg-secondary"
+        )}
+        onClick={() => {
+        setActiveSection(section.id)
+        setIsMenuOpen(false)
+        }}
+      >
+        <div className="flex items-center justify-between w-full">
+        <div className="flex items-center space-x-3">
+        <div className={cn(
+        "p-2 rounded-md",
+        isActive ? "bg-primary/10" : "bg-muted"
+        )}>
+        <Icon className={cn(
+          "h-5 w-5",
+          isActive && "text-primary"
+        )} />
+        </div>
+        <div className="flex flex-col">
+        <div className="flex items-center space-x-2">
+          <p className="font-medium">{section.label}</p>
+          {section.badge && (
+          <Badge variant={isActive ? "secondary" : "outline"} className="ml-2">
+          {section.badge}
+          </Badge>
+          )}
+        </div>
+        <p
+          className="text-sm text-muted-foreground hidden md:block max-w-[200px] text-wrap"
+        >
+          {section.description}
+        </p>
+        </div>
+        </div>
+        <ChevronRight className={cn(
+        "h-4 w-4 text-muted-foreground transition-transform",
+        isActive && "transform rotate-90"
+        )} />
+        </div>
+      </Button>
+      )
       })}
     </div>
   )

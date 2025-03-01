@@ -34,7 +34,7 @@ export async function getAvailableMechanicsListAction() {
             mechanic,
         }
     } catch (error) {
-        console.error("Error in getMechanicByIdAction:", error)
+        console.error("Error in get Mechanic List Action:", error)
         return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to fetch mechanic",

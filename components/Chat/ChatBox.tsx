@@ -133,13 +133,13 @@ export const ChatBox = ({mechanicId, userId}: ChatBoxProps) => {
     <div className="">
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="rounded-full p-2 bg-slate-600 text-white"
+        className="rounded-full p-2 bg-slate-600 text-white z-[990]"
       >
         <MessageCircle size={24} />
       </Button>
       {isOpen === true && (
-        <HalfSheet
-          className={`z-50 bg-background p-4 h-[-webkit-fill-available] ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}
+        <div
+          className={`absolute top-0 bottom-0 left-0 z-[99] bg-background p-4 h-[-webkit-fill-available] ${isOpen ? "transform translate-y-0" : "transform translate-y-4 opacity-0"}`}
         >
           {chatId && (
             <div className="flex flex-col justify-between">
@@ -166,9 +166,7 @@ export const ChatBox = ({mechanicId, userId}: ChatBoxProps) => {
                       //     : undefined
                       // }
                       fallbackText={
-                        useFirstName
-                          ? useFirstName.slice(0, 2)
-                          : "NA"
+                        useFirstName ? useFirstName.slice(0, 2) : "NA"
                       }
                     />
                     <p className="text-white bg-slate-600 p-2 rounded-lg">
@@ -222,7 +220,7 @@ export const ChatBox = ({mechanicId, userId}: ChatBoxProps) => {
               </div>
             </div>
           )}
-        </HalfSheet>
+        </div>
       )}
     </div>
   );
