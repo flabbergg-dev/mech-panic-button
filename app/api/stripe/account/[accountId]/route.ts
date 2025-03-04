@@ -9,21 +9,32 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<RouteParams> }
 ) {
-  try {
-    const resolvedParams = await params
+    try {
+        // const { id } = await req.json();
+        const { requestId } = await params;
+        const id = requestId;
+        if (!id) {
+            return new NextResponse("Account ID cannot be empty", { status: 400 })
+        } else {
+            const accountSession = await stripe.accountSessions.create({
+                account: id,
+                components: {
+                    account_management: {
+                    enabled: true,
+                    features: {
+                        external_account_collection: true,
+                },
+                    },
+                },
+            });
 
-    if (!resolvedParams.requestId) {
-      return new NextResponse("Invalid request ID", { status: 400 })
+            return NextResponse.json({
+                client_secret: accountSession.client_secret,
+            });
+        }
     }
-
-    const account = await stripe.accounts.retrieve(resolvedParams.requestId);
-
-    console.log('Account retrieved:', account.id);
-
-    return NextResponse.json({account: account});
-
-  } catch (error) {
-    console.error("Error retrieving account information:", error)
-    return new NextResponse("Internal error", { status: 500 })
-  }
+    catch (error) {
+        console.error('An error occurred when calling the Stripe API to withdraw funds:', error);
+        return new NextResponse("Internal Error", { status: 500 })
+    }
 }

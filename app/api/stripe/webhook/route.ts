@@ -86,7 +86,6 @@ export async function POST(req: Request) {
         break
       }
 
-
       case 'checkout.session.completed': {
         const session = await stripe.checkout.sessions.retrieve(
           event.data.object.id, {

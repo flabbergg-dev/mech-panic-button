@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { headers } from 'next/headers';
-import { prisma } from '@/lib/prisma';
-import { ServiceStatus } from '@prisma/client';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-01-27.acacia",
@@ -56,6 +54,7 @@ export async function POST(request: Request) {
         },
         metadata: {
           serviceRequestId,
+          userId,
         },
       },
       metadata: {

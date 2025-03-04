@@ -112,13 +112,13 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       }
       supabase.realtime.setAuth(token)
 
-      const subscribeServiceRequestToChannel = supabase.channel(`service_request_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', filter: `id=eq.${requestId}`  }, payload => {
+      const subscribeServiceRequestToChannel = supabase.channel(`service_request_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', filter: `id=eq.${requestId}`  }, (payload: any) => {
         console.log('Request Received payload:', payload)
         fetchData()
 
       }).subscribe()
 
-      const subscribeServiceOfferToChannel = supabase.channel(`service_offer_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceOffer', filter: `serviceRequestId=eq.${requestId}`  }, payload => {
+      const subscribeServiceOfferToChannel = supabase.channel(`service_offer_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceOffer', filter: `serviceRequestId=eq.${requestId}`  }, (payload: any) => {
         console.log('Offer Received payload:', payload)
         fetchData()
 

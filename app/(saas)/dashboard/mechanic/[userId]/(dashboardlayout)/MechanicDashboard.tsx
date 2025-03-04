@@ -50,10 +50,11 @@ export const MechanicDashboard = () => {
   return (
     <div className="w-full">
       {renderContent()}
-
-      <BottomNavigation
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+    
+      <BottomNavigation 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        showMap={false}
       />
 
     </div>

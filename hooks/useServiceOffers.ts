@@ -1,56 +1,62 @@
 'use client'
 
-import {  getServiceOffersForClient } from '@/app/actions/service/offer/getServiceOffersAction'
+import { getServiceOffersForClient } from '@/app/actions/service/offer/getServiceOffersAction'
 import { getServiceRequestsForClient } from '@/app/actions/getServiceRequestAction'
-import { useCallback, useEffect } from 'react'
-import { ServiceStatus } from '@prisma/client'
-import useSWR from 'swr'
+import { useState, useEffect } from 'react'
+import { ServiceRequest, ServiceStatus } from '@prisma/client'
 
 const POLLING_INTERVAL = 10000 // 10 seconds
 
 export function useServiceOffers(userId: string) {
-  const fetchData = useCallback(async () => {
-    if (!userId) return { requests: [], offers: [] }
+  const [offers, setOffers] = useState<any[]>([])
+  const [requests, setRequests] = useState<ServiceRequest[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
+  const fetchData = async () => {
     try {
-      const serviceRequests = await getServiceRequestsForClient(userId)
+      setLoading(true)
+      const [offersData, requestsData] = await Promise.all([
+        getServiceOffersForClient(userId),
+        getServiceRequestsForClient(userId)
+      ])
 
-      const activeRequest = serviceRequests.find(
-        req => req.status !== ServiceStatus.COMPLETED
+      setOffers(offersData)
+      
+      // Get requests with their reviews
+      const requestsWithReviews = await Promise.all(
+        requestsData.map(async (request: ServiceRequest) => {
+          // Include the review information
+          if (request.status === ServiceStatus.COMPLETED) {
+            const reviewInfo = await fetch(`/api/reviews/${request.id}`).then(res => res.json()).catch(() => null)
+            return { ...request, review: reviewInfo }
+          }
+          return request
+        })
       )
+      
+      setRequests(requestsWithReviews)
+      setError(null)
+    } catch (err) {
+      setError('Failed to fetch data')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-      const offersData = activeRequest
-        ? await getServiceOffersForClient(activeRequest.id)
-        : []
-
-      return { requests: serviceRequests, offers: offersData }
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Failed to fetch data')
+  useEffect(() => {
+    if (userId) {
+      fetchData()
     }
   }, [userId])
-
-  const {
-    data = { requests: [], offers: [] },
-    error,
-    isLoading,
-    mutate
-  } = useSWR(
-    userId ? ['serviceOffers', userId] : null,
-    fetchData,
-    {
-      refreshInterval: POLLING_INTERVAL,
-      revalidateOnFocus: false,
-      dedupingInterval: 5000,
-      keepPreviousData: true
-    }
-  )
 
   // Pause polling when tab is not visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.visibilityState === 'visible') {
         // Pause polling
-        mutate()
+        fetchData()
       }
     }
 
@@ -58,13 +64,7 @@ export function useServiceOffers(userId: string) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [mutate])
+  }, [])
 
-  return {
-    requests: data.requests,
-    offers: data.offers,
-    loading: isLoading,
-    error: error?.message || null,
-    refetch: () => mutate()
-  }
+  return { offers, requests, loading, error, refetch: fetchData }
 }

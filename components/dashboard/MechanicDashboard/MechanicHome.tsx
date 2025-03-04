@@ -165,7 +165,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
           .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "ServiceRequest" },
-            (payload) => {
+            (payload: any) => {
               console.log("Request Received payload:", payload);
               fetchData();
             }

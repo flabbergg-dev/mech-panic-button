@@ -82,23 +82,6 @@ const SettingsPage = () => {
   const isSubscribed = useIsUserSubscribed()
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null)
 
-  // get customer data from stripe
-  const fetchData = async () => {
-    fetch(`/api/stripe/account/${stripeConnectId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  }
-
   const fetchStripeConnectId = async () => {
     const response = await getStripeConnectId()
 
@@ -175,10 +158,11 @@ const SettingsPage = () => {
   // }
 
   useEffect(() => {
-    fetchStripeConnectId()
+    if (!stripeConnectId) {
+      fetchStripeConnectId();
+    }
     setIsLoading(true)
     if(isSubscribed.isSubscribed !== null) {
-      fetchData()
       setIsLoading(false)
     }
   }, [isSubscribed, stripeConnectId, isLoading])
@@ -193,7 +177,7 @@ const SettingsPage = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          destinationAccount: stripeConnectId!,
+          destinationAccount: stripeConnectId,
         }),
       });
       if (!response.ok) {
@@ -223,14 +207,14 @@ const SettingsPage = () => {
   const [stripeConnectInstanceAccount] = useState(() => {
     const fetchClientSecret = async () => {
       // Fetch the AccountSession client secret
-      const response = await fetch(`/api/stripe/account_management`, {
+      const response = await     fetch(`/api/stripe/account/${stripeConnectId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          stripeConnectAccount: stripeConnectId!,
-        }),
+        // body: JSON.stringify({
+        //   id: stripeConnectId,
+        // }),
       });
       if (!response.ok) {
         // Handle errors on the client side here
@@ -299,6 +283,17 @@ const SettingsPage = () => {
                   <MechanicInfoForm />
                 </motion.div>
               )}
+              <ConnectComponentsProvider
+                connectInstance={stripeConnectInstanceAccount}
+              >
+                <ConnectAccountManagement
+                  // Optional:
+                  collectionOptions={{
+                    fields: "eventually_due",
+                    futureRequirements: "include",
+                  }}
+                />
+              </ConnectComponentsProvider>
             </motion.div>
           );
         case "billing":

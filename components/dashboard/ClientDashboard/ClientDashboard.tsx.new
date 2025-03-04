@@ -1,16 +1,15 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRealtimeServiceOffers } from '@/hooks/useRealtimeServiceOffers'
 import { useRealtimeMechanicLocation } from '@/hooks/useRealtimeMechanicLocation'
-import { useRealtimeServiceRequest } from '@/hooks/useRealtimeServiceRequest'
 import { ServiceOfferCard } from '@/components/cards/ServiceOfferCard'
 import { RippleComp } from "@/components/Animated/RippleComp"
 import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Loader2Icon } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
@@ -27,10 +26,7 @@ import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
 import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
-import { ChatBox } from '@/components/Chat/ChatBox'
-// import { useServiceRequestStore } from "@/store/serviceRequestStore";
 import { calculateEstimatedTime } from '@/utils/location';
-import { Booking } from '@/components/cards/Booking'
 import { ReviewModal } from '@/components/reviews/ReviewModal'
 
 export function ClientDashboard() {
@@ -42,8 +38,6 @@ export function ClientDashboard() {
   const router = useRouter()
   const userRole = path.includes("customer") ? "Customer" : "Mechanic"
 
-  const { requests, offers, loading, error, refetch } = useRealtimeServiceOffers(user?.id || '')
-  const { serviceRequest, serviceRequestLoading, serviceRequestError, refetchServiceRequest } = useRealtimeServiceRequest(user?.id || '')
   const [activeTab, setActiveTab] = useState<string>(tab || "home")
   const [customerLocation, setCustomerLocation] = useState<{latitude: number; longitude: number} | null>(null)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
@@ -120,6 +114,8 @@ export function ClientDashboard() {
     }
   }, [customerLocation]);
 
+  const { requests, offers, loading, error, refetch } = useRealtimeServiceOffers(user?.id || '')
+
   // Helper function to check if a status is considered "active"
   const ACTIVE_STATUSES = [
     ServiceStatus.REQUESTED,
@@ -138,7 +134,7 @@ export function ClientDashboard() {
   }
 
   // Check if there's an active request
-  const activeRequest = serviceRequest || requests.find((request: ServiceRequest) =>
+  const activeRequest = requests.find((request: ServiceRequest) =>
     isActiveStatus(request.status)
   )
 
@@ -150,11 +146,10 @@ export function ClientDashboard() {
         userId: user?.id,
         requestsCount: requests.length, 
         offersCount: offers.length,
-        serviceRequestFromHook: serviceRequest?.status,
         error
       });
     }
-  }, [requests.length, offers.length, loading, error, user?.id, serviceRequest?.status]);
+  }, [requests.length, offers.length, loading, error, user?.id]);
 
   // Add debugging for active request
   useEffect(() => {
@@ -162,11 +157,10 @@ export function ClientDashboard() {
       console.log('Active request detection:', {
         activeRequestFound: !!activeRequest,
         activeRequestId: activeRequest?.id,
-        activeRequestStatus: activeRequest?.status,
-        serviceRequestFromHook: serviceRequest?.status
+        activeRequestStatus: activeRequest?.status
       });
     }
-  }, [activeRequest?.id, activeRequest?.status, loading, serviceRequest?.status]);
+  }, [activeRequest?.id, activeRequest?.status, loading]);
 
   // Check for recently completed requests that need a review
   useEffect(() => {
@@ -242,27 +236,22 @@ export function ClientDashboard() {
 
   const handleCancelRequest = async (requestId: string) => {
     try {
-      // Call the server action to cancel the request
       const result = await cancelServiceRequest(requestId)
-      
       if (result.success) {
+        refetch() // Refresh the requests list
         toast({
           title: 'Request cancelled successfully',
           description: 'Your request has been cancelled',
           className: 'bg-green-500 text-white'
         })
-        
-        // Force a hard refresh of the page
-        window.location.reload();
       }
-      
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to cancel request',
         variant: 'destructive'
       })
-    } 
+    }
   }
 
   const handleVerifyCode = async (code: string) => {
@@ -285,7 +274,7 @@ export function ClientDashboard() {
         title: "Success",
         description: "Service started successfully",
       })
-      refetchServiceRequest()
+      refetch()
     } catch (error) {
       toast({
         title: "Error",
@@ -302,12 +291,7 @@ export function ClientDashboard() {
     setIsRefreshing(true);
     // Show loading indicator for at least 500ms to provide feedback
     const startTime = Date.now();
-    
-    // Refresh both service offers and service request
-    Promise.all([
-      refetch(),
-      refetchServiceRequest()
-    ]).finally(() => {
+    refetch().finally(() => {
       const elapsedTime = Date.now() - startTime;
       const remainingTime = Math.max(0, 500 - elapsedTime);
       // Set a small delay to show the animation
@@ -315,24 +299,23 @@ export function ClientDashboard() {
     });
   };
 
-  // Add a periodic refresh to check for new offers when on the requests tab
+  // Add a periodic refresh to ensure we get the latest data
   useEffect(() => {
-    // Only set up the interval if we're on the requests tab and have an active request
-    if (activeTab === "requests" && activeRequest && activeRequest.status === ServiceStatus.REQUESTED) {
-      console.log('Setting up periodic refresh for offers');
+    // Only set up the interval if we have an active request or if we're on the requests tab
+    if (!loading && (activeRequest || activeTab === "requests")) {
+      console.log('Setting up periodic refresh for offers and requests');
       
-      // Refresh every 5 seconds to check for new offers
+      // Refresh every 10 seconds
       const intervalId = setInterval(() => {
-        console.log('Periodic refresh for offers triggered');
+        console.log('Periodic refresh triggered');
         refetch();
-        refetchServiceRequest();
-      }, 5000);
+      }, 10000);
       
       return () => {
         clearInterval(intervalId);
       };
     }
-  }, [activeTab, activeRequest, refetch, refetchServiceRequest]);
+  }, [loading, activeRequest, activeTab, refetch]);
 
   if (!user) {
     return <Loader title="Loading Your Dashboard..." />
@@ -370,13 +353,12 @@ export function ClientDashboard() {
                
               </Card>
             </div>
-             <div className="flex items-center justify-center w-full">
+             <div className="flex items-center   justify-center min-h-[400px] w-full">
               <RippleComp>
                 <MechPanicButton user={user} onRequestCreated={handleRequestCreated}/>
                 {/* <MechPanicButtonLogo/> */}
               </RippleComp>
             </div>
-            <Booking />
           </div>
         )
       case "map":
@@ -387,18 +369,15 @@ export function ClientDashboard() {
             <div className="fixed inset-0 z-0">
               <RequestMap />
             </div>
-
+            
             {/* Content Overlay */}
             {activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED && (
               <HalfSheet>
                 <ServiceCardLayout>
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-t-xl">
-                    <h2 className="text-xl font-semibold mb-2">
-                      Payment Authorized
-                    </h2>
+                    <h2 className="text-xl font-semibold mb-2">Payment Authorized</h2>
                     <p className="text-muted-foreground">
-                      Waiting for mechanic to start their journey. You'll be
-                      notified when they're on their way.
+                      Waiting for mechanic to start their journey. You'll be notified when they're on their way.
                     </p>
                   </div>
                 </ServiceCardLayout>
@@ -407,27 +386,17 @@ export function ClientDashboard() {
             {activeRequest?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
                 <ServiceCardLayout>
-                  {activeRequest.mechanicId && (
-                    <ChatBox
-                      // mechanicId={activeRequest.mechanicId}
-                      userId={activeRequest.clientId}
-                    />
-                  )}
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
-                    <h2 className="text-xl font-semibold mb-2">
-                      Mechanic on their way
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {estimatedTime
-                        ? `Mechanic will be there in ${estimatedTime}`
-                        : "Calculating arrival time..."}
+                    <h2 className="text-xl font-semibold mb-2">Mechanic on their way</h2>
+                      <p className="text-muted-foreground">
+                      {estimatedTime ? `Mechanic will be there in ${estimatedTime}` : 'Calculating arrival time...'}
                     </p>
                     {!mechanicLocation && (
                       <p className="text-sm text-muted-foreground mt-2">
                         Waiting for mechanic's location...
                       </p>
-                    )}
-                  </div>
+                      )}
+                    </div>
                 </ServiceCardLayout>
               </HalfSheet>
             )}
@@ -445,7 +414,7 @@ export function ClientDashboard() {
                      </div>
                      {isVerifyingCode && (
                        <div className="flex items-center justify-center mt-4">
-                         <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
+                         <Loader2 className="animate-spin h-5 w-5 mr-2" />
                          <span>Verifying code...</span>
                        </div>
                      )}
@@ -458,9 +427,7 @@ export function ClientDashboard() {
               <HalfSheet>
                 <ServiceCardLayout>
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
-                    <h2 className="text-xl font-semibold ">
-                      Servicing in Progress{" "}
-                    </h2>
+                    <h2 className="text-xl font-semibold ">Servicing in Progress </h2>
                     <p className="text-muted-foreground mb-2 pb-4">
                       Wait for the mechanic to complete their service
                     </p>
@@ -468,28 +435,24 @@ export function ClientDashboard() {
                   </div>
                 </ServiceCardLayout>
               </HalfSheet>
-            )}
+            ) }
             {activeRequest?.status === ServiceStatus.IN_COMPLETION && (
               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
                 <div className="flex flex-col h-full p-6">
                   <div className="flex-1 flex flex-col items-center justify-center space-y-6">
                     <div className="text-center space-y-4 max-w-md">
-                      <h2 className="text-2xl font-semibold">
-                        Service Completion Code
-                      </h2>
+                      <h2 className="text-2xl font-semibold">Service Completion Code</h2>
                       <p className="text-muted-foreground">
-                        Share this code with your mechanic to confirm service
-                        completion
+                        Share this code with your mechanic to confirm service completion
                       </p>
                       <div className="mt-8">
                         <div className="text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
                           {/* TODO: Replace with Loading... */}
-                          {activeRequest?.completionCode || "305203"}
+                          {activeRequest?.completionCode || '305203'}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">
-                        The mechanic will input this code to mark the service as
-                        completed and receive payment
+                        The mechanic will input this code to mark the service as completed and receive payment
                       </p>
                     </div>
                   </div>
@@ -497,7 +460,7 @@ export function ClientDashboard() {
               </div>
             )}
           </div>
-        );
+        )
       case "requests":
         return (
           <div className="relative min-h-screen">
@@ -626,7 +589,7 @@ export function ClientDashboard() {
                         ) : (
                           <ServiceOfferCard
                             mechanicId={offer.mechanic.id}
-                            mechanicConnectId={offer.mechanic.user.stripeConnectId}
+                            mechanicConnectId={offer.mechanic.user.stripeCustomerId}
                             key={offer.id}
                             serviceRequestId={offer.serviceRequestId}
                             mechanicName={offer.mechanic.user ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}` : 'Unknown Mechanic'}
@@ -669,29 +632,7 @@ export function ClientDashboard() {
       case "profile":
         return <Profile />
       default:
-        return (
-          <div className="flex items-center  min-h-screen flex-col space-y-6">
-            <div className="relative z-10 w-full max-w-md">
-              <Card className="p-6 shadow-lg bg-card/80 backdrop-blur border border-card/10">
-                <h1 className="text-2xl font-bold mb-4 text-center">
-                  Welcome, {user.firstName}!
-                </h1>
-                <p className="text-gray-600 mb-6 text-center">
-                  Need mechanical assistance? We're here to help!
-                </p>
-              </Card>
-            </div>
-            <div className="flex items-center   justify-center min-h-[400px] w-full">
-              <RippleComp>
-                <MechPanicButton
-                  user={user}
-                  onRequestCreated={handleRequestCreated}
-                />
-                {/* <MechPanicButtonLogo/> */}
-              </RippleComp>
-            </div>
-          </div>
-        );
+        return null
     }
   }
 
@@ -723,7 +664,7 @@ export function ClientDashboard() {
         hiddenNavigation={activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED || activeRequest?.status === ServiceStatus.IN_ROUTE || activeRequest?.status === ServiceStatus.IN_PROGRESS || activeRequest?.status === ServiceStatus.SERVICING || activeRequest?.status === ServiceStatus.IN_COMPLETION} 
       />
       {showReviewModal && completedRequest && completedRequest.mechanicId && (
-        <ReviewModal
+        <ReviewModal 
           isOpen={showReviewModal}
           onClose={() => {
             setShowReviewModal(false);
