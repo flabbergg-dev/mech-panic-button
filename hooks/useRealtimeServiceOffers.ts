@@ -37,9 +37,9 @@ export function useRealtimeServiceOffers(userId: string) {
       return { offers: [], requests: [] };
     }
     
-    // Prevent excessive fetching (debounce)
+    // Prevent excessive fetching (throttle)
     const now = Date.now();
-    if (!force && now - lastFetchTime < 2000) {
+    if (!force && now - lastFetchTime < 5000) {
       console.log('Skipping fetch - too soon since last fetch');
       return { offers, requests };
     }
@@ -123,7 +123,6 @@ export function useRealtimeServiceOffers(userId: string) {
       // Log that we're about to refresh
       console.log('Scheduling data refresh due to realtime update');
       
-      // Use a shorter debounce time to make updates more responsive
       debounceTimer = setTimeout(async () => {
         console.log('Executing debounced data refresh');
         try {
@@ -132,7 +131,7 @@ export function useRealtimeServiceOffers(userId: string) {
         } catch (error) {
           console.error('Error in handleUpdate:', error);
         }
-      }, 300);
+      }, 1000);
     };
 
     try {

@@ -312,18 +312,35 @@ export function ClientDashboard() {
     });
   };
 
+  // Function to handle when an offer is accepted
+  const handleOfferAccepted = useCallback(() => {
+    console.log('Offer accepted, refreshing dashboard data');
+    // Refresh both service offers and service request
+    Promise.all([
+      refetch(),
+      refetchServiceRequest()
+    ]).then(() => {
+      // After refreshing, check if we need to update the active tab
+      if (activeRequest?.status === ServiceStatus.ACCEPTED) {
+        setActiveTab("requests");
+      }
+    }).catch(error => {
+      console.error('Error refreshing after offer accepted:', error);
+    });
+  }, [refetch, refetchServiceRequest, activeRequest?.status]);
+
   // Add a periodic refresh to check for new offers when on the requests tab
   useEffect(() => {
     // Only set up the interval if we're on the requests tab and have an active request
     if (activeTab === "requests" && activeRequest && activeRequest.status === ServiceStatus.REQUESTED) {
       console.log('Setting up periodic refresh for offers');
       
-      // Refresh every 5 seconds to check for new offers
+      // Refresh every 15 seconds to check for new offers
       const intervalId = setInterval(() => {
         console.log('Periodic refresh for offers triggered');
         refetch();
         refetchServiceRequest();
-      }, 5000);
+      }, 15000);
       
       return () => {
         clearInterval(intervalId);
@@ -611,7 +628,7 @@ export function ClientDashboard() {
                             price={offer.price || 0}
                             note={offer.note || undefined}
                             expiresAt={offer.expiresAt || undefined}
-                            onOfferHandled={refetch}
+                            onOfferHandled={handleOfferAccepted}
                             userId={user.id}
                             mechanicLocation={offer.location}
                             customerLocation={customerLocation}

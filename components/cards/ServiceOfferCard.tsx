@@ -215,6 +215,12 @@ const [paymentCompleted, setPaymentCompleted] = useState(false)
 
       // Set offer as accepted to show checkout button
       setOfferAccepted(true);
+      
+      // Call onOfferHandled to refresh the parent component
+      if (onOfferHandled) {
+        onOfferHandled();
+      }
+      
       toast({
         title: 'Success',
         description: 'Offer accepted! Please proceed to checkout.',
@@ -351,8 +357,9 @@ const [paymentCompleted, setPaymentCompleted] = useState(false)
               <Button
                 onClick={() => handleOffer(true)}
                 disabled={isLoading}
+                className={isLoading ? "opacity-70" : ""}
               >
-                Accept
+                {isLoading ? "Processing..." : "Accept"}
               </Button>
             </>
           ) : (
@@ -361,7 +368,7 @@ const [paymentCompleted, setPaymentCompleted] = useState(false)
               disabled={isLoading}
               className="bg-green-600 hover:bg-green-700"
             >
-              Proceed to Checkout
+              {isLoading ? "Processing..." : "Proceed to Checkout"}
             </Button>)
           )}
         </div>
