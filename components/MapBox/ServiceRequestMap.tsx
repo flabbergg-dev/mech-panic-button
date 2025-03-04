@@ -146,103 +146,132 @@ const ServiceRequestMap = ({
   
   // Initialize map once
   useEffect(() => {
-    if (!mapContainer.current || mapInitialized.current || !effectiveCustomerLocation) return
+    if (!mapContainer.current || mapInitialized.current || !effectiveCustomerLocation) return;
     
-    try {
-      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!
-      
-      const newMap = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v12",
-        center: toMapboxLngLat(effectiveCustomerLocation),
-        zoom: 14,
-        attributionControl: false,
-      })
-      
-      newMap.on("load", () => {
-        // Add route source and layer
-        newMap.addSource("route", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: [],
-            },
-          },
-        })
+    const initializeMap = () => {
+      try {
+        mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!;
         
-        // Add a casing layer for the route (outline)
-        newMap.addLayer({
-          id: "route-casing",
-          type: "line",
-          source: "route",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": "#000",
-            "line-width": 8,
-            "line-opacity": 0.6,
-          },
+        const newMap = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: "mapbox://styles/mapbox/streets-v12",
+          center: toMapboxLngLat(effectiveCustomerLocation),
+          zoom: 14,
+          attributionControl: false,
         });
+
+        // Only set up the load handler once
+        let loadHandlerSet = false;
         
-        // Add the main route line
-        newMap.addLayer({
-          id: "route",
-          type: "line",
-          source: "route",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": "#10B981",
-            "line-width": 4,
-            "line-opacity": 0.9,
-            "line-dasharray": [0, 2, 1], // Create a dashed effect for better visibility
-          },
-        })
-        
-        routeSource.current = newMap.getSource("route") as mapboxgl.GeoJSONSource
-        map.current = newMap
-        mapInitialized.current = true
-        setMapReady(true)
-        
-        // Add customer marker immediately after map is ready
-        if (effectiveCustomerLocation) {
-          customerMarker.current = new mapboxgl.Marker({ color: "#4B5563" })
-            .setPopup(new mapboxgl.Popup().setHTML("<p class='font-medium'>Customer Location</p>"))
-            .setLngLat(toMapboxLngLat(effectiveCustomerLocation))
-            .addTo(newMap)
-        }
-      })
-    } catch (error) {
-      console.error("Error initializing map:", error)
-    }
-  }, [effectiveCustomerLocation])
-  
+        newMap.once('load', () => {
+          if (loadHandlerSet) return;
+          loadHandlerSet = true;
+          
+          // Add route source and layer
+          newMap.addSource("route", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: [],
+              },
+            },
+          });
+          
+          // Add a casing layer for the route (outline)
+          newMap.addLayer({
+            id: "route-casing",
+            type: "line",
+            source: "route",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#000",
+              "line-width": 8,
+              "line-opacity": 0.6,
+            },
+          });
+          
+          // Add the main route line
+          newMap.addLayer({
+            id: "route",
+            type: "line",
+            source: "route",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#10B981",
+              "line-width": 4,
+              "line-opacity": 0.9,
+              "line-dasharray": [0, 2, 1],
+            },
+          });
+          
+          routeSource.current = newMap.getSource("route") as mapboxgl.GeoJSONSource;
+          map.current = newMap;
+          mapInitialized.current = true;
+          
+          // Add customer marker
+          if (effectiveCustomerLocation && !customerMarker.current) {
+            customerMarker.current = new mapboxgl.Marker({ color: "#4B5563" })
+              .setPopup(new mapboxgl.Popup().setHTML("<p class='font-medium'>Customer Location</p>"))
+              .setLngLat(toMapboxLngLat(effectiveCustomerLocation))
+              .addTo(newMap);
+          }
+          
+          // Only set map ready after everything is initialized
+          requestAnimationFrame(() => {
+            setMapReady(true);
+          });
+        });
+      } catch (error) {
+        console.error("Error initializing map:", error);
+      }
+    };
+
+    initializeMap();
+    
+    // Cleanup function
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      mapInitialized.current = false;
+      setMapReady(false);
+    };
+  }, [effectiveCustomerLocation]);
+
   // Update customer marker when location changes
   useEffect(() => {
-    if (!mapReady || !map.current || !effectiveCustomerLocation) return
+    if (!mapReady || !map.current || !effectiveCustomerLocation) return;
     
-    try {
-      const lngLat = toMapboxLngLat(effectiveCustomerLocation)
-      
-      if (!customerMarker.current) {
-        customerMarker.current = new mapboxgl.Marker({ color: "#4B5563" })
-          .setPopup(new mapboxgl.Popup().setHTML("<p class='font-medium'>Customer Location</p>"))
-          .setLngLat(lngLat)
-          .addTo(map.current)
-      } else {
-        customerMarker.current.setLngLat(lngLat)
+    const updateCustomerMarker = () => {
+      try {
+        const lngLat = toMapboxLngLat(effectiveCustomerLocation);
+        
+        if (!customerMarker.current) {
+          customerMarker.current = new mapboxgl.Marker({ color: "#4B5563" })
+            .setPopup(new mapboxgl.Popup().setHTML("<p class='font-medium'>Customer Location</p>"))
+            .setLngLat(lngLat)
+            .addTo(map.current!);
+        } else {
+          customerMarker.current.setLngLat(lngLat);
+        }
+      } catch (error) {
+        console.error("Error updating customer marker:", error);
       }
-    } catch (error) {
-      console.error("Error updating customer marker:", error)
-    }
-  }, [mapReady, effectiveCustomerLocation])
+    };
+
+    // Use requestAnimationFrame to prevent render thrashing
+    requestAnimationFrame(updateCustomerMarker);
+  }, [mapReady, effectiveCustomerLocation]);
   
   // Fetch mechanic location from server
   const fetchMechanicLocation = async () => {
@@ -323,8 +352,8 @@ const ServiceRequestMap = ({
     // Check if status has changed
     if (currentStatus.current !== serviceRequest.status) {
       console.log(`Status changed from ${currentStatus.current} to ${serviceRequest.status}`);
-      currentStatus.current = serviceRequest.status
-      routeCalculated.current = false // Reset route calculation flag on status change
+      currentStatus.current = serviceRequest.status;
+      routeCalculated.current = false; // Reset route calculation flag on status change
     }
     
     // Start polling for IN_ROUTE status
@@ -335,41 +364,122 @@ const ServiceRequestMap = ({
       const initialFetch = async () => {
         console.log("Performing initial location fetch");
         await fetchMechanicLocation();
-        
-        // If route wasn't calculated on first try, retry after a short delay
-        if (!routeCalculated.current && effectiveCustomerLocation) {
-          console.log("Route not calculated on first try, retrying in 2 seconds");
-          setTimeout(async () => {
-            console.log("Retrying location fetch");
-            await fetchMechanicLocation();
-            
-            // If still not calculated, try one more time with any available location
-            if (!routeCalculated.current && effectiveMechanicLocation && effectiveCustomerLocation) {
-              console.log("Forcing route calculation with available location");
-              calculateRoute(effectiveMechanicLocation, effectiveCustomerLocation);
-            }
-          }, 2000);
-        }
       };
       
       initialFetch();
+      
+      // Set up polling interval with a minimum of 5 seconds between updates
       locationPollingInterval.current = setInterval(fetchMechanicLocation, 5000);
     } 
     // Stop polling for other statuses
     else if (serviceRequest.status !== ServiceStatus.IN_ROUTE && locationPollingInterval.current) {
       console.log("Stopping location polling");
-      clearInterval(locationPollingInterval.current)
-      locationPollingInterval.current = null
+      clearInterval(locationPollingInterval.current);
+      locationPollingInterval.current = null;
     }
     
-    // Clean up on unmount
+    // Clean up on unmount or status change
     return () => {
       if (locationPollingInterval.current) {
-        clearInterval(locationPollingInterval.current)
-        locationPollingInterval.current = null
+        clearInterval(locationPollingInterval.current);
+        locationPollingInterval.current = null;
       }
     }
-  }, [serviceRequest.status, serviceRequest.mechanicId, effectiveCustomerLocation, effectiveMechanicLocation])
+  }, [serviceRequest.status]);
+
+  // Calculate and display route
+  const calculateRoute = async (from: LocationType, to: LocationType) => {
+    if (!routeSource.current || !map.current || isUpdatingRoute.current) {
+      console.log("Skipping route calculation:", {
+        noRouteSource: !routeSource.current,
+        noMap: !map.current,
+        isUpdating: isUpdatingRoute.current
+      });
+      return;
+    }
+    
+    // Skip if already calculated for current status
+    if (routeCalculated.current && 
+        currentStatus.current === serviceRequest.status && 
+        lastRouteInfo.current) {
+      console.log("Route already calculated for current status");
+      if (onRouteCalculated) {
+        onRouteCalculated(
+          lastRouteInfo.current.duration,
+          lastRouteInfo.current.distance
+        );
+      }
+      return;
+    }
+    
+    console.log("Calculating route from", from, "to", to);
+    isUpdatingRoute.current = true;
+    
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?steps=true&geometries=geojson&overview=full&annotations=duration,distance,speed&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch route: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.routes?.length || !routeSource.current) {
+        console.error("No routes found or route source lost");
+        if (onRouteCalculated) onRouteCalculated(0, 0);
+        return;
+      }
+      
+      const route = data.routes[0];
+      const { coordinates } = route.geometry;
+      
+      console.log(`Route received with ${coordinates.length} coordinate points`);
+      
+      // Store route coordinates for bearing calculations
+      routeCoordinates.current = coordinates;
+      
+      routeSource.current.setData({
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates,
+        },
+      });
+      
+      // Store the route info
+      lastRouteInfo.current = {
+        duration: Math.round(route.duration / 60),
+        distance: route.distance
+      };
+      
+      // Call the callback with route information
+      if (onRouteCalculated) {
+        onRouteCalculated(lastRouteInfo.current.duration, lastRouteInfo.current.distance);
+      }
+      
+      // Mark as calculated for current status
+      routeCalculated.current = true;
+      
+      // Update mechanic marker with new route if needed
+      if (effectiveMechanicLocation) {
+        requestAnimationFrame(() => {
+          try {
+            updateMechanicMarker(effectiveMechanicLocation);
+          } catch (error) {
+            console.error("Error updating mechanic marker:", error);
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error calculating route:", error);
+      if (onRouteCalculated) onRouteCalculated(0, 0);
+    } finally {
+      isUpdatingRoute.current = false;
+    }
+  };
   
   // Update mechanic marker
   const updateMechanicMarker = (location: LocationType) => {
@@ -465,65 +575,76 @@ const ServiceRequestMap = ({
     
     console.log("Status effect triggered, current status:", serviceRequest.status);
     
-    // Update mechanic marker if location is available
-    if (effectiveMechanicLocation) {
-      try {
-        updateMechanicMarker(effectiveMechanicLocation);
-      } catch (error) {
-        console.error("Error updating mechanic marker:", error);
-      }
-    }
-    
-    // Update map view based on status
-    if (serviceRequest.status === ServiceStatus.PAYMENT_AUTHORIZED) {
-      console.log("Status is PAYMENT_AUTHORIZED, updating map view");
-      
-      // If mechanic location is available, center on mechanic
+    const updateMapView = () => {
+      // Update mechanic marker if location is available
       if (effectiveMechanicLocation) {
-        map.current.flyTo({
-          center: toMapboxLngLat(effectiveMechanicLocation),
-          zoom: 15,
-          duration: 1000
-        });
-      } 
-      // Otherwise center on customer
-      else if (effectiveCustomerLocation) {
-        map.current.flyTo({
-          center: toMapboxLngLat(effectiveCustomerLocation),
-          zoom: 15,
-          duration: 1000
-        });
-      }
-    } 
-    else if ((serviceRequest.status === ServiceStatus.IN_ROUTE || 
-              serviceRequest.status === ServiceStatus.SERVICING) && 
-              showRoute && effectiveCustomerLocation) {
-      
-      // Calculate route if not already calculated for this status
-      if (!routeCalculated.current || currentStatus.current !== serviceRequest.status) {
-        console.log("Calculating route for status:", serviceRequest.status);
-        if (effectiveMechanicLocation) {
-          calculateRoute(effectiveMechanicLocation, effectiveCustomerLocation);
+        try {
+          updateMechanicMarker(effectiveMechanicLocation);
+        } catch (error) {
+          console.error("Error updating mechanic marker:", error);
         }
       }
       
-      // Fit bounds to show both markers if both locations are available
-      if (effectiveMechanicLocation && effectiveCustomerLocation) {
-        const bounds = new mapboxgl.LngLatBounds();
-        bounds.extend(toMapboxLngLat(effectiveMechanicLocation));
-        bounds.extend(toMapboxLngLat(effectiveCustomerLocation));
-        map.current.fitBounds(bounds, { padding: 100, duration: 1000 });
+      // Update map view based on status
+      if (serviceRequest.status === ServiceStatus.PAYMENT_AUTHORIZED) {
+        console.log("Status is PAYMENT_AUTHORIZED, updating map view");
+        
+        // If mechanic location is available, center on mechanic
+        if (effectiveMechanicLocation) {
+          map.current?.flyTo({
+            center: toMapboxLngLat(effectiveMechanicLocation),
+            zoom: 15,
+            duration: 1000
+          });
+        } 
+        // Otherwise center on customer
+        else if (effectiveCustomerLocation) {
+          map.current?.flyTo({
+            center: toMapboxLngLat(effectiveCustomerLocation),
+            zoom: 15,
+            duration: 1000
+          });
+        }
+      } 
+      else if ((serviceRequest.status === ServiceStatus.IN_ROUTE || 
+                serviceRequest.status === ServiceStatus.SERVICING) && 
+                showRoute && effectiveCustomerLocation) {
+        
+        // Calculate route if not already calculated for this status
+        if (!routeCalculated.current && effectiveMechanicLocation) {
+          console.log("Calculating route for status:", serviceRequest.status);
+          calculateRoute(effectiveMechanicLocation, effectiveCustomerLocation);
+        }
+        
+        // Fit bounds to show both markers if both locations are available
+        if (effectiveMechanicLocation && effectiveCustomerLocation) {
+          const bounds = new mapboxgl.LngLatBounds();
+          bounds.extend(toMapboxLngLat(effectiveMechanicLocation));
+          bounds.extend(toMapboxLngLat(effectiveCustomerLocation));
+          map.current?.fitBounds(bounds, { padding: 100, duration: 1000 });
+        }
       }
-    }
-    
+    };
+
     // Update current status reference
     if (currentStatus.current !== serviceRequest.status) {
       console.log(`Status changed from ${currentStatus.current} to ${serviceRequest.status}`);
       currentStatus.current = serviceRequest.status;
       // Reset route calculation flag on status change
       routeCalculated.current = false;
+      // Update map view after status change
+      updateMapView();
+    } else if (effectiveMechanicLocation) {
+      // Only update if mechanic location changed
+      updateMapView();
     }
-  }, [mapReady, effectiveMechanicLocation, serviceRequest.status, showRoute, effectiveCustomerLocation]);
+  }, [
+    mapReady,
+    effectiveMechanicLocation,
+    effectiveCustomerLocation,
+    serviceRequest.status,
+    showRoute
+  ]);
   
   // Add CSS styles for the arrow marker
   useEffect(() => {
@@ -557,111 +678,6 @@ const ServiceRequestMap = ({
       document.head.appendChild(style);
     }
   }, [])
-  
-  // Calculate and display route
-  const calculateRoute = async (from: LocationType, to: LocationType) => {
-    if (!routeSource.current || !map.current) {
-      console.error("Cannot calculate route: route source or map is not available");
-      return;
-    }
-    
-    if (isUpdatingRoute.current) {
-      console.log("Route calculation already in progress, skipping");
-      return;
-    }
-    
-    // Skip if already calculated for IN_ROUTE status
-    if (routeCalculated.current && serviceRequest.status === ServiceStatus.IN_ROUTE) {
-      console.log("Route already calculated for IN_ROUTE status");
-      // Even if we skip recalculation, we should still call onRouteCalculated with the last values
-      // This ensures the UI updates properly
-      if (onRouteCalculated && lastRouteInfo.current) {
-        console.log("Calling onRouteCalculated with cached values:", lastRouteInfo.current);
-        onRouteCalculated(lastRouteInfo.current.duration, lastRouteInfo.current.distance);
-      }
-      return;
-    }
-    
-    console.log("Calculating route from", from, "to", to);
-    isUpdatingRoute.current = true
-    
-    try {
-      // Request a more detailed route with higher overview quality and more steps
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?steps=true&geometries=geojson&overview=full&annotations=duration,distance,speed&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`
-      )
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch route: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0]
-        const { coordinates } = route.geometry
-        
-        if (!routeSource.current) {
-          console.error("Route source is null after fetch");
-          return;
-        }
-        
-        console.log(`Route received with ${coordinates.length} coordinate points`);
-        
-        // Store route coordinates for bearing calculations
-        routeCoordinates.current = coordinates;
-        
-        routeSource.current.setData({
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates,
-          },
-        })
-        
-        // Store the route info for future reference
-        lastRouteInfo.current = {
-          duration: Math.round(route.duration / 60),
-          distance: route.distance
-        };
-        
-        // Call the callback with the route information
-        if (onRouteCalculated) {
-          console.log("Calling onRouteCalculated with", Math.round(route.duration / 60), route.distance);
-          onRouteCalculated(Math.round(route.duration / 60), route.distance)
-        }
-        
-        // Mark as calculated for this status
-        if (serviceRequest.status === ServiceStatus.IN_ROUTE) {
-          routeCalculated.current = true
-        }
-        
-        // Update mechanic marker with the new route information if it exists
-        if (effectiveMechanicLocation) {
-          try {
-            updateMechanicMarker(effectiveMechanicLocation);
-          } catch (error) {
-            console.error("Error updating mechanic marker:", error)
-          }
-        }
-      } else {
-        console.error("No routes found in response:", data);
-        // Even if no routes found, call callback with zeros to update UI
-        if (onRouteCalculated) {
-          onRouteCalculated(0, 0);
-        }
-      }
-    } catch (error) {
-      console.error("Error calculating route:", error)
-      // Call callback with zeros on error to update UI
-      if (onRouteCalculated) {
-        onRouteCalculated(0, 0);
-      }
-    } finally {
-      isUpdatingRoute.current = false
-    }
-  }
   
   // Clean up mechanic location on completion
   useEffect(() => {

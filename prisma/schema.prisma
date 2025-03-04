@@ -27,9 +27,10 @@ model User {
   documentsUrl              String[]
   notificationsEmailEnabled Boolean             @default(true)
   stripeConnectId           String?             @default("")
+  lastTransactionId         String?             @default("")
+  stripeSubEndingDate       DateTime?
   bookings                  Booking[]
   Chat                      Chat[]
-  ChatUser                  ChatUser[]
   mechanic                  Mechanic?
   Message                   Message[]
   chatMessages              Message[]           @relation("UserMessages")
@@ -57,7 +58,6 @@ model Mechanic {
   isApproved          Boolean           @default(false)
   bookings            Booking[]
   Chat                Chat[]
-  earnings            Earning[]
   user                User              @relation(fields: [userId], references: [id])
   services            MechanicService[]
   ServiceOffer        ServiceOffer[]
@@ -75,28 +75,28 @@ model Vehicle {
 }
 
 model ServiceRequest {
-  id               String         @id
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  clientId         String
-  mechanicId       String?
-  status           ServiceStatus
-  location         Json
-  description      String?
-  paymentHoldId    String?
-  paymentId        String?
-  arrivalCode      String?
-  completionTime   DateTime?
-  startTime        DateTime?
-  serviceType      ServiceType    @default(DIAGNOSTIC)
-  completionCode   String?
-  mechanicLocation Json?
-  totalAmount      Float
-  review           Review?
-  offers           ServiceOffer[]
-  client           User           @relation(fields: [clientId], references: [id])
-  mechanic         Mechanic?      @relation(fields: [mechanicId], references: [id])
-  payment          Payment?       @relation(fields: [paymentId], references: [id])
+  id                String         @id
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  clientId          String
+  mechanicId        String?
+  status            ServiceStatus
+  location          Json
+  description       String?
+  paymentHoldId     String?
+  lastTransactionId String?
+  paymentId         String?
+  arrivalCode       String?
+  completionTime    DateTime?
+  startTime         DateTime?
+  serviceType       ServiceType    @default(DIAGNOSTIC)
+  completionCode    String?
+  mechanicLocation  Json?
+  totalAmount       Float
+  review            Review?
+  offers            ServiceOffer[]
+  client            User           @relation(fields: [clientId], references: [id])
+  mechanic          Mechanic?      @relation(fields: [mechanicId], references: [id])
 }
 
 model Review {
@@ -110,35 +110,15 @@ model Review {
   serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id])
 }
 
-model Earning {
-  id               String   @id @default(uuid())
-  mechanicId       String
-  amount           Float
-  serviceRequestId String
-  createdAt        DateTime @default(now())
-  mechanic         Mechanic @relation(fields: [mechanicId], references: [id])
-}
-
 model Chat {
-  id         Int        @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   customerId String
   mechanicId String
-  user       User       @relation(fields: [customerId], references: [id])
-  mechanic   Mechanic   @relation(fields: [mechanicId], references: [id])
-  users      ChatUser[]
+  user       User      @relation(fields: [customerId], references: [id])
+  mechanic   Mechanic  @relation(fields: [mechanicId], references: [id])
   messages   Message[]
 
   @@unique([customerId, mechanicId])
-}
-
-model ChatUser {
-  id     String @id @default(uuid())
-  chatId Int
-  userId String
-  chat   Chat   @relation(fields: [chatId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@unique([chatId, userId])
 }
 
 model Message {
@@ -215,19 +195,6 @@ model Booking {
   customer       User          @relation(fields: [customerId], references: [id])
   mechanic       Mechanic      @relation(fields: [mechanicId], references: [id])
   service        Service       @relation(fields: [serviceId], references: [id])
-  payment        Payment?
-}
-
-model Payment {
-  id             String           @id @default(cuid())
-  bookingId      String           @unique
-  paymentMethod  String
-  paymentStatus  String
-  amount         Float
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  booking        Booking          @relation(fields: [bookingId], references: [id])
-  ServiceRequest ServiceRequest[]
 }
 
 model ServiceOffer {
