@@ -3,18 +3,18 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const serviceRequestId = params.id
+    const id = await params
     
-    if (!serviceRequestId) {
+    if (!id) {
       return NextResponse.json({ error: 'Service request ID is required' }, { status: 400 })
     }
 
     const review = await prisma.review.findUnique({
       where: {
-        serviceRequestId
+        id: id.toString()
       }
     })
 

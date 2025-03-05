@@ -8,6 +8,10 @@ interface MechanicOnboardingProps {
     firstName: string;
     lastName: string;
     email: string;
+    make: string;
+    model: string;
+    year: number;
+    license: string;
   };
   currentStep: "documents" | "StripeAccountSetup";
   setCurrentStep: (step: "documents" | "StripeAccountSetup") => void;

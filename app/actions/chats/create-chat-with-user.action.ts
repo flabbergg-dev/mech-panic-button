@@ -32,24 +32,6 @@ export async function createChatWithUserAction(userId: string, mechanicId: strin
             },
         })
 
-        const chatUserData = [
-            {
-                chatId: chat.id,
-                userId: userId,
-            },
-            {
-                chatId: chat.id,
-                userId: mechanicId,
-            },
-        ];
-
-        console.log("chatUserData:", chatUserData);
-
-        await prisma.chatUser.createMany({
-            data: chatUserData,
-            skipDuplicates: true,
-        });
-
         return {
             success: true,
             chat,

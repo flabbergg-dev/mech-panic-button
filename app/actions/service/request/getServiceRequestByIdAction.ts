@@ -13,7 +13,6 @@ export async function getServiceRequestById(serviceRequestId: string) {
                 // location: true,
                 // description: true,
                 // paymentHold: true,
-                payment: true,
                 // arrivalCode: true,
                 // completionTime: true,
                 // startTime: true,

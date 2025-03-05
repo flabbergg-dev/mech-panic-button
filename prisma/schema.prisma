@@ -75,27 +75,28 @@ model Vehicle {
 }
 
 model ServiceRequest {
-  id               String         @id
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  clientId         String
-  mechanicId       String?
-  status           ServiceStatus
-  location         Json
-  description      String?
-  paymentHoldId    String?
-  paymentId        String?
-  arrivalCode      String?
-  completionTime   DateTime?
-  startTime        DateTime?
-  serviceType      ServiceType    @default(DIAGNOSTIC)
-  completionCode   String?
-  mechanicLocation Json?
-  totalAmount      Float
-  review           Review?
-  offers           ServiceOffer[]
-  client           User           @relation(fields: [clientId], references: [id])
-  mechanic         Mechanic?      @relation(fields: [mechanicId], references: [id])
+  id                String         @id
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  clientId          String
+  mechanicId        String?
+  status            ServiceStatus
+  location          Json
+  description       String?
+  paymentHoldId     String?
+  lastTransactionId String?
+  paymentId         String?
+  arrivalCode       String?
+  completionTime    DateTime?
+  startTime         DateTime?
+  serviceType       ServiceType    @default(DIAGNOSTIC)
+  completionCode    String?
+  mechanicLocation  Json?
+  totalAmount       Float
+  review            Review?
+  offers            ServiceOffer[]
+  client            User           @relation(fields: [clientId], references: [id])
+  mechanic          Mechanic?      @relation(fields: [mechanicId], references: [id])
 }
 
 model Review {

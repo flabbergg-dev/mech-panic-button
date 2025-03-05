@@ -1,70 +1,158 @@
-'use client'
+'use client';
 
-import { getServiceOffersForClient } from '@/app/actions/service/offer/getServiceOffersAction'
-import { getServiceRequestsForClient } from '@/app/actions/getServiceRequestAction'
-import { useState, useEffect } from 'react'
-import { ServiceRequest, ServiceStatus } from '@prisma/client'
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ServiceOffer } from '@prisma/client';
+import { supabase } from '@/utils/supabase/client';
+import { RealtimePostgresChangesPayload } from '@/types/supabase';
 
-const POLLING_INTERVAL = 10000 // 10 seconds
+export interface EnrichedServiceOffer extends ServiceOffer {
+  mechanic?: {
+    id: string;
+    rating?: number;
+    user?: {
+      firstName: string;
+      lastName: string;
+      stripeCustomerId: string | null;
+    };
+  };
+}
 
-export function useServiceOffers(userId: string) {
-  const [offers, setOffers] = useState<any[]>([])
-  const [requests, setRequests] = useState<ServiceRequest[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
+interface UseServiceOffersReturn {
+  offers: EnrichedServiceOffer[];
+  isLoading: boolean;
+  error: Error | null;
+  acceptOffer: (offerId: string) => Promise<void>;
+  refreshOffers: () => Promise<void>;
+}
 
-  const fetchData = async () => {
+const FETCH_THROTTLE_MS = 5000; // 5 seconds between fetches
+
+export function useServiceOffers(serviceRequestId: string): UseServiceOffersReturn {
+  const [offers, setOffers] = useState<EnrichedServiceOffer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const isMounted = useRef(true);
+  const lastFetchTime = useRef<number>(0);
+  const isFetching = useRef<boolean>(false);
+
+  const fetchOffers = useCallback(async (force = false) => {
+    if (!serviceRequestId || isFetching.current || (!force && Date.now() - lastFetchTime.current < FETCH_THROTTLE_MS)) {
+      return;
+    }
+
     try {
-      setLoading(true)
-      const [offersData, requestsData] = await Promise.all([
-        getServiceOffersForClient(userId),
-        getServiceRequestsForClient(userId)
-      ])
-
-      setOffers(offersData)
+      isFetching.current = true;
       
-      // Get requests with their reviews
-      const requestsWithReviews = await Promise.all(
-        requestsData.map(async (request: ServiceRequest) => {
-          // Include the review information
-          if (request.status === ServiceStatus.COMPLETED) {
-            const reviewInfo = await fetch(`/api/reviews/${request.id}`).then(res => res.json()).catch(() => null)
-            return { ...request, review: reviewInfo }
-          }
-          return request
-        })
-      )
-      
-      setRequests(requestsWithReviews)
-      setError(null)
-    } catch (err) {
-      setError('Failed to fetch data')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (userId) {
-      fetchData()
-    }
-  }, [userId])
-
-  // Pause polling when tab is not visible
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Pause polling
-        fetchData()
+      // Only show loading on initial fetch
+      if (offers.length === 0) {
+        setIsLoading(true);
       }
-    }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+      const response = await fetch(`/api/service-request/${serviceRequestId}/offers`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch offers');
+      }
+
+      const data = await response.json();
+      
+      if (isMounted.current) {
+        setOffers(data);
+        setError(null);
+        lastFetchTime.current = Date.now();
+      }
+    } catch (err) {
+      console.error('Error fetching offers:', err);
+      if (isMounted.current) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch offers'));
+      }
+    } finally {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+      isFetching.current = false;
+    }
+  }, [serviceRequestId, offers.length]);
+
+  const acceptOffer = useCallback(async (offerId: string) => {
+    if (!serviceRequestId || !offerId) return;
+
+    try {
+      setIsLoading(true);
+
+      // Start a transaction to accept one offer and reject others
+      const response = await fetch(`/api/service-request/${serviceRequestId}/accept-offer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ offerId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to accept offer');
+      }
+
+      // Fetch updated offers after acceptance
+      await fetchOffers(true);
+    } catch (err) {
+      console.error('Error accepting offer:', err);
+      setError(err instanceof Error ? err : new Error('Failed to accept offer'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [serviceRequestId, fetchOffers]);
+
+  // Set up Supabase real-time subscription
+  useEffect(() => {
+    if (!serviceRequestId) return;
+
+    isMounted.current = true;
+    console.log('Setting up Supabase real-time subscription for offers');
+
+    const channel = supabase
+      .channel(`service_offers_${serviceRequestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ServiceOffer',
+          filter: `serviceRequestId=eq.${serviceRequestId}`
+        },
+        (payload: RealtimePostgresChangesPayload) => {
+          console.log('Real-time update received for offers:', payload);
+          fetchOffers(true);
+        }
+      )
+      .subscribe((status: string) => {
+        console.log('Supabase subscription status for offers:', status);
+      });
+
+    // Initial fetch
+    fetchOffers(true);
+
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
+      console.log('Cleaning up Supabase subscription for offers');
+      isMounted.current = false;
+      channel.unsubscribe();
+    };
+  }, [serviceRequestId, fetchOffers]);
 
-  return { offers, requests, loading, error, refetch: fetchData }
+  const refreshOffers = useCallback(() => {
+    return fetchOffers(true);
+  }, [fetchOffers]);
+
+  return {
+    offers,
+    isLoading,
+    error,
+    acceptOffer,
+    refreshOffers
+  };
 }

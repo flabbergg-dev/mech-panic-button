@@ -20,7 +20,7 @@ import { Loader } from '@/components/loader'
 import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
 import SettingsPage from '../settings/Settings'
 import { Profile } from '@/components/profile/Profile'
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ServiceStatus, ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
 import { HalfSheet } from '@/components/ui/HalfSheet'
@@ -53,6 +53,7 @@ export function ClientDashboard() {
   const [mechanicName, setMechanicName] = useState<string>("your mechanic")
   const [reviewedRequestIds, setReviewedRequestIds] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Initialize reviewedRequestIds from localStorage
   useEffect(() => {
@@ -315,18 +316,70 @@ export function ClientDashboard() {
     });
   };
 
+  // Function to handle when an offer is accepted
+  const handleOfferAccepted = useCallback(() => {
+    console.log('Offer accepted, refreshing dashboard data');
+    // Refresh both service offers and service request
+    Promise.all([
+      refetch(),
+      refetchServiceRequest()
+    ]).then(() => {
+      // After refreshing, check if we need to update the active tab
+      if (activeRequest?.status === ServiceStatus.ACCEPTED) {
+        setActiveTab("requests");
+      }
+    }).catch(error => {
+      console.error('Error refreshing after offer accepted:', error);
+    });
+  }, [refetch, refetchServiceRequest, activeRequest?.status]);
+
+  const refreshOffers = async () => {
+    setIsLoading(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Error refreshing offers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const acceptOffer = async (offerId: string) => {
+    setIsLoading(true);
+    try {
+      // Call the server action to accept the offer
+      const result = await fetch(`/api/offers/${offerId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!result.ok) {
+        throw new Error(`Failed to accept offer: ${result.status} ${result.statusText}`);
+      }
+      
+      // The UI will update automatically through real-time subscription
+    } catch (error) {
+      console.error('Error accepting offer:', error);
+      // Handle error (show toast, etc.)
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Add a periodic refresh to check for new offers when on the requests tab
   useEffect(() => {
     // Only set up the interval if we're on the requests tab and have an active request
     if (activeTab === "requests" && activeRequest && activeRequest.status === ServiceStatus.REQUESTED) {
       console.log('Setting up periodic refresh for offers');
       
-      // Refresh every 5 seconds to check for new offers
+      // Refresh every 15 seconds to check for new offers
       const intervalId = setInterval(() => {
         console.log('Periodic refresh for offers triggered');
         refetch();
         refetchServiceRequest();
-      }, 5000);
+      }, 15000);
       
       return () => {
         clearInterval(intervalId);
@@ -592,17 +645,18 @@ export function ClientDashboard() {
                 </div>
               )}
 
-              {offers.length > 0 && (
+              {activeRequest && (
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold text-primary">Mechanic Offers</h2>
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={handleRefresh}
+                      onClick={() => refreshOffers()}
                       className="flex items-center gap-1"
+                      disabled={isLoading}
                     >
-                      {isRefreshing ? (
+                      {isLoading ? (
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
                           <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
                         </svg>
@@ -612,43 +666,57 @@ export function ClientDashboard() {
                     </Button>
                   </div>
                   <div className="space-y-4">
-                    {offers
-                      .slice() // Create a copy to avoid mutating the original array
-                      .map((offer: EnrichedServiceOffer) => {
-                        console.log('Debug: Offer data:', {
-                          offer,
-                          location: offer.location,
-                          customerLocation
-                        });
+                    <AnimatePresence mode="popLayout">
+                      {offers.map((offer) => {
+                        // Ensure location objects have the correct shape
+                        const mechanicLocation = offer.location ? {
+                          longitude: offer.location.longitude,
+                          latitude: offer.location.latitude
+                        } : null;
 
-                        return !offer.mechanic || !offer.mechanic.user ? (
-                          <span key={offer.id} className="text-red-500"> No mechanic found in this offer</span>
-                        ) : (
-                          <ServiceOfferCard
-                            mechanicId={offer.mechanic.id}
-                            mechanicConnectId={offer.mechanic.user.stripeConnectId}
+                        return (
+                          <motion.div
                             key={offer.id}
-                            serviceRequestId={offer.serviceRequestId}
-                            mechanicName={offer.mechanic.user ? `${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}` : 'Unknown Mechanic'}
-                            mechanicRating={offer.mechanic.rating || undefined}
-                            price={offer.price || 0}
-                            note={offer.note || undefined}
-                            expiresAt={offer.expiresAt || undefined}
-                            onOfferHandled={refetch}
-                            userId={user.id}
-                            mechanicLocation={offer.location}
-                            customerLocation={customerLocation}
-                          />
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            layout
+                          >
+                            {!offer.mechanic || !offer.mechanic.user ? (
+                              <span className="text-red-500">No mechanic found in this offer</span>
+                            ) : (
+                              <ServiceOfferCard
+                                key={offer.id}
+                                serviceRequestId={offer.serviceRequestId}
+                                mechanicId={offer.mechanicId!}
+                                mechanicConnectId={offer.mechanic.user.stripeCustomerId}
+                                mechanicName={`${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`}
+                                mechanicRating={offer.mechanic.rating || undefined}
+                                price={offer.price}
+                                note={offer.note || undefined}
+                                expiresAt={offer.expiresAt || undefined}
+                                onOfferHandled={async () => {
+                                  try {
+                                    await acceptOffer(offer.id);
+                                    // The UI will update automatically through real-time subscription
+                                  } catch (error) {
+                                    console.error('Error accepting offer:', error);
+                                    // Handle error (show toast, etc.)
+                                  }
+                                }}
+                                userId={user.id}
+                                mechanicLocation={mechanicLocation}
+                                customerLocation={customerLocation}
+                              />
+                            )}
+                          </motion.div>
                         );
                       })}
+                    </AnimatePresence>
                   </div>
                 </div>
               )}
-              
-
-
-             
-               
 
               {!activeRequest && offers.length === 0 && (
                 <div className="text-center p-4 bg-background/80 backdrop-blur-sm rounded-lg text-muted-foreground">

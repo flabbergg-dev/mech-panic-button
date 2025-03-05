@@ -6,24 +6,25 @@ import { NextResponse } from "next/server"
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { userId } = await auth()
-    console.log('Fetching service request details:', params.id, 'for user:', userId)
+    console.log('Fetching service request details:', id, 'for user:', userId)
     
     if (!userId) {
       console.log('Unauthorized: No userId found')
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    if (!params.id) {
+    if (!id) {
       return new NextResponse('Service request ID is required', { status: 400 })
     }
 
     const serviceRequest = await prisma.serviceRequest.findUnique({
       where: {
-        id: params.id,
+        id: id,
       },
       select: {
         id: true,

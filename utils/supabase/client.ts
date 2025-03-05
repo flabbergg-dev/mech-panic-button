@@ -2,9 +2,11 @@ import { createBrowserClient } from "@supabase/ssr";
 
 // Create the Supabase client only once
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null;
+let initializationAttempts = 0;
+const MAX_ATTEMPTS = 3;
 
 export const createClient = () => {
-  // If we already have a client, return it
+  // If we already have a client and it's working, return it
   if (supabaseClient) {
     return supabaseClient;
   }
@@ -18,19 +20,52 @@ export const createClient = () => {
       throw new Error("Supabase configuration is incomplete");
     }
     
-    console.log("Initializing Supabase client");
-    supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+    initializationAttempts++;
+    console.log(`Initializing Supabase client (attempt ${initializationAttempts})`);
+    
+    supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+      auth: {
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+    });
+
+    // Test the client by creating a test channel
+    const testChannel = supabaseClient.channel('test');
+    if (!testChannel) {
+      throw new Error("Failed to create test channel");
+    }
+
     return supabaseClient;
   } catch (error) {
     console.error("Failed to initialize Supabase client:", error);
+    
+    // Clear the client so we can try again
+    supabaseClient = null;
+
+    // If we haven't reached max attempts, try again after a delay
+    if (initializationAttempts < MAX_ATTEMPTS) {
+      console.log(`Will retry Supabase initialization in 1 second (attempt ${initializationAttempts}/${MAX_ATTEMPTS})`);
+      setTimeout(createClient, 1000);
+    }
+
     // Return a dummy client that won't break the app but won't work either
     return {
-      channel: () => ({
-        on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
-        subscribe: () => ({ unsubscribe: () => {} })
-      })
+      channel: (name: string) => {
+        console.warn(`Attempted to create channel '${name}' but Supabase client is not initialized`);
+        return {
+          on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
+          subscribe: () => ({ unsubscribe: () => {} })
+        };
+      }
     } as any;
   }
 };
 
+// Initialize the client
 export const supabase = createClient();

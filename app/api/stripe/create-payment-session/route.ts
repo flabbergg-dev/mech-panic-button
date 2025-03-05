@@ -69,7 +69,10 @@ export async function POST(request: Request) {
       //   `${origin}/payment/cancel`
     });
 
-    return NextResponse.json({ success: true, sessionDetails: session, sessionId: session.id, sessionSecret: session.client_secret })
+    return NextResponse.json({ 
+      sessionId: session.id, 
+      clientSecret: session.client_secret 
+    })
   } catch (error) {
     console.error('Payment session creation error:', error)
     return NextResponse.json(

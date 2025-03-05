@@ -16,6 +16,10 @@ interface MechanicDocumentsProps {
     firstName: string;
     lastName: string;
     email: string;
+    make: string;
+    model: string;
+    year: number;
+    license: string;
   };
   stripeConnectId: any;
 }
@@ -63,7 +67,6 @@ export const MechanicDocuments = ({
         const onboardResult = await onboardUserAction({
           ...formData,
           role: "Mechanic" as const,
-          stripeConnectId: stripeConnectId,
         });
 
         if (!onboardResult.success) {

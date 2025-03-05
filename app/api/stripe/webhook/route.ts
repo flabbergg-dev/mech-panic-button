@@ -43,21 +43,18 @@ export async function POST(req: Request) {
     switch (event.type) {
       case 'payment_intent.created': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
+        console.log('Payment intent created:', paymentIntent)
         
-        // Find service request with this payment hold ID
-        // const serviceRequest = await prisma.serviceRequest.findFirst({
-        //   where: { paymentHoldId: paymentIntent.id }
-        // })
-        const serviceRequest =  await prisma.serviceRequest.findFirst({
+        // Store the payment intent ID with the service request
+        const serviceRequest = await prisma.serviceRequest.findFirst({
           where: { id: paymentIntent.metadata.serviceRequestId as string }
         })
 
         if (serviceRequest) {
-          // Update service request status to PAYMENT_AUTHORIZED
           await prisma.serviceRequest.update({
             where: { id: serviceRequest.id },
             data: {
-              status: ServiceStatus.PAYMENT_AUTHORIZED
+              paymentHoldId: paymentIntent.id
             }
           })
         }
@@ -68,21 +65,22 @@ export async function POST(req: Request) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         const paymentEmail = paymentIntent.receipt_email;
         console.log('paymentIntent succeeded:', paymentIntent)
+
         // Find service request with this payment hold ID
-        // const serviceRequest = await prisma.serviceRequest.findFirst({
-        //   where: { paymentHoldId: paymentIntent.id }
-        // })
+        const serviceRequest = await prisma.serviceRequest.findFirst({
+          where: { paymentHoldId: paymentIntent.id }
+        })
 
-        // if (serviceRequest) {
-        //   // Update service request status to PAYMENT_COMPLETED
-        //   await prisma.serviceRequest.update({
-        //     where: { id: serviceRequest.id },
-        //     data: {
-        //       status: ServiceStatus.PAYMENT_AUTHORIZED
-        //     }
-        //   })
-        // }
-
+        if (serviceRequest) {
+          // Update service request status to PAYMENT_AUTHORIZED
+          await prisma.serviceRequest.update({
+            where: { id: serviceRequest.id },
+            data: {
+              status: ServiceStatus.PAYMENT_AUTHORIZED,
+              // lastTransactionId: paymentIntent.latest_charge as string
+            }
+          })
+        }
         break
       }
 
@@ -92,8 +90,6 @@ export async function POST(req: Request) {
             expand: ['line_items']
           }
         );
-
-        // console.log('Checkout session completed:', session);
 
         let customerEmail = null;
 
@@ -106,16 +102,11 @@ export async function POST(req: Request) {
           }
         }
 
-
         const subscription = await stripe.subscriptions.retrieve(
           (event.data.object as Stripe.Checkout.Session).subscription as string
         );
 
-        // console.log('Subscription:', subscription);
-
         const product = await stripe.products.retrieve(subscription.items.data[0].price.product as string);
-
-        // console.log('Product:', product);
 
         let planName = null
 
@@ -127,7 +118,6 @@ export async function POST(req: Request) {
           planName = null;
         }
 
-        
         const invoice = await stripe.invoices.retrieve(subscription.latest_invoice as string);
 
         await prisma.user.update({
@@ -150,7 +140,6 @@ export async function POST(req: Request) {
           link: invoice.hosted_invoice_url!
         });
 
-        // console.log('User updated with subscription details');
         break;
       }
 
@@ -191,8 +180,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error('Error handling webhook:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (err) {
+    console.error('Error processing webhook:', err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }
 }

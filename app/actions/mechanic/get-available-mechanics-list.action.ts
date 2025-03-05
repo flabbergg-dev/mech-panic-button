@@ -20,7 +20,6 @@ export async function getAvailableMechanicsListAction() {
                 serviceArea:true,
                 driversLicenseId: true,
                 merchantDocumentUrl: true,
-                earnings: true,
                 user: true,
                 serviceRequests: true,
             },

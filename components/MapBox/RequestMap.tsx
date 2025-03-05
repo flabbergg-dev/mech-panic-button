@@ -65,25 +65,31 @@ const RequestMap = () => {
   const mechanicMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const mapInitialized = useRef(false)
   const [mapReady, setMapReady] = useState(false)
-  const { activeRequest, isLoading, error } = useRealtimeServiceRequest()
+  const { serviceRequest, serviceRequestLoading, serviceRequestError } =
+    useRealtimeServiceRequest();
   const [userCords, setUserCords] = useState<Location | null>(null)
 
   // Log any errors or state changes
   useEffect(() => {
-    if (error) {
-      console.error("RequestMap error:", error);
+    if (serviceRequestError) {
+      console.error("RequestMap error:", serviceRequestError);
     }
-    
+
     // Only log when data actually changes
-    if (!isLoading) {
-      console.log("RequestMap state:", { 
-        hasActiveRequest: !!activeRequest,
-        activeRequestId: activeRequest?.id,
-        activeRequestStatus: activeRequest?.status,
-        hasMechanicLocation: !!activeRequest?.mechanicLocation
+    if (!serviceRequestLoading) {
+      console.log("RequestMap state:", {
+        hasActiveRequest: !!serviceRequest,
+        activeRequestId: serviceRequest?.id,
+        activeRequestStatus: serviceRequest?.status,
+        hasMechanicLocation: !!serviceRequest?.mechanicLocation,
       });
     }
-  }, [activeRequest?.id, activeRequest?.status, isLoading, error]);
+  }, [
+    serviceRequest?.id,
+    serviceRequest?.status,
+    serviceRequestLoading,
+    serviceRequestError,
+  ]);
 
   // Initialize user location
   useEffect(() => {
@@ -112,16 +118,17 @@ const RequestMap = () => {
   }, [userCords])
   
   const mechanicLngLat = useMemo(() => {
-    if (!activeRequest?.mechanicLocation) return null
-    
-    const mechLoc = activeRequest.mechanicLocation
-    if (mechLoc?.longitude === undefined || mechLoc?.latitude === undefined) return null
-    
-    return toMapboxLngLat({ 
-      longitude: mechLoc.longitude, 
-      latitude: mechLoc.latitude 
-    })
-  }, [activeRequest?.mechanicLocation])
+    if (!serviceRequest?.mechanicLocation) return null;
+
+    const mechLoc = serviceRequest.mechanicLocation;
+    if (mechLoc?.longitude === undefined || mechLoc?.latitude === undefined)
+      return null;
+
+    return toMapboxLngLat({
+      longitude: mechLoc.longitude,
+      latitude: mechLoc.latitude,
+    });
+  }, [serviceRequest?.mechanicLocation]);
 
   // Initialize map only once
   useEffect(() => {
@@ -173,41 +180,47 @@ const RequestMap = () => {
 
   // Handle mechanic marker separately
   useEffect(() => {
-    if (!mapRef.current || !mapReady) return
-    
+    if (!mapRef.current || !mapReady) return;
+
     try {
       // Remove mechanic marker if conditions aren't met
-      if (!activeRequest || 
-          activeRequest.status !== ServiceStatus.IN_ROUTE || 
-          !mechanicLngLat) {
+      if (
+        !serviceRequest ||
+        serviceRequest.status !== ServiceStatus.IN_ROUTE ||
+        !mechanicLngLat
+      ) {
         if (mechanicMarkerRef.current) {
-          mechanicMarkerRef.current.remove()
-          mechanicMarkerRef.current = null
+          mechanicMarkerRef.current.remove();
+          mechanicMarkerRef.current = null;
         }
-        return
+        return;
       }
 
       // Add or update mechanic marker
       if (!mechanicMarkerRef.current) {
         mechanicMarkerRef.current = new mapboxgl.Marker({ color: "#10B981" })
-          .setPopup(new mapboxgl.Popup().setHTML("<p class='font-medium'>Mechanic Location</p>"))
+          .setPopup(
+            new mapboxgl.Popup().setHTML(
+              "<p class='font-medium'>Mechanic Location</p>"
+            )
+          )
           .setLngLat(mechanicLngLat)
-          .addTo(mapRef.current)
+          .addTo(mapRef.current);
       } else {
-        mechanicMarkerRef.current.setLngLat(mechanicLngLat)
+        mechanicMarkerRef.current.setLngLat(mechanicLngLat);
       }
 
       // Fit bounds to show both markers
       if (userLngLat && mechanicLngLat) {
-        const bounds = new mapboxgl.LngLatBounds()
-        bounds.extend(mechanicLngLat)
-        bounds.extend(userLngLat)
-        mapRef.current.fitBounds(bounds, { padding: 100, duration: 1000 })
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend(mechanicLngLat);
+        bounds.extend(userLngLat);
+        mapRef.current.fitBounds(bounds, { padding: 100, duration: 1000 });
       }
     } catch (error) {
-      console.error("Error updating mechanic marker:", error)
+      console.error("Error updating mechanic marker:", error);
     }
-  }, [mapReady, mechanicLngLat, activeRequest, userLngLat])
+  }, [mapReady, mechanicLngLat, serviceRequest, userLngLat]);
 
   return (
     <div 
