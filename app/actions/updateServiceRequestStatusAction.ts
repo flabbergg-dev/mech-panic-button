@@ -7,7 +7,8 @@ import { ServiceStatus } from "@prisma/client"
 export async function updateServiceRequestStatusAction(
   requestId: string,
   status: string,
-  estimatedTime?: string
+  estimatedTime?: string,
+  userId?: string
 ) {
   try {
     // Generate completion code if needed
@@ -15,28 +16,41 @@ export async function updateServiceRequestStatusAction(
       ? String(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'))
       : undefined;
       
-    const updatedRequest = await prisma.serviceRequest.update({
+    const updatedRequest = await prisma.$transaction(async (prisma) => {
+      const updated = await prisma.serviceRequest.update({
       where: {
         id: requestId,
       },
       data: {
         status: status as ServiceStatus,
         ...(estimatedTime && {
-          completionTime: new Date(estimatedTime)
+        completionTime: new Date(estimatedTime)
         }),
         ...(status === 'IN_PROGRESS' && {
-          startTime: new Date(),
-          arrivalCode: String(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'))
+        startTime: new Date(),
+        arrivalCode: String(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'))
         }),
         ...(status === 'IN_COMPLETION' && {
-          completionCode
+        completionCode
         })
       },
       select: {
         arrivalCode: true,
         completionCode: true
       }
-    })
+      });
+
+      // Add delete function to chat
+      if(status === 'IN_COMPLETION') {
+        await prisma.chat.deleteMany({
+        where: {
+          mechanicId: userId
+        }
+        });
+      }
+
+      return updated;
+    });
 
     return { success: true, data: updatedRequest }
   } catch (error) {

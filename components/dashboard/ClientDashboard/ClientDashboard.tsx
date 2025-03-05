@@ -32,6 +32,8 @@ import { ChatBox } from '@/components/Chat/ChatBox'
 import { calculateEstimatedTime } from '@/utils/location';
 import { Booking } from '@/components/cards/Booking'
 import { ReviewModal } from '@/components/reviews/ReviewModal'
+import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
+
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -85,15 +87,12 @@ export function ClientDashboard() {
     if (!mechanicId) return;
     
     try {
-      const response = await fetch(`/api/mechanics/${mechanicId}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.firstName) {
-          setMechanicName(`${data.firstName} ${data.lastName || ''}`);
-        }
+      const result = await getMechanicByIdAction() as { success: boolean; mechanic?: { user?: { firstName?: string; lastName?: string } } };
+      if (result.success && result.mechanic?.user?.firstName) {
+        setMechanicName(`${result.mechanic.user.firstName} ${result.mechanic.user.lastName || ''}`);
       }
     } catch (error) {
-      console.error("Error fetching mechanic name:", error);
+      console.error('Error fetching mechanic:', error);
     }
   }, []);
 
@@ -537,7 +536,7 @@ export function ClientDashboard() {
                       <div className="mt-8">
                         <div className="text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
                           {/* TODO: Replace with Loading... */}
-                          {activeRequest?.completionCode || "305203"}
+                          {activeRequest?.completionCode}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">

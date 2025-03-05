@@ -6,15 +6,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = await params
+    const {id: serviceRequestId} = await params
     
-    if (!id) {
+    if (!serviceRequestId) {
       return NextResponse.json({ error: 'Service request ID is required' }, { status: 400 })
     }
 
     const review = await prisma.review.findUnique({
       where: {
-        id: id.toString()
+        id: serviceRequestId.toString()
       }
     })
 

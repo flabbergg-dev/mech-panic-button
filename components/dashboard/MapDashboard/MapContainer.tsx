@@ -8,7 +8,7 @@ type MapContainerProps = {
 }
 
 export const MapContainer = ({user}: MapContainerProps) => {
-    const [serviceRequest, setServiceRequest] = useState<ServiceRequest>()
+    const [serviceRequest, setServiceRequest] = useState({} as any)
 
     const fetchData = async () => {
         const response = await getServiceRequestByClientId(user.id)

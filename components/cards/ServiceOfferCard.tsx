@@ -93,24 +93,6 @@ export function ServiceOfferCard({
     checkOfferStatus();
   }, [serviceRequestId]);
 
-  // Update service request
-  useEffect(() => {
-    const catchSearhOnPayment = async () => {
-      try {
-        const response = await updateServiceRequestByIdAction(serviceRequestId, "PAYMENT_AUTHORIZED")
-
-        if(!response.success) return
-
-        setPaymentCompleted(response.success)
-      } catch (error) {
-        console.error("Error updating service request:", error)
-      }
-    }
- 
-    if(sessionIdParam) {
-      catchSearhOnPayment()
-    }
-  }, [sessionIdParam, serviceRequestId])
 
   // Get estimated time
   useEffect(() => {

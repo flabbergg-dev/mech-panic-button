@@ -51,10 +51,11 @@ export async function GET() {
         id: true,
         status: true,
         mechanicId: true,
+        clientId: true,
+        completionCode: true,
         mechanicLocation: true,
         createdAt: true,
         updatedAt: true,
-        clientId: true,
         mechanic: {
           select: {
             user: {

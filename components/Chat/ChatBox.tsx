@@ -31,7 +31,6 @@ export const ChatBox = ({ userId }: ChatBoxProps) => {
   const { user: currentUser } = useUser();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const toast = useToast();
-
   const useMechanicFirstNameHook = useUserFirstName();
   const useUserFirstNameHook = useUserFirstName(userId);
 
@@ -52,12 +51,14 @@ export const ChatBox = ({ userId }: ChatBoxProps) => {
 
   // Fetch chat by user ID
   const fetchChat = async () => {
-    const chat = await getChatByUserIdAction(userId);
-    if (chat?.chat?.id) {
-      setChatId(chat.chat.id);
-      await fetchMessages(chat.chat.id);
-    } else {
-      console.error("Error fetching chat");
+    try {
+      const chat = await getChatByUserIdAction(userId);
+      if (chat?.chat?.id) {
+        setChatId(chat.chat.id);
+        await fetchMessages(chat.chat.id);
+      }
+    } catch (error) {
+      console.error("Error fetching or creating chat:", error);
     }
   };
 
@@ -92,13 +93,11 @@ export const ChatBox = ({ userId }: ChatBoxProps) => {
   // Handle button click to open/close chat
   const handleButtonClick = async () => {
     setIsOpen(!isOpen);
-    if (!chatId) {
-     await fetchChat();
-    }
   };
 
   // Real-time subscription for new messages
   useEffect(() => {
+    fetchChat();
     const subscribeToRealtime = async () => {
       const token = await getUserToken();
       if (!token) {
@@ -131,12 +130,14 @@ export const ChatBox = ({ userId }: ChatBoxProps) => {
 
   return (
     <div>
+      {chatId && (
       <Button
         onClick={handleButtonClick}
         className="rounded-full p-2 bg-slate-600 text-white z-[990]"
       >
         <MessageCircle size={24} />
       </Button>
+      )}
       {isOpen && (
         <div
           className={`fixed inset-0 z-[99] top-24 bg-background p-4 flex flex-col overflow-y-scroll ${

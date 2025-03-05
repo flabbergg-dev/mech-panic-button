@@ -24,7 +24,7 @@ export async function GET(
 
     const serviceRequest = await prisma.serviceRequest.findUnique({
       where: {
-        id: id,
+        id,
       },
       select: {
         id: true,

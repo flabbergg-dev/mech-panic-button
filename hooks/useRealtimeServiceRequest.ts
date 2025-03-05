@@ -12,6 +12,7 @@ interface ServiceRequestWithMechanicLocation extends Omit<ServiceRequest, 'mecha
     latitude: number;
     longitude: number;
   } | null;
+  completionCode: string | null;
   mechanic?: {
     user?: {
       id: string;
@@ -49,68 +50,44 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
 
   // Fetch the active request
   const fetchRequest = useCallback(async (force = false) => {
-    if (!effectiveUserId || isFetching.current) {
-      return;
-    }
-
-    const now = Date.now();
-    if (!force && now - lastFetchTime.current < FETCH_THROTTLE_MS) {
-      console.log('Skipping fetch due to throttle');
-      return;
-    }
-
+    if (!effectiveUserId) return
+    
+    // Throttle fetches
+    const now = Date.now()
+    if (!force && isFetching.current) return
+    if (!force && now - lastFetchTime.current < FETCH_THROTTLE_MS) return
+    
+    isFetching.current = true
+    setServiceRequestLoading(true)
+    
     try {
-      isFetching.current = true;
-      
-      // Only show loading state on initial fetch
-      if (!serviceRequest) {
-        setServiceRequestLoading(true);
-      }
-
-      console.log('Fetching active service request for user:', effectiveUserId);
-      
-      const response = await fetch('/api/service-request/active', {
+      const response = await fetch(`/api/service-request/active`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         cache: 'no-store'
-      });
+      })
+      if (!response.ok) throw new Error('Failed to fetch service request')
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error fetching active request:', errorText);
-        throw new Error(`Failed to fetch service request: ${response.status} ${errorText}`);
-      }
-      
-      const request = await response.json();
-      
-      if (request || serviceRequest) {
-        console.log('Active request data:', request ? {
-          id: request.id,
-          status: request.status,
-          mechanicId: request.mechanicId,
-          mechanicLocation: request.mechanicLocation
-        } : 'No active request');
-      }
-      
+      const data = await response.json()
       if (isMounted.current) {
-        setServiceRequest(request);
-        setServiceRequestError(null);
-        lastFetchTime.current = now;
+        setServiceRequest(data)
+        setServiceRequestError(null)
       }
-    } catch (err) {
-      console.error('Error fetching active request:', err);
+    } catch (error) {
+      console.error('Error fetching service request:', error)
       if (isMounted.current) {
-        setServiceRequestError(err instanceof Error ? err : new Error('Failed to fetch service request'));
+        setServiceRequestError(error as Error)
       }
     } finally {
       if (isMounted.current) {
-        setServiceRequestLoading(false);
+        setServiceRequestLoading(false)
       }
-      isFetching.current = false;
+      isFetching.current = false
+      lastFetchTime.current = Date.now()
     }
-  }, [effectiveUserId, serviceRequest]);
+  }, [effectiveUserId])
 
   // Add a public method to trigger a refresh
   const refreshRequest = useCallback(() => {

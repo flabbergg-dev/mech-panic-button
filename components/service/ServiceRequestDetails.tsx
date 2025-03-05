@@ -25,6 +25,7 @@ import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-u
 import { cn } from "@/lib/utils"
 import { updateOfferStatus } from "@/app/actions/updateOfferStatusAction"
 import { Card } from "../ui/card"
+import useMechanicId from "@/hooks/useMechanicId";
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -54,7 +55,8 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   const router = useRouter()
   const {sendEmail} = useEmailNotification()
   const [expirationTime, setExpirationTime] = useState<string | null>(null)
-  
+  const mechanicIdHook = useMechanicId()
+
   const fetchData = async () => {
     try {
       const [requestResult, offerResult] = await Promise.all([
@@ -367,31 +369,40 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   }
 
   const goToMap = (request: ServiceRequestWithClient) => {
-    if (!request.location || typeof request.location !== 'object' || !('latitude' in request.location)) {
-      toast({
-        title: "Error",
-        description: "Location information is not available",
-        variant: "destructive"
-      })
-      return
-    } else {
+    try {
       const createChat = async () => {
         try {
-          await createChatWithUserAction(
-            request.clientId,
-            mechanicId
-          );
+          await createChatWithUserAction(request.clientId, mechanicIdHook.mechanicUserId!);
           return null;
         } catch (error) {
           throw new Error(`Error creating chat: ${error}`);
         }
       };
       createChat();
+
+    } catch (error) {
+      console.error("Error creating chat:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create chat",
+        variant: "destructive"
+      });
+    } finally {
+      if (
+        !request.location ||
+        typeof request.location !== "object" ||
+        !("latitude" in request.location)
+      ) {
+        toast({
+          title: "Error",
+          description: "Location information is not available",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Navigate to the map route with the destination coordinates
+      router.push(`/dashboard/mechanic/${userId}/map/${requestId}?destLat=${request.location.latitude}&destLng=${request.location.longitude}`)
     }
-
-
-    // Navigate to the map route with the destination coordinates
-    router.push(`/dashboard/mechanic/${userId}/map/${requestId}?destLat=${request.location.latitude}&destLng=${request.location.longitude}`)
   }
 
   return (

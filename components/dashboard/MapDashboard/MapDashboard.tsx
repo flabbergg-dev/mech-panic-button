@@ -13,7 +13,11 @@ interface Location {
 }
 
 interface MapDashboardProps {
-  serviceRequest: ServiceRequest
+  serviceRequest: {
+    id: string
+    status: ServiceStatus
+    mechanicId?: string
+  }
 }
 
 export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
@@ -48,16 +52,6 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
         }
       )
     }
-
-    // Subscribe to mechanic's location updates through your real-time service
-    // This is just a placeholder - implement your actual real-time subscription
-    // const unsubscribe = subscribeToMechanicLocation(serviceRequest.mechanicId as string, (location) => {
-    //   setMechanicLocation(location)
-    // })
-
-    // return () => {
-    //   unsubscribe()
-    // }
   }, [])
 
   console.log('customerLocation', customerLocation)
@@ -76,13 +70,4 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
         showMechanicLocation={serviceStatus !== ServiceStatus.PAYMENT_AUTHORIZED}
       />
     )
-}
-
-// Placeholder function - implement your actual real-time subscription logic
-function subscribeToMechanicLocation(mechanicId: string, callback: (location: Location) => void) {
-  // Implement your real-time subscription logic here
-  // This could be using WebSocket, Server-Sent Events, or any other real-time solution
-  return () => {
-    // Cleanup subscription
-  }
 }

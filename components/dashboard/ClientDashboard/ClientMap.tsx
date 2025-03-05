@@ -1,26 +1,16 @@
 import React, { useEffect, useRef, useState } from "react"
-import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { MechanicListCard } from "@/components/layouts/MechanicListCard.Layout"
 import { HalfSheet } from "@/components/ui/HalfSheet"
-import { Car, MapPin, MoveLeftIcon, Star, StarIcon, User, User2Icon } from "lucide-react"
-import { MessageCircleMoreIcon } from "../../Animated/message-circle-more"
+import { User2Icon } from "lucide-react"
 import { DynamicAvatar } from "../../DynamicAvatar/DynamicAvatar"
-import { Mechanic, Message } from "@prisma/client"
-import { DepositModal } from "@/components/Modal/DepositModal"
-import { createChatWithUserAction } from "@/app/actions/chats/create-chat-with-user.action"
+import { Mechanic } from "@prisma/client"
 import { createMessageAction } from "@/app/actions/chats/create-message.action"
-import { getChatByUserIdAction } from "@/app/actions/chats/get-chat-by-user-id.action"
-import { subscribeToMessages } from "@/app/actions/chats/subcribe-to-chat.action"
-import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action"
 import { RealtimeChannel } from "@supabase/supabase-js"
 import supabase from "@/utils/supabase/specialClient"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
 
 interface UserCoordinates {
   latitude: number
@@ -133,21 +123,6 @@ export const ClientMap = ({
     return channel
   }
 
-  const createChat = async (userId: string, mechanicId: string) => {
-    try {
-      const chat = await createChatWithUserAction(userId, mechanicId)
-      if (chat) {
-        setChatId(chat.chat!.id)
-        return chat
-      } else {
-        console.error("Error creating chat")
-      }
-      return null
-    } catch (error) {
-      throw new Error(`Error creating chat: ${error}`)
-    }
-  }
-
   const createNewMessage = async (message: {
     userId: string
     chatId: number
@@ -244,17 +219,6 @@ export const ClientMap = ({
                 </div>
               </div>
             ))}
-            {!chatId && (
-              <Button
-                onClick={() => {
-                  if (currentUser && selectedUser) {
-                    createChat(currentUser.id, selectedUser.id)
-                  }
-                }}
-              >
-                Create Chat
-              </Button>
-            )}
             {chatId && (
               <div className="flex gap-4 my-4">
                 <Input

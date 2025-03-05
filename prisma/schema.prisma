@@ -115,7 +115,7 @@ model Chat {
   customerId String
   mechanicId String
   user       User      @relation(fields: [customerId], references: [id])
-  mechanic   Mechanic  @relation(fields: [mechanicId], references: [id])
+  mechanic   Mechanic  @relation(fields: [mechanicId], references: [userId])
   messages   Message[]
 
   @@unique([customerId, mechanicId])
@@ -128,7 +128,7 @@ model Message {
   content  String
   userId   String
   author   User   @relation(fields: [authorId], references: [id])
-  chat     Chat   @relation(fields: [chatId], references: [id])
+  chat     Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
   user     User   @relation("UserMessages", fields: [userId], references: [id])
 }
 
