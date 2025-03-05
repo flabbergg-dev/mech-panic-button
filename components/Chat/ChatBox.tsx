@@ -20,9 +20,10 @@ import { Loader } from "../loader";
 
 type ChatBoxProps = {
   userId: string;
+  className?: string;
 };
 
-export const ChatBox = ({ userId }: ChatBoxProps) => {
+export const ChatBox = ({ userId, className }: ChatBoxProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [chatId, setChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -97,7 +98,9 @@ export const ChatBox = ({ userId }: ChatBoxProps) => {
 
   // Real-time subscription for new messages
   useEffect(() => {
+    if (!chatId) {
     fetchChat();
+    }
     const subscribeToRealtime = async () => {
       const token = await getUserToken();
       if (!token) {
@@ -133,7 +136,7 @@ export const ChatBox = ({ userId }: ChatBoxProps) => {
       {chatId && (
       <Button
         onClick={handleButtonClick}
-        className="rounded-full p-2 bg-slate-600 text-white z-[990]"
+        className={"rounded-full p-2 bg-slate-600 text-white z-[990]" + (className ? ` ${className}` : "")}
       >
         <MessageCircle size={24} />
       </Button>

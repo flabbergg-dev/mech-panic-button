@@ -458,54 +458,54 @@ export function ClientDashboard() {
             )}
             {activeRequest?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
-                <ServiceCardLayout>
-                  {activeRequest.mechanicId && (
-                    <ChatBox
-                      // mechanicId={activeRequest.mechanicId}
-                      userId={activeRequest.clientId}
-                    />
-                  )}
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
-                    <h2 className="text-xl font-semibold mb-2">
-                      Mechanic on their way
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {estimatedTime
-                        ? `Mechanic will be there in ${estimatedTime}`
-                        : "Calculating arrival time..."}
-                    </p>
-                    {!mechanicLocation && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Waiting for mechanic's location...
+                <ServiceCardLayout className='flex justify-between items-center'>
+                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg">
+                      <h2 className="text-xl font-semibold mb-2">
+                        Mechanic on their way
+                      </h2>
+                      <p className="text-muted-foreground">
+                        {estimatedTime
+                          ? `Mechanic will be there in ${estimatedTime}`
+                          : "Calculating arrival time..."}
                       </p>
-                    )}
+                      {!mechanicLocation && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Waiting for mechanic's location...
+                        </p>
+                      )}
                   </div>
+                  {activeRequest.mechanicId && (
+                    <ChatBox userId={activeRequest.clientId} />
+                  )}
                 </ServiceCardLayout>
               </HalfSheet>
             )}
-             {activeRequest?.status === ServiceStatus.IN_PROGRESS && (
-               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
-               <div className="flex flex-col h-full p-6">
-                 <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                   <div className="text-center space-y-4 max-w-md">
-                     <h2 className="text-2xl font-semibold">Enter Arrival Code</h2>
-                     <p className="text-muted-foreground">
-                       Please enter the 6-digit code provided by your mechanic to start the service
-                     </p>
-                     <div className="mt-8">
-                       <PinInput onComplete={handleVerifyCode} />
-                     </div>
-                     {isVerifyingCode && (
-                       <div className="flex items-center justify-center mt-4">
-                         <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
-                         <span>Verifying code...</span>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               </div>
-             </div>
-            ) }
+            {activeRequest?.status === ServiceStatus.IN_PROGRESS && (
+              <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
+                <div className="flex flex-col h-full p-6">
+                  <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                    <div className="text-center space-y-4 max-w-md">
+                      <h2 className="text-2xl font-semibold">
+                        Enter Arrival Code
+                      </h2>
+                      <p className="text-muted-foreground">
+                        Please enter the 6-digit code provided by your mechanic
+                        to start the service
+                      </p>
+                      <div className="mt-8">
+                        <PinInput onComplete={handleVerifyCode} />
+                      </div>
+                      {isVerifyingCode && (
+                        <div className="flex items-center justify-center mt-4">
+                          <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
+                          <span>Verifying code...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeRequest?.status === ServiceStatus.SERVICING && (
               <HalfSheet>
                 <ServiceCardLayout>

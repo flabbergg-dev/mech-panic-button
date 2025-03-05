@@ -715,10 +715,10 @@ const MechanicMapPage = () => {
 
       {/* Controls */}
       <HalfSheet>
-        <ServiceCardLayout>
           {request.status === "IN_ROUTE" && (
-            <ChatBox userId={request.clientId} />
+            <ChatBox userId={request.clientId} className={"flex place-self-end m-4"} />
           )}
+        <ServiceCardLayout>
           <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-lg border border-border/50 transform transition-all duration-300 ease-in-out">
             <h2 className="text-xl font-semibold mb-2">
               {request.status === "SERVICING"
