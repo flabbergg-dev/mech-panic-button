@@ -10,7 +10,7 @@ export const useStripeConnect = (connectedAccountId: unknown) => {
     if (connectedAccountId) {
       const fetchClientSecret = async () => {
         const response = await fetch("/api/stripe/account_session", {
-          method: "POST",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
           },

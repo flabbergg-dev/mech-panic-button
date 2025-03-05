@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
     try {
-        const { destinationAccount } = await req.json();
+        const { id } = await req.json();
 
         const accountSession = await stripe.accountSessions.create({
-        account: destinationAccount,
+        account: id,
         components: {
             balances: {
             enabled: true,

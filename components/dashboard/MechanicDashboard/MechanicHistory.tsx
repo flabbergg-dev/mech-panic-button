@@ -5,13 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getServiceHistory } from "@/app/actions/getServiceHistory"
 import { ServiceStatus } from "@prisma/client"
-import { loadConnectAndInitialize } from "@stripe/connect-js/pure"
-import {
-  ConnectPayments,
-  ConnectComponentsProvider,
-} from "@stripe/react-connect-js";
 import { Button } from "@/components/ui/button"
-import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id"
+import { StripeAccountTxHistory } from "@/components/StripeComponents/StripeAccountTxHistory"
 
 interface ServiceHistory {
   id: string
@@ -42,43 +37,6 @@ export const MechanicHistory = () => {
 
     fetchServiceHistory()
   }, [])
-
-    const [stripeConnectInstance] = useState(() => {
-      const fetchClientSecret = async () => {
-        let userId = await getStripeConnectId()
-        // Fetch the AccountSession client secret
-        const response = await fetch(`/api/stripe/tx-history`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            destinationAccount: userId,
-          }),
-        });
-        if (!response.ok) {
-          // Handle errors on the client side here
-          const { error } = await response.json();
-          console.log("An error occurred: ", error);
-          return undefined;
-        } else {
-          const { client_secret: clientSecret } = await response.json();
-          return clientSecret;
-        }
-      };
-      return loadConnectAndInitialize({
-        // This is your test publishable API key.
-        publishableKey:
-          process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-        fetchClientSecret: fetchClientSecret,
-        appearance: {
-          overlays: "dialog",
-          variables: {
-            colorPrimary: "#625afa",
-          },
-        },
-      });
-    });
 
   return (
     <div className="p-4 space-y-4">
@@ -145,13 +103,7 @@ export const MechanicHistory = () => {
           )}
           {viewTransactions && (
             <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-4 border-2 rounded-md border-slate-300 p-4">
-                <ConnectComponentsProvider
-                  connectInstance={stripeConnectInstance}
-                >
-                  <ConnectPayments />
-                </ConnectComponentsProvider>
-              </div>
+              <StripeAccountTxHistory />
             </ScrollArea>
           )}
         </CardContent>

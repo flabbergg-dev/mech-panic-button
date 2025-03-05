@@ -348,17 +348,17 @@ export function ClientDashboard() {
     setIsLoading(true);
     try {
       // Call the server action to accept the offer
-      const result = await fetch(`/api/offers/${offerId}/accept`, {
+      const result = await fetch(`/api/service-offer/${offerId}/accept`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
-      
+
       if (!result.ok) {
         throw new Error(`Failed to accept offer: ${result.status} ${result.statusText}`);
       }
-      
+
       // The UI will update automatically through real-time subscription
     } catch (error) {
       console.error('Error accepting offer:', error);
@@ -690,7 +690,7 @@ export function ClientDashboard() {
                                 key={offer.id}
                                 serviceRequestId={offer.serviceRequestId}
                                 mechanicId={offer.mechanicId!}
-                                mechanicConnectId={offer.mechanic.user.stripeCustomerId}
+                                mechanicConnectId={offer.mechanic.user.stripeConnectId}
                                 mechanicName={`${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`}
                                 mechanicRating={offer.mechanic.rating || undefined}
                                 price={offer.price}

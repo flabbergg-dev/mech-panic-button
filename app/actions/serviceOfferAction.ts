@@ -1,6 +1,6 @@
 'use server'
 
-import { ServiceStatus, OfferStatus, Prisma } from '@prisma/client'
+import { ServiceStatus, OfferStatus } from '@prisma/client'
 import { prisma } from "@/lib/prisma"
 
 

@@ -319,6 +319,23 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     }
   }
 
+  // const deleteOffer = async () => {
+  //   try {
+  //     const response = await fetch(`/api/service-offer/${serviceOffer?.id}/delete`, {
+  //       method: 'POST',
+  //     });
+  //     const result = await response.json();
+  //     console.log('response', result);
+  //   } catch (error) {
+  //     console.error("Error deleting service offer:", error)
+  //     toast({
+  //       title: "Error",
+  //       description: "Failed to delete offer",
+  //       variant: "destructive"
+  //     })
+  //   }
+  // }
+
   const getOfferStatusMessage = () => {
     if (!serviceOffer) return null;
 
@@ -327,6 +344,10 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     if (isExpired) {
       return "Offer has expired. You can cancel the service request.";
     }
+
+    // if (isExpired) {
+    //   deleteOffer();
+    // }
 
     switch (serviceOffer.status) {
       case 'PENDING':
@@ -342,6 +363,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       default:
         return null
     }
+
   }
 
   const goToMap = (request: ServiceRequestWithClient) => {

@@ -84,7 +84,6 @@ model ServiceRequest {
   location          Json
   description       String?
   paymentHoldId     String?
-  lastTransactionId String?
   paymentId         String?
   arrivalCode       String?
   completionTime    DateTime?
@@ -93,6 +92,7 @@ model ServiceRequest {
   completionCode    String?
   mechanicLocation  Json?
   totalAmount       Float
+  lastTransactionId String?
   review            Review?
   offers            ServiceOffer[]
   client            User           @relation(fields: [clientId], references: [id])

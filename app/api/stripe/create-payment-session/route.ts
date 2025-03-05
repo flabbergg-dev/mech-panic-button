@@ -9,6 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(request: Request) {
   try {
     const { serviceRequestId, amount, userId, mechanicConnectId } = await request.json()
+    console.log('passed in params:', serviceRequestId, amount, userId, mechanicConnectId)
     const headersList = await headers()
     const origin = headersList.get('origin')
     // Create a PaymentIntent with manual capture

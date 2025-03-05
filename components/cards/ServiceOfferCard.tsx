@@ -65,10 +65,8 @@ export function ServiceOfferCard({
   const [secret, setSecret] = useState();
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
   const [firstName, lastName] = mechanicName.split(' ')
-  const [mechanicUserId, setMechanicUserId] = useState("")
   const [offerAccepted, setOfferAccepted] = useState(false)
   const [expirationTime, setExpirationTime] = useState<string | null>(null)
   const [paymentCompleted, setPaymentCompleted] = useState(false)
@@ -76,7 +74,6 @@ export function ServiceOfferCard({
   interface SessionDetails {
     payment_status: string;
   }
-  const [sessionDetailsObject, setSessionDetailsObject] = useState<SessionDetails | null>(null);
   const searchParams = useSearchParams();
   const sessionIdParam = searchParams.get("session_id")
 
