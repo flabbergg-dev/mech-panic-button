@@ -6,25 +6,30 @@ export async function getServiceRequestByClientId(clientId: string) {
     try {
         const serviceRequest = await prisma.serviceRequest.findMany({
             where: { clientId: clientId },
-            include: {
-                // clientId: true,
-                // mechanicId: true,
-                // status: true,
-                // location: true,
-                // description: true,
-                // paymentHold: true,
-                payment: true,
-                // arrivalCode: true,
-                // completionTime: true,
-                // startTime: true,
-                // serviceType: true,
-                // completionCode: true,
-                // mechanicLocation: true,
-                // totalAmount: true,   
-                review: true,
-                offers: true,
-            }
-        })
+            select:{
+                id:true,
+                paymentHoldId:true,
+                completionCode:true,
+                status: true,
+                mechanicId: true,
+                mechanicLocation: true,
+                createdAt: true,
+                updatedAt: true,
+                clientId: true,
+                mechanic: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                stripeCustomerId: true
+                            }
+                        }
+                    }
+   
+                }
+                }})
 
         if (!serviceRequest) {
             console.error("Service request not found")

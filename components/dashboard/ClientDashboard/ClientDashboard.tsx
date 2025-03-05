@@ -515,7 +515,7 @@ export function ClientDashboard() {
                       <div className="mt-8">
                         <div className="text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
                           {/* TODO: Replace with Loading... */}
-                          {activeRequest?.completionCode || '305203'}
+                          {activeRequest?.completionCode}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">

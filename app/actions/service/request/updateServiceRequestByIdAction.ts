@@ -28,15 +28,14 @@ export async function updateServiceRequestByIdAction(
 
     // Validate state transitions
     const validTransitions: Record<ServiceStatus, ServiceStatus[]> = {
-      [ServiceStatus.REQUESTED]: [ServiceStatus.ACCEPTED, ServiceStatus.CANCELLED],
-      [ServiceStatus.ACCEPTED]: [ServiceStatus.PAYMENT_AUTHORIZED, ServiceStatus.CANCELLED],
-      [ServiceStatus.PAYMENT_AUTHORIZED]: [ServiceStatus.IN_ROUTE, ServiceStatus.CANCELLED],
+      [ServiceStatus.REQUESTED]: [ServiceStatus.ACCEPTED],
+      [ServiceStatus.ACCEPTED]: [ServiceStatus.PAYMENT_AUTHORIZED],
+      [ServiceStatus.PAYMENT_AUTHORIZED]: [ServiceStatus.IN_ROUTE],
       [ServiceStatus.IN_ROUTE]: [ServiceStatus.IN_PROGRESS],
       [ServiceStatus.IN_PROGRESS]: [ServiceStatus.SERVICING],
       [ServiceStatus.SERVICING]: [ServiceStatus.IN_COMPLETION],
       [ServiceStatus.IN_COMPLETION]: [ServiceStatus.COMPLETED],
       [ServiceStatus.COMPLETED]: [],
-      [ServiceStatus.CANCELLED]: []
     };
 
     const allowedNextStates = validTransitions[currentRequest.status];

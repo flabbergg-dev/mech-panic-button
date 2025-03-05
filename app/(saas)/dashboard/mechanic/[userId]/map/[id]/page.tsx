@@ -19,32 +19,34 @@ import { PinInput } from '@/components/ui/PinInput'
 import { verifyCompletionCodeAction } from '@/app/actions/verifyCompletionCodeAction'
 import { updateMechanicLocation } from '@/app/actions/updateMechanicLocation'
 import { useToast } from '@/hooks/use-toast'
-import { RealtimePostgresChangesPayload } from '@/types/supabase'
 import ServiceRequestMap from '@/components/MapBox/ServiceRequestMap'
+import { JsonValue } from '@prisma/client/runtime/library'
 
 interface Location {
   latitude: number
   longitude: number
 }
+
 type ServiceRequestWithClient = ServiceRequest & {
   client: User
 }
 
-/**
- * Page for a mechanic to navigate to a client's location and complete a service request.
- * 
- * This page displays a map with the client's location and the mechanic's location.
- * The mechanic can start the service request by clicking a button.
- * Once the service request is started, the mechanic can click a button to indicate that they have arrived at the client's location.
- * After arriving, the mechanic can enter a code provided by the client to complete the service request.
- * If the code is valid, the service request is marked as completed.
- * 
- * @param {string} requestId - The ID of the service request.
- * @param {string} destLat - The latitude of the client's location.
- * @param {string} destLng - The longitude of the client's location.
- * @returns {JSX.Element} The page.
- */
-export default function MechanicMapPage() {
+const FETCH_THROTTLE_MS = 5000; // Minimum time between fetches (5 seconds)
+const UPDATE_INTERVAL = 60000; // 60 seconds between location updates
+const MIN_DISTANCE_CHANGE = 0.0003; // ~30 meters threshold for location updates
+const LOCATION_TIMEOUT = 30000; // 30 seconds timeout for location requests
+const MAX_LOCATION_AGE = 30000; // 30 seconds maximum age for cached positions
+
+const MechanicMapPage = () => {
+  // Refs for managing data fetching and cleanup
+  const isMounted = useRef(true);
+  const lastFetchTime = useRef(0);
+  const isFetching = useRef(false);
+  const watchId = useRef<number | null>(null);
+  const lastLocationUpdateTime = useRef(0);
+  const pendingLocationUpdate = useRef<boolean>(false);
+  const locationState = useRef<Location | null>(null);
+
   const params = useParams()
   const searchParams = useSearchParams()
   const { id: requestId } = params
@@ -55,7 +57,7 @@ export default function MechanicMapPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showRoute, setShowRoute] = useState(false)
   const [showMechanicLocation, setShowMechanicLocation] = useState(false)
-  const [key, setKey] = useState(0) // Add key for forcing re-renders
+  const [key, setKey] = useState(0)
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
   const [distance, setDistance] = useState<number | null>(null)
   const [mechanicLocation, setMechanicLocation] = useState<Location | null>(null)
@@ -67,6 +69,16 @@ export default function MechanicMapPage() {
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const router = useRouter()
 
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+    };
+  }, []);
+
   // Define customer location early
   const customerLocation = destLat && destLng ? {
     longitude: parseFloat(destLng),
@@ -74,10 +86,6 @@ export default function MechanicMapPage() {
   } : null;
 
   // Memoize fetchData to prevent unnecessary re-renders and add throttling
-  const lastFetchTime = useRef(0);
-  const isFetching = useRef(false);
-  const FETCH_THROTTLE_MS = 5000; // Minimum time between fetches (5 seconds)
-
   const fetchData = useCallback(async (force = false) => {
     try {
       if (!requestId) return;
@@ -176,18 +184,30 @@ export default function MechanicMapPage() {
       return;
     }
 
-    console.log("Starting location tracking");
+    setIsGettingLocation(true);
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        if (!isMounted.current) return;
+        
         const newLocation = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
         setMechanicLocation(newLocation);
+        setIsGettingLocation(false);
       },
       (error) => {
+        if (!isMounted.current) return;
+        
         console.error("Error getting position:", error);
+        const errorMessage = getLocationErrorMessage(error);
+        toast({
+          title: "Location Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        setIsGettingLocation(false);
       },
       {
         enableHighAccuracy: true,
@@ -197,10 +217,53 @@ export default function MechanicMapPage() {
     );
   }, [toast]);
 
+  // Start location tracking when component mounts if in PAYMENT_AUTHORIZED state
+  useEffect(() => {
+    if (request?.status === "PAYMENT_AUTHORIZED") {
+      console.log("Initial location tracking for PAYMENT_AUTHORIZED");
+      startLocationTracking();
+    }
+  }, [request?.status, startLocationTracking]);
+
+  // Memoize status state updates to prevent unnecessary re-renders
+  const updateRequestStatus = useCallback((newLocation: Location) => {
+    if (!isMounted.current || !request) return;
+    
+    // Only update if values have actually changed
+    setRequest(prevRequest => {
+      if (!prevRequest) return prevRequest;
+      
+      // Check if location has actually changed
+      const currentLocation = prevRequest.mechanicLocation as unknown as Location | null;
+      if (currentLocation && 
+          JSON.stringify(currentLocation) === JSON.stringify(newLocation)) {
+        return prevRequest;
+      }
+
+      // Convert location to a proper JSON object
+      const jsonLocation = {
+        ...newLocation,
+        __type: 'Location'  // Add a type marker to help with type checking
+      };
+
+      // Return new request object with updated location while preserving all other fields
+      return {
+        ...prevRequest,
+        mechanicLocation: jsonLocation as unknown as JsonValue
+      };
+    });
+  }, [request]);
+
   // Handle request status changes
   useEffect(() => {
     const status = request?.status;
-    console.log("Request status changed to:", status);
+    console.log("Request status changed:", {
+      status,
+      showRoute,
+      isLoading,
+      arrivalCode,
+      mechanicLocation
+    });
     
     if (!status) return;
     
@@ -209,71 +272,127 @@ export default function MechanicMapPage() {
       status === "PAYMENT_AUTHORIZED";
     
     if (shouldShowRouteAndLocation) {
-      // Batch state updates to prevent multiple re-renders
-      requestAnimationFrame(() => {
-        setShowRoute(true);
-        setShowMechanicLocation(true);
-      });
+      // Ensure state updates happen synchronously
+      setShowRoute(true);
+      setShowMechanicLocation(true);
       
       if (status === "IN_ROUTE") {
+        console.log("Starting location tracking for IN_ROUTE status");
         startLocationTracking();
       }
     }
-  }, [request?.status, startLocationTracking]);
+  }, [request?.status, startLocationTracking, showRoute, isLoading, arrivalCode, mechanicLocation]);
 
-  // Get mechanic's location and update database when IN_ROUTE
+  // Helper function to get location error message
+  const getLocationErrorMessage = (error: GeolocationPositionError | null) => {
+    if (!error) return "Unknown location error";
+    
+    switch (error.code) {
+      case 1:
+        return "Location access denied. Please enable location services in your browser settings.";
+      case 2:
+        return "Location information is unavailable. Please check your device's GPS settings.";
+      case 3:
+        return "Location request timed out. Please try again.";
+      default:
+        return `Error getting position: ${JSON.stringify(error)}`;
+    }
+  };
+
+  // Location watching effect with optimized updates
   useEffect(() => {
     if (!navigator.geolocation || request?.status !== 'IN_ROUTE') {
-      return () => {};
+      return;
     }
 
-    const lastUpdateTime = useRef(0);
-    const UPDATE_INTERVAL = 60000; // 60 seconds
-    const MIN_DISTANCE_CHANGE = 0.0003; // ~30 meters
+    // Clear existing watcher if any
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
     
-    console.log("Setting up location watch with 60-second interval");
+    // Reset update flags
+    pendingLocationUpdate.current = false;
+
+    // First try to get current position before starting the watch
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!isMounted.current) return;
+        const initialLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        locationState.current = initialLocation;
+        updateRequestStatus(initialLocation);
+      },
+      (error) => {
+        if (!isMounted.current) return;
+        const errorMessage = getLocationErrorMessage(error);
+        console.error("Initial location error:", errorMessage);
+        toast({
+          title: "Location Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: LOCATION_TIMEOUT,
+        maximumAge: MAX_LOCATION_AGE
+      }
+    );
     
-    const watchId = navigator.geolocation.watchPosition(
-      async (position) => {
+    const updateLocation = async (position: GeolocationPosition) => {
+      if (!isMounted.current || pendingLocationUpdate.current || !request) return;
+      
+      try {
         const currentTime = Date.now();
         const newLocation = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
 
-        // Check for significant location change
-        const hasSignificantChange = !mechanicLocation || 
-          Math.abs(mechanicLocation.latitude - newLocation.latitude) > MIN_DISTANCE_CHANGE || 
-          Math.abs(mechanicLocation.longitude - newLocation.longitude) > MIN_DISTANCE_CHANGE;
+        const currentLocation = locationState.current;
+        const hasSignificantChange = !currentLocation || 
+          Math.abs(currentLocation.latitude - newLocation.latitude) > MIN_DISTANCE_CHANGE || 
+          Math.abs(currentLocation.longitude - newLocation.longitude) > MIN_DISTANCE_CHANGE;
             
         if (hasSignificantChange) {
-          // Update local state using requestAnimationFrame to batch updates
-          requestAnimationFrame(() => {
-            setMechanicLocation(newLocation);
-          });
+          locationState.current = newLocation;
+          updateRequestStatus(newLocation);
 
-          // Update database with throttling
-          if (currentTime - lastUpdateTime.current >= UPDATE_INTERVAL) {
-            try {
-              if (!requestId) return;
-              console.log("Updating mechanic location in database...");
-              const result = await updateMechanicLocation(requestId.toString(), newLocation);
-              if (!result.success) {
-                throw new Error(result.error);
-              }
-              lastUpdateTime.current = currentTime;
-            } catch (error) {
-              console.error("Error updating mechanic location:", error);
-              toast({
-                title: "Update Error",
-                description: "Failed to update location in database",
-                variant: "destructive"
-              });
+          if (currentTime - lastLocationUpdateTime.current >= UPDATE_INTERVAL) {
+            if (!requestId || !isMounted.current) return;
+            
+            pendingLocationUpdate.current = true;
+            const result = await updateMechanicLocation(requestId.toString(), newLocation);
+            
+            if (!isMounted.current) return;
+            
+            if (!result.success) {
+              throw new Error(result.error);
             }
+            lastLocationUpdateTime.current = currentTime;
           }
         }
-      },
+      } catch (error) {
+        if (!isMounted.current) return;
+        console.error("Error updating mechanic location:", error);
+        toast({
+          title: "Update Error",
+          description: "Failed to update location in database",
+          variant: "destructive"
+        });
+      } finally {
+        pendingLocationUpdate.current = false;
+      }
+    };
+
+    // Start watching position with more lenient settings
+    watchId.current = navigator.geolocation.watchPosition(
+      updateLocation,
       (error) => {
+        if (!isMounted.current) return;
         const errorMessage = getLocationErrorMessage(error);
         console.error("Location error:", errorMessage);
         toast({
@@ -284,38 +403,22 @@ export default function MechanicMapPage() {
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
+        timeout: LOCATION_TIMEOUT,
+        maximumAge: MAX_LOCATION_AGE
       }
     );
     
-    // Cleanup function
     return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
       }
     };
-  }, [request?.status, requestId, mechanicLocation, toast, updateMechanicLocation]);
-
-  // Helper function to get location error message
-  const getLocationErrorMessage = (error: GeolocationPositionError | null) => {
-    if (!error) return "Unknown location error";
-    
-    switch (error.code) {
-      case 1:
-        return "Please enable location services in your browser settings.";
-      case 2:
-        return "Location information is unavailable.";
-      case 3:
-        return "Location request timed out.";
-      default:
-        return `An unknown error occurred (${error.message}).`;
-    }
-  };
+  }, [request?.status, requestId, updateRequestStatus, toast]);
 
   const handleRouteCalculated = (duration: number, totalDistance: number) => {
     setEstimatedTime(duration);
-    setDistance(totalDistance);
+    setDistance(Number((totalDistance / 1000).toFixed(1)));
   }
 
   const handleStartRoute = async () => {
@@ -323,6 +426,7 @@ export default function MechanicMapPage() {
 
     try {
       setIsLoading(true);
+      console.log("Starting route...");
       const requestIdString = requestId.toString();
       const result = await updateServiceRequestStatusAction(requestIdString, 'IN_ROUTE');
       
@@ -335,8 +439,10 @@ export default function MechanicMapPage() {
         return;
       }
 
+      // Update states synchronously
       setShowRoute(true);
       setShowMechanicLocation(true);
+      console.log("Route started, initializing tracking");
       startLocationTracking();
 
       toast({
@@ -361,7 +467,7 @@ export default function MechanicMapPage() {
         });
         
       } catch (error) {
-        
+        console.error("Failed to send email notification:", error);
       }
 
     } catch (error) {
@@ -373,6 +479,7 @@ export default function MechanicMapPage() {
       });
     } finally {
       setIsLoading(false);
+      console.log("Route start process completed");
     }
   };
 
@@ -542,6 +649,18 @@ export default function MechanicMapPage() {
     }
   }
 
+  // Add debug logging for arrival button conditions
+  const arrivalButtonVisible = !isLoading && !arrivalCode && showRoute && request?.status === "IN_ROUTE";
+  useEffect(() => {
+    console.log("Arrival button visibility conditions:", {
+      isLoading,
+      hasArrivalCode: !!arrivalCode,
+      showRoute,
+      status: request?.status,
+      isVisible: arrivalButtonVisible
+    });
+  }, [isLoading, arrivalCode, showRoute, request?.status, arrivalButtonVisible]);
+
   if (!customerLocation || !requestId) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -579,7 +698,11 @@ export default function MechanicMapPage() {
       <div className="fixed inset-0 z-0">
         <ServiceRequestMap 
           key={key}
-          serviceRequest={request}
+          serviceRequest={{
+            id: request.id,
+            status: request.status,
+            mechanicId: request.mechanicId ?? undefined
+          }}
           customerLocation={customerLocation}
           mechanicLocation={mechanicLocation ?? undefined}
           showMechanicLocation={showMechanicLocation}
@@ -610,7 +733,7 @@ export default function MechanicMapPage() {
                       <p className="text-sm text-muted-foreground">Distance</p>
                       <p className="text-lg font-semibold">
                         {distance !== null 
-                          ? `${(distance / 1000).toFixed(1)} km` 
+                          ? `${distance} km` 
                           : 'Calculating...'}
                       </p>
                     </div>
@@ -674,11 +797,10 @@ export default function MechanicMapPage() {
                 <Button
                   className={cn(
                     "w-full",
-                    (isLoading || isGettingLocation) && "cursor-not-allowed",
-                    showRoute && "hidden"
+                    (isLoading || isGettingLocation) && "cursor-not-allowed"
                   )}
                   onClick={handleStartRoute}
-                  disabled={isLoading || showRoute || !mechanicLocation || isGettingLocation}
+                  disabled={isLoading || !mechanicLocation || isGettingLocation}
                 >
                   {isLoading ? (
                     <>
@@ -692,8 +814,6 @@ export default function MechanicMapPage() {
                     </>
                   ) : !mechanicLocation ? (
                     "Location unavailable"
-                  ) : showRoute ? (
-                    "Route Started"
                   ) : (
                     "Start Route"
                   )}
@@ -716,7 +836,9 @@ export default function MechanicMapPage() {
                     ) : isNearCustomer ? (
                       "I've Arrived"
                     ) : distance !== null ? (
-                      `${Math.max(0, (distance / 1000)).toFixed(1)}km away from customer`
+                      distance === 0 ? 
+                      "You have arrived" :
+                      `${Math.max(0, distance).toFixed(1)}km away from customer`
                     ) : (
                       "Calculating distance..."
                     )}
@@ -793,3 +915,5 @@ export default function MechanicMapPage() {
     </div>
   )
 }
+
+export default MechanicMapPage
