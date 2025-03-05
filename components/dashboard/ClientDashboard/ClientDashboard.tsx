@@ -29,6 +29,8 @@ import { PinInput } from '@/components/ui/PinInput'
 import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
 import { calculateEstimatedTime } from '@/utils/location';
 import { ReviewModal } from '@/components/reviews/ReviewModal'
+import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
+
 
 export function ClientDashboard() {
   const { user } = useUser()
@@ -82,15 +84,12 @@ export function ClientDashboard() {
     if (!mechanicId) return;
     
     try {
-      const response = await fetch(`/api/mechanics/${mechanicId}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.firstName) {
-          setMechanicName(`${data.firstName} ${data.lastName || ''}`);
-        }
+      const result = await getMechanicByIdAction(mechanicId);
+      if (result.success && result.mechanic?.user?.firstName) {
+        setMechanicName(`${result.mechanic.user.firstName} ${result.mechanic.user.lastName || ''}`);
       }
     } catch (error) {
-      console.error("Error fetching mechanic name:", error);
+      console.error('Error fetching mechanic:', error);
     }
   }, []);
 

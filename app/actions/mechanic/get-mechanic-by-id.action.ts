@@ -21,7 +21,6 @@ export async function getMechanicByIdAction(userId: string) {
             bannerImage: true,
             driversLicenseId: true,
             merchantDocumentUrl: true,
-            earnings: true,
             user: true,
             serviceRequests: true,
             availability: true,

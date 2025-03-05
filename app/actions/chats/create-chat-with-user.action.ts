@@ -45,10 +45,10 @@ export async function createChatWithUserAction(userId: string, mechanicId: strin
 
         console.log("chatUserData:", chatUserData);
 
-        await prisma.chatUser.createMany({
-            data: chatUserData,
-            skipDuplicates: true,
-        });
+        // await prisma.chatUser.createMany({
+        //     data: chatUserData,
+        //     skipDuplicates: true,
+        // });
 
         return {
             success: true,
