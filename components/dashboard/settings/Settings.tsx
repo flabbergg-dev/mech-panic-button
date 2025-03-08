@@ -27,6 +27,7 @@ import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
 import { StripeAccountManagement } from "@/components/StripeComponents/StripeAccountManagement"
 import { StripeAccountBalance } from "@/components/StripeComponents/StripeAccountBalance"
+import { ServiceSelector } from "./ServiceSelector"
 
 const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
   { 
@@ -171,11 +172,11 @@ const SettingsPage = () => {
                     Mechanic Profile
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Showcase your expertise and services to potential
-                    customers
+                    Showcase your expertise and services to potential customers
                   </p>
                 </div>
                 <MechanicInfoForm />
+                <ServiceSelector />
               </motion.div>
             )}
             <StripeAccountManagement />
