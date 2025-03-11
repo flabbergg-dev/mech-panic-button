@@ -69,8 +69,8 @@ export const StripeAccountManagement = () => {
   }
 
   return (
-    <div className="pt-4 flex md:flex-row flex-col gap-10">
-      <div className="bg-white w-fit h-fit p-10 rounded-md border-2 border-primary">
+    <div className="pt-4 flex md:flex-row flex-col">
+      <div className="bg-background w-[100%] h-fit p-2 rounded-md border-2 border-primary items-center flex justify-center">
         <ConnectComponentsProvider connectInstance={stripeConnectInstanceAccount.current}>
           <ConnectAccountManagement
             // Optional:

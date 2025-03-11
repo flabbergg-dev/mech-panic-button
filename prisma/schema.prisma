@@ -27,8 +27,9 @@ model User {
   documentsUrl              String[]
   notificationsEmailEnabled Boolean             @default(true)
   stripeConnectId           String?             @default("")
-  lastTransactionId         String?             @default("")
+  firstTransactionId        String?             @default("")
   stripeSubEndingDate       DateTime?
+  secondTransactionId       String?
   bookings                  Booking[]
   Chat                      Chat[]
   mechanic                  Mechanic?
@@ -75,28 +76,30 @@ model Vehicle {
 }
 
 model ServiceRequest {
-  id                String         @id
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  clientId          String
-  mechanicId        String?
-  status            ServiceStatus
-  location          Json
-  description       String?
-  paymentHoldId     String?
-  paymentId         String?
-  arrivalCode       String?
-  completionTime    DateTime?
-  startTime         DateTime?
-  serviceType       ServiceType    @default(DIAGNOSTIC)
-  completionCode    String?
-  mechanicLocation  Json?
-  totalAmount       Float
-  lastTransactionId String?
-  review            Review?
-  offers            ServiceOffer[]
-  client            User           @relation(fields: [clientId], references: [id])
-  mechanic          Mechanic?      @relation(fields: [mechanicId], references: [id])
+  id                  String         @id
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  clientId            String
+  mechanicId          String?
+  status              ServiceStatus
+  location            Json
+  description         String?
+  paymentHoldId       String?
+  paymentId           String?
+  arrivalCode         String?
+  completionTime      DateTime?
+  startTime           DateTime?
+  serviceType         ServiceType    @default(DIAGNOSTIC)
+  completionCode      String?
+  mechanicLocation    Json?
+  totalAmount         Float
+  firstTransactionId  String?
+  secondTransactionId String?
+  extraService        Boolean?
+  review              Review?
+  offers              ServiceOffer[]
+  client              User           @relation(fields: [clientId], references: [id])
+  mechanic            Mechanic?      @relation(fields: [mechanicId], references: [id])
 }
 
 model Review {
@@ -215,6 +218,7 @@ model ServiceOffer {
 enum UserRole {
   Customer
   Mechanic
+  Admin
 }
 
 enum ServiceStatus {

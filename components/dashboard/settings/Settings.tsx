@@ -167,16 +167,18 @@ const SettingsPage = () => {
                 transition={{ delay: 0.2 }}
               >
                 <Separator className="my-8" />
-                <div className="flex flex-col space-y-1.5 mb-6">
-                  <h2 className="text-2xl font-semibold tracking-tight">
-                    Mechanic Profile
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Showcase your expertise and services to potential customers
-                  </p>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col space-y-1.5 mb-6">
+                    <h2 className="text-2xl font-semibold tracking-tight">
+                      Mechanic Profile
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Showcase your expertise and services to potential customers
+                    </p>
+                  </div>
+                  <ServiceSelector />
                 </div>
                 <MechanicInfoForm />
-                <ServiceSelector />
               </motion.div>
             )}
             <StripeAccountManagement />

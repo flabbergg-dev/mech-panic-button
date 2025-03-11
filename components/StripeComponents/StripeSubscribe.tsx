@@ -1,67 +1,21 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '../ui/card';
-
+import { useAuth } from "@clerk/nextjs"
+import { getUserAction } from '@/app/actions/user/get-user.action';
 export const StripeSubscribe = () => {
-  // const handleOnClickEventBasic = async () => {
-  //   try {
-  //     await fetch("/api/stripe/subscriptionPlans/basic", {
-  //       headers: { "Content-Type": "application/json" },
-  //       method: "POST",
-  //     })
-  //       .then((response) => response.json())
-  //       .then(async (json) => {
-  //         const { session, sessionSecret, error } = json;
+  const { userId } = useAuth();
+  const [userEmail, setUserEmail] = useState("");
 
-  //         if (session) {
-  //           setSessionId(session);
-  //         }
+  useEffect(() => {
+    const fetchData = async () => {
+      if (userId) {
+        const response = await getUserAction(userId);
+        setUserEmail(response?.email!);
+      }
+    };
 
-  //         if (sessionSecret) {
-  //           setSecret(sessionSecret);
-  //           console.log(sessionSecret + "sessionSecret");
-  //         }
-
-  //         if (error) {
-  //           console.error("Error creating account:", error);
-  //           setError(true);
-  //         }
-  //       });
-  //   } catch (error) {
-  //     console.error("Error creating account:", error);
-  //     setError(true);
-  //   }
-  // };
-
-  // const handleOnClickEventPro = async () => {
-  //   try {
-  //     await fetch("/api/stripe/subscriptionPlans/pro", {
-  //       method: "POST",
-  //     })
-  //       .then((response) => response.json())
-  //       .then(async (json) => {
-  //         const { session, sessionSecret, error } = json;
-
-  //         if (session) {
-  //           setSessionId(session);
-  //           console.log(session + "session");
-  //         }
-
-  //         if (sessionSecret) {
-  //           setSecret(sessionSecret);
-  //           console.log(sessionSecret + "sessionSecret");
-  //         }
-
-  //         if (error) {
-  //           console.error("Error creating account:", error);
-  //           setError(true);
-  //         }
-  //       });
-  //   } catch (error) {
-  //     console.error("Error creating account:", error);
-  //     setError(true);
-  //   }
-  // };
-
+    fetchData();
+  }, [userEmail]);
   return (
     <div className="flex gap-4 items-center justify-between pt-4">
       <Card className="w-6/12 h-auto">
@@ -75,7 +29,7 @@ export const StripeSubscribe = () => {
               href={
                 "https://buy.stripe.com/test_cN2dTJgVc93JaQg5kk" +
                 "?prefiled_email" +
-                "gregor.gr20@gmail.com"
+                userEmail
               }
               target="_blank"
             >
@@ -95,7 +49,7 @@ export const StripeSubscribe = () => {
               href={
                 "https://buy.stripe.com/test_dR68zp34m4Nt7E4001" +
                 "?prefiled_email" +
-                "gregor.gr20@gmail.com"
+                userEmail
               }
               target="_blank"
             >

@@ -15,7 +15,7 @@ import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
 import { useToast } from "@/hooks/use-toast";
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Loader } from '@/components/loader'
 import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
 import SettingsPage from '../settings/Settings'
@@ -33,51 +33,82 @@ import { calculateEstimatedTime } from '@/utils/location';
 import { Booking } from '@/components/cards/Booking'
 import { ReviewModal } from '@/components/reviews/ReviewModal'
 import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { getStripeConnectId } from '@/app/actions/user/get-stripe-connect-id'
 
 
 export function ClientDashboard() {
-  const { user } = useUser()
-  const {toast} = useToast();
-  const params = useSearchParams()
-  const tab = params.get("tab")
-  const path = usePathname()
-  const router = useRouter()
-  const userRole = path.includes("customer") ? "Customer" : "Mechanic"
+  const { user } = useUser();
+  const { toast } = useToast();
+  const params = useSearchParams();
+  const tab = params.get("tab");
+  const path = usePathname();
+  const userRole = path.includes("customer") ? "Customer" : "Mechanic";
 
-  const { requests, offers, loading, error, refetch } = useRealtimeServiceOffers(user?.id || '')
-  const { serviceRequest, serviceRequestLoading, serviceRequestError, refetchServiceRequest } = useRealtimeServiceRequest(user?.id || '')
-  const [activeTab, setActiveTab] = useState<string>(tab || "home")
-  const [customerLocation, setCustomerLocation] = useState<{latitude: number; longitude: number} | null>(null)
-  const [estimatedTime, setEstimatedTime] = useState<string | null>(null)
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  const [showReviewModal, setShowReviewModal] = useState(false)
-  const [completedRequest, setCompletedRequest] = useState<ServiceRequest | null>(null)
-  const [mechanicName, setMechanicName] = useState<string>("your mechanic")
-  const [reviewedRequestIds, setReviewedRequestIds] = useState<Set<string>>(new Set());
+  const { requests, offers, loading, error, refetch } =
+    useRealtimeServiceOffers(user?.id || "");
+  const {
+    serviceRequest,
+    serviceRequestLoading,
+    serviceRequestError,
+    refetchServiceRequest,
+  } = useRealtimeServiceRequest(user?.id || "");
+  const [activeTab, setActiveTab] = useState<string>(tab || "home");
+  const [customerLocation, setCustomerLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [estimatedTime, setEstimatedTime] = useState<string | null>(null);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [completedRequest, setCompletedRequest] =
+    useState<ServiceRequest | null>(null);
+  const [mechanicName, setMechanicName] = useState<string>("your mechanic");
+  const [reviewedRequestIds, setReviewedRequestIds] = useState<Set<string>>(
+    new Set()
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const stripePromise = loadStripe(
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
+  );
+  const [sessionId, setSessionId] = useState();
+  const [secret, setSecret] = useState();
+  const [mechanicConnectId, setMechanicConnectId] = useState<string | null>(
+    null
+  );
 
   // Initialize reviewedRequestIds from localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       try {
-        const storedIds = localStorage.getItem('reviewedRequestIds');
+        const storedIds = localStorage.getItem("reviewedRequestIds");
         if (storedIds) {
           setReviewedRequestIds(new Set(JSON.parse(storedIds)));
         }
       } catch (error) {
-        console.error('Error loading reviewed request IDs from localStorage:', error);
+        console.error(
+          "Error loading reviewed request IDs from localStorage:",
+          error
+        );
       }
     }
   }, []);
 
   // Save reviewedRequestIds to localStorage when it changes
   useEffect(() => {
-    if (typeof window !== 'undefined' && reviewedRequestIds.size > 0) {
+    if (typeof window !== "undefined" && reviewedRequestIds.size > 0) {
       try {
-        localStorage.setItem('reviewedRequestIds', JSON.stringify(Array.from(reviewedRequestIds)));
+        localStorage.setItem(
+          "reviewedRequestIds",
+          JSON.stringify(Array.from(reviewedRequestIds))
+        );
       } catch (error) {
-        console.error('Error saving reviewed request IDs to localStorage:', error);
+        console.error(
+          "Error saving reviewed request IDs to localStorage:",
+          error
+        );
       }
     }
   }, [reviewedRequestIds]);
@@ -85,14 +116,19 @@ export function ClientDashboard() {
   // Function to fetch mechanic name
   const fetchMechanicName = useCallback(async (mechanicId: string | null) => {
     if (!mechanicId) return;
-    
+
     try {
-      const result = await getMechanicByIdAction() as { success: boolean; mechanic?: { user?: { firstName?: string; lastName?: string } } };
+      const result = (await getMechanicByIdAction()) as {
+        success: boolean;
+        mechanic?: { user?: { firstName?: string; lastName?: string } };
+      };
       if (result.success && result.mechanic?.user?.firstName) {
-        setMechanicName(`${result.mechanic.user.firstName} ${result.mechanic.user.lastName || ''}`);
+        setMechanicName(
+          `${result.mechanic.user.firstName} ${result.mechanic.user.lastName || ""}`
+        );
       }
     } catch (error) {
-      console.error('Error fetching mechanic:', error);
+      console.error("Error fetching mechanic:", error);
     }
   }, []);
 
@@ -104,21 +140,29 @@ export function ClientDashboard() {
           setCustomerLocation({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          })
+          });
         },
         (error) => {
-          console.error("Error getting location:", error)
+          console.error("Error getting location:", error);
         }
-      )
+      );
     }
-  }, [])
+  }, []);
 
-  const updateEstimatedTime = useCallback(async (mechanicLocation: {latitude: number; longitude: number} | null) => {
-    if (mechanicLocation) {
-      const time = await calculateEstimatedTime(mechanicLocation, customerLocation);
-      setEstimatedTime(time);
-    }
-  }, [customerLocation]);
+  const updateEstimatedTime = useCallback(
+    async (
+      mechanicLocation: { latitude: number; longitude: number } | null
+    ) => {
+      if (mechanicLocation) {
+        const time = await calculateEstimatedTime(
+          mechanicLocation,
+          customerLocation
+        );
+        setEstimatedTime(time);
+      }
+    },
+    [customerLocation]
+  );
 
   // Helper function to check if a status is considered "active"
   const ACTIVE_STATUSES = [
@@ -129,185 +173,226 @@ export function ClientDashboard() {
     ServiceStatus.SERVICING,
     ServiceStatus.IN_PROGRESS,
     ServiceStatus.IN_COMPLETION,
-    ServiceStatus.COMPLETED
+    ServiceStatus.COMPLETED,
   ] as const;
-  
+
   // Type guard to check if a status is an active status
-  function isActiveStatus(status: ServiceStatus): status is typeof ACTIVE_STATUSES[number] {
+  function isActiveStatus(
+    status: ServiceStatus
+  ): status is (typeof ACTIVE_STATUSES)[number] {
     return (ACTIVE_STATUSES as readonly ServiceStatus[]).includes(status);
   }
 
   // Check if there's an active request
-  const activeRequest = serviceRequest || requests.find((request: ServiceRequest) =>
-    isActiveStatus(request.status)
-  )
+  const activeRequest =
+    serviceRequest ||
+    requests.find((request: ServiceRequest) => isActiveStatus(request.status));
+
+  // Capture the active request's mechanic connect ID
+  useEffect(() => {
+    const fetchMechanicConnectId = async (mechanicId: string) => {
+      const response = await getStripeConnectId(mechanicId);
+      if (response) {
+      setMechanicConnectId(response!.stripeConnectId);
+      }
+    }
+
+    fetchMechanicConnectId(activeRequest?.mechanicId!);
+
+  }, [activeRequest]);
 
   // Add debugging for requests and offers
   useEffect(() => {
     // Only log when data actually changes
     if (!loading) {
-      console.log('ClientDashboard data:', { 
+      console.log("ClientDashboard data:", {
         userId: user?.id,
-        requestsCount: requests.length, 
+        requestsCount: requests.length,
         offersCount: offers.length,
         serviceRequestFromHook: serviceRequest?.status,
-        error
+        error,
       });
     }
-  }, [requests.length, offers.length, loading, error, user?.id, serviceRequest?.status]);
+  }, [
+    requests.length,
+    offers.length,
+    loading,
+    error,
+    user?.id,
+    serviceRequest?.status,
+  ]);
 
   // Add debugging for active request
   useEffect(() => {
     if (!loading) {
-      console.log('Active request detection:', {
+      console.log("Active request detection:", {
         activeRequestFound: !!activeRequest,
         activeRequestId: activeRequest?.id,
         activeRequestStatus: activeRequest?.status,
-        serviceRequestFromHook: serviceRequest?.status
+        serviceRequestFromHook: serviceRequest?.status,
       });
     }
-  }, [activeRequest?.id, activeRequest?.status, loading, serviceRequest?.status]);
+  }, [
+    activeRequest?.id,
+    activeRequest?.status,
+    loading,
+    serviceRequest?.status,
+  ]);
 
   // Check for recently completed requests that need a review
   useEffect(() => {
     // Only check for completed requests when not loading
     if (loading) return;
-    
-    const recentlyCompleted = requests.find((request: ServiceRequest) => 
-      request.status === ServiceStatus.COMPLETED && 
-      request.mechanicId && 
-      !reviewedRequestIds.has(request.id) // Don't show if we've already shown the modal for this request
+
+    const recentlyCompleted = requests.find(
+      (request: ServiceRequest) =>
+        request.status === ServiceStatus.COMPLETED &&
+        request.mechanicId &&
+        !reviewedRequestIds.has(request.id) // Don't show if we've already shown the modal for this request
     );
-    
+
     if (recentlyCompleted && recentlyCompleted.mechanicId) {
-      console.log('Found completed request needing review:', recentlyCompleted.id);
-      
+      console.log(
+        "Found completed request needing review:",
+        recentlyCompleted.id
+      );
+
       // Check if this request already has a review
       const checkForExistingReview = async () => {
         try {
-          const response = await fetch(`/api/reviews/check?serviceRequestId=${recentlyCompleted.id}`);
+          const response = await fetch(
+            `/api/reviews/check?serviceRequestId=${recentlyCompleted.id}`
+          );
           const data = await response.json();
-          
+
           if (!data.hasReview) {
             // Only show the review modal if there's no existing review
-            console.log('No existing review found, showing review modal');
-            
+            console.log("No existing review found, showing review modal");
+
             // Mark this request as having shown the review modal
-            setReviewedRequestIds(prev => new Set([...Array.from(prev), recentlyCompleted.id]));
-            
+            setReviewedRequestIds(
+              (prev) => new Set([...Array.from(prev), recentlyCompleted.id])
+            );
+
             setCompletedRequest(recentlyCompleted);
             setShowReviewModal(true);
             fetchMechanicName(recentlyCompleted.mechanicId);
           } else {
-            console.log('Existing review found, not showing review modal');
+            console.log("Existing review found, not showing review modal");
             // Still mark as reviewed to avoid checking again
-            setReviewedRequestIds(prev => new Set([...Array.from(prev), recentlyCompleted.id]));
+            setReviewedRequestIds(
+              (prev) => new Set([...Array.from(prev), recentlyCompleted.id])
+            );
           }
         } catch (error) {
-          console.error('Error checking for existing review:', error);
+          console.error("Error checking for existing review:", error);
         }
       };
-      
+
       checkForExistingReview();
     }
   }, [requests, fetchMechanicName, loading, reviewedRequestIds]);
 
   // Get mechanic's location updates when in route
   const { mechanicLocation } = useRealtimeMechanicLocation(
-    activeRequest?.status === ServiceStatus.IN_ROUTE ? activeRequest.id : undefined
-  )
+    activeRequest?.status === ServiceStatus.IN_ROUTE
+      ? activeRequest.id
+      : undefined
+  );
 
   // Update ETA when mechanic location changes
   useEffect(() => {
     if (activeRequest?.status === ServiceStatus.IN_ROUTE && mechanicLocation) {
-      updateEstimatedTime(mechanicLocation)
+      updateEstimatedTime(mechanicLocation);
     }
-  }, [mechanicLocation, activeRequest?.status, updateEstimatedTime])
+  }, [mechanicLocation, activeRequest?.status, updateEstimatedTime]);
 
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
     if (activeRequest) {
-      if (activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED || activeRequest.status === ServiceStatus.IN_PROGRESS || activeRequest.status === ServiceStatus.SERVICING || activeRequest.status === ServiceStatus.IN_ROUTE || activeRequest.status === ServiceStatus.IN_COMPLETION) {
-        setActiveTab("map")
+      if (
+        activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED ||
+        activeRequest.status === ServiceStatus.IN_PROGRESS ||
+        activeRequest.status === ServiceStatus.SERVICING ||
+        activeRequest.status === ServiceStatus.IN_ROUTE ||
+        activeRequest.status === ServiceStatus.IN_COMPLETION
+      ) {
+        setActiveTab("map");
       } else if (activeRequest.status !== ServiceStatus.COMPLETED) {
-        setActiveTab("requests")
+        setActiveTab("requests");
       }
     }
-  }, [activeRequest])
+  }, [activeRequest]);
 
   const handleRequestCreated = () => {
-    setActiveTab("requests")
-    refetch() // Refresh requests after creating a new one
-  }
+    setActiveTab("requests");
+    refetch(); // Refresh requests after creating a new one
+  };
 
   const handleCancelRequest = async (requestId: string) => {
     try {
       // Call the server action to cancel the request
-      const result = await cancelServiceRequest(requestId)
-      
+      const result = await cancelServiceRequest(requestId);
+
       if (result.success) {
         toast({
-          title: 'Request cancelled successfully',
-          description: 'Your request has been cancelled',
-          className: 'bg-green-500 text-white'
-        })
-        
+          title: "Request cancelled successfully",
+          description: "Your request has been cancelled",
+          className: "bg-green-500 text-white",
+        });
+
         // Force a hard refresh of the page
         window.location.reload();
       }
-      
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to cancel request',
-        variant: 'destructive'
-      })
-    } 
-  }
+        title: "Error",
+        description: "Failed to cancel request",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleVerifyCode = async (code: string) => {
-    if (!activeRequest) return
+    if (!activeRequest) return;
 
     try {
-      setIsVerifyingCode(true)
-      const result = await verifyArrivalCodeAction(activeRequest.id, code)
-      
+      setIsVerifyingCode(true);
+      const result = await verifyArrivalCodeAction(activeRequest.id, code);
+
       if (!result.success) {
         toast({
           title: "Error",
           description: result.error,
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
       toast({
         title: "Success",
         description: "Service started successfully",
-      })
-      refetchServiceRequest()
+      });
+      refetchServiceRequest();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to verify code",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsVerifyingCode(false)
+      setIsVerifyingCode(false);
     }
-  }
+  };
 
   const handleRefresh = () => {
-    console.log('Manual refresh triggered');
+    console.log("Manual refresh triggered");
     setIsRefreshing(true);
     // Show loading indicator for at least 500ms to provide feedback
     const startTime = Date.now();
-    
+
     // Refresh both service offers and service request
-    Promise.all([
-      refetch(),
-      refetchServiceRequest()
-    ]).finally(() => {
+    Promise.all([refetch(), refetchServiceRequest()]).finally(() => {
       const elapsedTime = Date.now() - startTime;
       const remainingTime = Math.max(0, 500 - elapsedTime);
       // Set a small delay to show the animation
@@ -317,19 +402,18 @@ export function ClientDashboard() {
 
   // Function to handle when an offer is accepted
   const handleOfferAccepted = useCallback(() => {
-    console.log('Offer accepted, refreshing dashboard data');
+    console.log("Offer accepted, refreshing dashboard data");
     // Refresh both service offers and service request
-    Promise.all([
-      refetch(),
-      refetchServiceRequest()
-    ]).then(() => {
-      // After refreshing, check if we need to update the active tab
-      if (activeRequest?.status === ServiceStatus.ACCEPTED) {
-        setActiveTab("requests");
-      }
-    }).catch(error => {
-      console.error('Error refreshing after offer accepted:', error);
-    });
+    Promise.all([refetch(), refetchServiceRequest()])
+      .then(() => {
+        // After refreshing, check if we need to update the active tab
+        if (activeRequest?.status === ServiceStatus.ACCEPTED) {
+          setActiveTab("requests");
+        }
+      })
+      .catch((error) => {
+        console.error("Error refreshing after offer accepted:", error);
+      });
   }, [refetch, refetchServiceRequest, activeRequest?.status]);
 
   const refreshOffers = async () => {
@@ -337,7 +421,7 @@ export function ClientDashboard() {
     try {
       await refetch();
     } catch (error) {
-      console.error('Error refreshing offers:', error);
+      console.error("Error refreshing offers:", error);
     } finally {
       setIsLoading(false);
     }
@@ -348,19 +432,21 @@ export function ClientDashboard() {
     try {
       // Call the server action to accept the offer
       const result = await fetch(`/api/service-offer/${offerId}/accept`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
       if (!result.ok) {
-        throw new Error(`Failed to accept offer: ${result.status} ${result.statusText}`);
+        throw new Error(
+          `Failed to accept offer: ${result.status} ${result.statusText}`
+        );
       }
 
       // The UI will update automatically through real-time subscription
     } catch (error) {
-      console.error('Error accepting offer:', error);
+      console.error("Error accepting offer:", error);
       // Handle error (show toast, etc.)
     } finally {
       setIsLoading(false);
@@ -370,16 +456,20 @@ export function ClientDashboard() {
   // Add a periodic refresh to check for new offers when on the requests tab
   useEffect(() => {
     // Only set up the interval if we're on the requests tab and have an active request
-    if (activeTab === "requests" && activeRequest && activeRequest.status === ServiceStatus.REQUESTED) {
-      console.log('Setting up periodic refresh for offers');
-      
+    if (
+      activeTab === "requests" &&
+      activeRequest &&
+      activeRequest.status === ServiceStatus.REQUESTED
+    ) {
+      console.log("Setting up periodic refresh for offers");
+
       // Refresh every 15 seconds to check for new offers
       const intervalId = setInterval(() => {
-        console.log('Periodic refresh for offers triggered');
+        console.log("Periodic refresh for offers triggered");
         refetch();
         refetchServiceRequest();
       }, 15000);
-      
+
       return () => {
         clearInterval(intervalId);
       };
@@ -387,7 +477,7 @@ export function ClientDashboard() {
   }, [activeTab, activeRequest, refetch, refetchServiceRequest]);
 
   if (!user) {
-    return <Loader title="Loading Your Dashboard..." />
+    return <Loader title="Loading Your Dashboard..." />;
   }
 
   const isLoadingData = loading && requests.length === 0;
@@ -397,16 +487,14 @@ export function ClientDashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin h-10 w-10" />
       </div>
-    )
+    );
   }
 
   if (error) {
-    return <div className="text-red-500 p-4">Error: {error}</div>
+    return <div className="text-red-500 p-4">Error: {error}</div>;
   }
 
-
   const renderContent = () => {
-
     switch (activeTab) {
       case "home":
         return (
@@ -419,20 +507,22 @@ export function ClientDashboard() {
                 <p className="text-gray-600 mb-6 text-center">
                   Need mechanical assistance? We're here to help!
                 </p>
-               
               </Card>
             </div>
-             <div className="flex items-center justify-center w-full">
+            <div className="flex items-center justify-center w-full">
               <RippleComp>
-                <MechPanicButton user={user} onRequestCreated={handleRequestCreated}/>
+                <MechPanicButton
+                  user={user}
+                  onRequestCreated={handleRequestCreated}
+                />
                 {/* <MechPanicButtonLogo/> */}
               </RippleComp>
             </div>
             <Booking />
           </div>
-        )
+        );
       case "map":
-        console.log('Rendering map tab')
+        console.log("Rendering map tab");
         return (
           <div className="relative min-h-screen">
             {/* Underlay Map */}
@@ -458,21 +548,21 @@ export function ClientDashboard() {
             )}
             {activeRequest?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
-                <ServiceCardLayout className='flex justify-between items-center'>
+                <ServiceCardLayout className="flex justify-between items-center">
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg">
-                      <h2 className="text-xl font-semibold mb-2">
-                        Mechanic on their way
-                      </h2>
-                      <p className="text-muted-foreground">
-                        {estimatedTime
-                          ? `Mechanic will be there in ${estimatedTime}`
-                          : "Calculating arrival time..."}
+                    <h2 className="text-xl font-semibold mb-2">
+                      Mechanic on their way
+                    </h2>
+                    <p className="text-muted-foreground">
+                      {estimatedTime
+                        ? `Mechanic will be there in ${estimatedTime}`
+                        : "Calculating arrival time..."}
+                    </p>
+                    {!mechanicLocation && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Waiting for mechanic's location...
                       </p>
-                      {!mechanicLocation && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Waiting for mechanic's location...
-                        </p>
-                      )}
+                    )}
                   </div>
                   {activeRequest.mechanicId && (
                     <ChatBox userId={activeRequest.clientId} />
@@ -516,7 +606,66 @@ export function ClientDashboard() {
                     <p className="text-muted-foreground mb-2 pb-4">
                       Wait for the mechanic to complete their service
                     </p>
-                    <br />
+                    {/* {activeRequest.extraService === true ? (
+                      <div className="flex justify-end space-x-2"> */}
+                        {offers.map((offer) => (
+                        <ServiceOfferCard
+                          key={offer.id}
+                          serviceRequestId={offer.serviceRequestId}
+                          mechanicId={offer.mechanicId!}
+                          mechanicConnectId={
+                            offer.mechanic.user.stripeConnectId
+                          }
+                          mechanicName={`${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`}
+                          mechanicRating={offer.mechanic.rating || undefined}
+                          price={offer.price}
+                          note={offer.note || undefined}
+                          expiresAt={offer.expiresAt || undefined}
+                          onOfferHandled={async () => {
+                            try {
+                              await acceptOffer(offer.id);
+                              // The UI will update automatically through real-time subscription
+                            } catch (error) {
+                              console.error("Error accepting offer:", error);
+                              // Handle error (show toast, etc.)
+                            }
+                          }}
+                          userId={user.id}
+                          mechanicLocation={mechanicLocation}
+                          customerLocation={customerLocation}
+                        />
+                        ))}
+                        {/* <Button
+                          onClick={() => handleOfferAccepted()}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Accept"
+                          )}
+                        </Button> */}
+                      {/* </div>
+                    ) : !sessionId ? (
+                      <div className="flex justify-end">
+                        <Button onClick={handleCheckout} disabled={isLoading}>
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Proceed to Checkout"
+                          )}
+                        </Button>
+                      </div>
+                    ) : secret ? (
+                      <div className="w-full">
+                        <EmbeddedCheckoutProvider
+                          stripe={stripePromise}
+                          options={{ clientSecret: secret }}
+                        >
+                          <EmbeddedCheckout />
+                        </EmbeddedCheckoutProvider>
+                      </div>
+                    ) : null} */}
                   </div>
                 </ServiceCardLayout>
               </HalfSheet>
@@ -557,35 +706,52 @@ export function ClientDashboard() {
             <div className="fixed inset-0">
               <RequestMap />
             </div>
-            
+
             {/* Content Container */}
             <div className="relative z-10 space-y-6 p-4 pb-20">
-              {process.env.NODE_ENV !== 'production' && (
+              {process.env.NODE_ENV !== "production" && (
                 <div className="bg-gray-100 p-2 mb-4 rounded-md">
                   <h3 className="text-sm font-semibold mb-2">Debug Controls</h3>
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       onClick={handleRefresh}
                       className="bg-blue-500 text-white text-xs px-2 py-1 rounded"
                     >
                       {isRefreshing ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="animate-spin"
+                        >
                           <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
                         </svg>
                       ) : (
                         <span>Refresh Requests</span>
                       )}
                     </button>
-                    <button 
+                    <button
                       onClick={async () => {
                         try {
-                          const response = await fetch('/api/debug/service-requests');
+                          const response = await fetch(
+                            "/api/debug/service-requests"
+                          );
                           const data = await response.json();
-                          console.log('Debug service requests:', data);
-                          alert(`Found ${data.requestCount} requests. Check console for details.`);
+                          console.log("Debug service requests:", data);
+                          alert(
+                            `Found ${data.requestCount} requests. Check console for details.`
+                          );
                         } catch (error) {
-                          console.error('Debug request failed:', error);
-                          alert('Debug request failed. Check console for details.');
+                          console.error("Debug request failed:", error);
+                          alert(
+                            "Debug request failed. Check console for details."
+                          );
                         }
                       }}
                       className="bg-purple-500 text-white text-xs px-2 py-1 rounded"
@@ -595,68 +761,96 @@ export function ClientDashboard() {
                   </div>
                 </div>
               )}
-              {activeRequest && (activeRequest.status !== ServiceStatus.ACCEPTED && activeRequest.status !== ServiceStatus.PAYMENT_AUTHORIZED) &&  (
-                <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Active Request</h2>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleRefresh}
-                      className="flex items-center gap-1"
-                    >
-                      {isRefreshing ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-                          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
-                        </svg>
-                      ) : (
-                        <span>Refresh</span>
-                      )}
-                    </Button>
-                  </div>
-                  <div className="space-y-4">
-                    <Card className="bg-background/90 p-4">
-                      <div className="flex justify-between items-start space-x-4">
-                        <div className="space-y-2 flex-1">
-                          <h3 className="font-semibold">
-                            {offers.length === 0 
-                              ? "Waiting for mechanics..." 
-                              : `${offers.length} offer${offers.length === 1 ? '' : 's'} received`}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {offers.length === 0 
-                              ? "Your request is being sent to nearby mechanics"
-                              : "Review the offers below"}
-                          </p>
-                        </div>
-                        <motion.div whileTap={{ scale: 0.98 }}>
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => handleCancelRequest(activeRequest.id)}
-                            className="transition-transform"
+              {activeRequest &&
+                activeRequest.status !== ServiceStatus.ACCEPTED &&
+                activeRequest.status !== ServiceStatus.PAYMENT_AUTHORIZED && (
+                  <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold">Active Request</h2>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRefresh}
+                        className="flex items-center gap-1"
+                      >
+                        {isRefreshing ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="animate-spin"
                           >
-                            Cancel Request
-                          </Button>
-                        </motion.div>
-                      </div>
-                    </Card>
+                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+                          </svg>
+                        ) : (
+                          <span>Refresh</span>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      <Card className="bg-background/90 p-4">
+                        <div className="flex justify-between items-start space-x-4">
+                          <div className="space-y-2 flex-1">
+                            <h3 className="font-semibold">
+                              {offers.length === 0
+                                ? "Waiting for mechanics..."
+                                : `${offers.length} offer${offers.length === 1 ? "" : "s"} received`}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {offers.length === 0
+                                ? "Your request is being sent to nearby mechanics"
+                                : "Review the offers below"}
+                            </p>
+                          </div>
+                          <motion.div whileTap={{ scale: 0.98 }}>
+                            <Button
+                              variant="destructive"
+                              onClick={() =>
+                                handleCancelRequest(activeRequest.id)
+                              }
+                              className="transition-transform"
+                            >
+                              Cancel Request
+                            </Button>
+                          </motion.div>
+                        </div>
+                      </Card>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {activeRequest && (
                 <div>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold text-primary">Mechanic Offers</h2>
-                    <Button 
-                      variant="outline" 
+                    <h2 className="text-xl font-semibold text-primary">
+                      Mechanic Offers
+                    </h2>
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => refreshOffers()}
                       className="flex items-center gap-1"
                       disabled={isLoading}
                     >
                       {isLoading ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="animate-spin"
+                        >
                           <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
                         </svg>
                       ) : (
@@ -668,10 +862,12 @@ export function ClientDashboard() {
                     <AnimatePresence mode="popLayout">
                       {offers.map((offer) => {
                         // Ensure location objects have the correct shape
-                        const mechanicLocation = offer.location ? {
-                          longitude: offer.location.longitude,
-                          latitude: offer.location.latitude
-                        } : null;
+                        const mechanicLocation = offer.location
+                          ? {
+                              longitude: offer.location.longitude,
+                              latitude: offer.location.latitude,
+                            }
+                          : null;
 
                         return (
                           <motion.div
@@ -683,15 +879,21 @@ export function ClientDashboard() {
                             layout
                           >
                             {!offer.mechanic || !offer.mechanic.user ? (
-                              <span className="text-red-500">No mechanic found in this offer</span>
+                              <span className="text-red-500">
+                                No mechanic found in this offer
+                              </span>
                             ) : (
                               <ServiceOfferCard
                                 key={offer.id}
                                 serviceRequestId={offer.serviceRequestId}
                                 mechanicId={offer.mechanicId!}
-                                mechanicConnectId={offer.mechanic.user.stripeConnectId}
+                                mechanicConnectId={
+                                  offer.mechanic.user.stripeConnectId
+                                }
                                 mechanicName={`${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`}
-                                mechanicRating={offer.mechanic.rating || undefined}
+                                mechanicRating={
+                                  offer.mechanic.rating || undefined
+                                }
                                 price={offer.price}
                                 note={offer.note || undefined}
                                 expiresAt={offer.expiresAt || undefined}
@@ -700,7 +902,10 @@ export function ClientDashboard() {
                                     await acceptOffer(offer.id);
                                     // The UI will update automatically through real-time subscription
                                   } catch (error) {
-                                    console.error('Error accepting offer:', error);
+                                    console.error(
+                                      "Error accepting offer:",
+                                      error
+                                    );
                                     // Handle error (show toast, etc.)
                                   }
                                 }}
@@ -724,17 +929,17 @@ export function ClientDashboard() {
               )}
             </div>
           </div>
-        )
+        );
       case "history":
-        return <div>History Component (Coming Soon)</div>
+        return <div>History Component (Coming Soon)</div>;
       case "settings":
         return (
           <Suspense fallback={<SkeletonBasic />}>
             <SettingsPage />
           </Suspense>
-          )
+        );
       case "profile":
-        return <Profile />
+        return <Profile />;
       default:
         return (
           <div className="flex items-center  min-h-screen flex-col space-y-6">
@@ -760,34 +965,42 @@ export function ClientDashboard() {
           </div>
         );
     }
-  }
+  };
 
   return (
     <div className="min-h-screen">
       {renderContent()}
-      <BottomNavigation 
-        activeTab={activeTab} 
+      <BottomNavigation
+        activeTab={activeTab}
         userRole={userRole}
-
-        onTabChange={tab => {
+        onTabChange={(tab) => {
           // Allow tab changes if:
           // 1. There's no active request
           // 2. Switching to requests tab
           // 3. Switching to map tab when payment is authorized
-          if (!activeRequest || 
-              tab === "requests" || 
-              (tab === "map" && activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED)) {
-            setActiveTab(tab)
+          if (
+            !activeRequest ||
+            tab === "requests" ||
+            (tab === "map" &&
+              activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED)
+          ) {
+            setActiveTab(tab);
           }
-        }} 
+        }}
         disabledTabs={
-          activeRequest 
-            ? activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED 
+          activeRequest
+            ? activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED
               ? ["home"] // Only disable home when payment authorized
               : ["home", "map", "requests", "history", "settings", "profile"] // Disable both when in other active states
             : [] // No disabled tabs when no active request
         }
-        hiddenNavigation={activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED || activeRequest?.status === ServiceStatus.IN_ROUTE || activeRequest?.status === ServiceStatus.IN_PROGRESS || activeRequest?.status === ServiceStatus.SERVICING || activeRequest?.status === ServiceStatus.IN_COMPLETION} 
+        hiddenNavigation={
+          activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED ||
+          activeRequest?.status === ServiceStatus.IN_ROUTE ||
+          activeRequest?.status === ServiceStatus.IN_PROGRESS ||
+          activeRequest?.status === ServiceStatus.SERVICING ||
+          activeRequest?.status === ServiceStatus.IN_COMPLETION
+        }
       />
       {showReviewModal && completedRequest && completedRequest.mechanicId && (
         <ReviewModal
@@ -796,7 +1009,9 @@ export function ClientDashboard() {
             setShowReviewModal(false);
             // Ensure this request doesn't trigger the modal again
             if (completedRequest) {
-              setReviewedRequestIds(prev => new Set([...Array.from(prev), completedRequest.id]));
+              setReviewedRequestIds(
+                (prev) => new Set([...Array.from(prev), completedRequest.id])
+              );
             }
           }}
           serviceRequestId={completedRequest.id}
@@ -805,5 +1020,5 @@ export function ClientDashboard() {
         />
       )}
     </div>
-  )
+  );
 }

@@ -12,15 +12,6 @@ export async function POST(request: Request) {
     console.log('passed in params:', serviceRequestId, amount, userId, mechanicConnectId)
     const headersList = await headers()
     const origin = headersList.get('origin')
-    // Create a PaymentIntent with manual capture
-    // const paymentIntent = await stripe.paymentIntents.create({
-    //   amount: Math.round(amount * 100), // Convert to cents
-    //   currency: 'usd',
-    //   capture_method: 'manual', // This enables the payment hold
-    //   metadata: {
-    //     serviceRequestId,
-    //   },
-    // })
 
     const data = [
       {
@@ -70,9 +61,9 @@ export async function POST(request: Request) {
       //   `${origin}/payment/cancel`
     });
 
-    return NextResponse.json({ 
-      sessionId: session.id, 
-      clientSecret: session.client_secret 
+    return NextResponse.json({
+      sessionId: session.id,
+      clientSecret: session.client_secret
     })
   } catch (error) {
     console.error('Payment session creation error:', error)

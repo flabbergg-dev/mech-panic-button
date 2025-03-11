@@ -21,7 +21,7 @@ type ModalProps = {
   className?: string
   buttonClassName?: string
   disabled?: boolean
-  side?: "top" | "bottom" | "left" | "right"
+  side?: "top" | "bottom" | "left" | "right" | null
   variant?:
     | "link"
     | "default"

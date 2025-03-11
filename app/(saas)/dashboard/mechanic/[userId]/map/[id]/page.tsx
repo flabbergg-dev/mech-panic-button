@@ -23,6 +23,7 @@ import { ChatBox } from '@/components/Chat/ChatBox'
 import ServiceRequestMap from '@/components/MapBox/ServiceRequestMap'
 import { JsonValue } from '@prisma/client/runtime/library'
 import useMechanicId from '@/hooks/useMechanicId'
+import { AdditionalServicesModal } from '@/components/Modal/AdditionalServicesModal'
 
 interface Location {
   latitude: number
@@ -698,12 +699,12 @@ const MechanicMapPage = () => {
     <div className="relative min-h-screen">
       {/* Map */}
       <div className="fixed inset-0 z-0">
-        <ServiceRequestMap 
+        <ServiceRequestMap
           key={key}
           serviceRequest={{
             id: request.id,
             status: request.status,
-            mechanicId: request.mechanicId ?? undefined
+            mechanicId: request.mechanicId ?? undefined,
           }}
           customerLocation={customerLocation}
           mechanicLocation={mechanicLocation ?? undefined}
@@ -715,16 +716,18 @@ const MechanicMapPage = () => {
 
       {/* Controls */}
       <HalfSheet>
-          {request.status === "IN_ROUTE" && (
-            <ChatBox userId={request.clientId} className={"flex place-self-end m-4"} />
-          )}
+        {request.status === "IN_ROUTE" && (
+          <ChatBox
+            userId={request.clientId}
+            className={"flex place-self-end m-4"}
+          />
+        )}
         <ServiceCardLayout>
           <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-lg border border-border/50 transform transition-all duration-300 ease-in-out">
             <h2 className="text-xl font-semibold mb-2">
               {request.status === "SERVICING"
                 ? "Service in Progress"
-                : "Navigation"
-              }
+                : "Navigation"}
             </h2>
 
             {/* Service Request Details */}
@@ -742,17 +745,17 @@ const MechanicMapPage = () => {
                     <div className="rounded-lg border p-3">
                       <p className="text-sm text-muted-foreground">Distance</p>
                       <p className="text-lg font-semibold">
-                        {distance !== null 
-                          ? `${distance} km` 
-                          : 'Calculating...'}
+                        {distance !== null
+                          ? `${distance} km`
+                          : "Calculating..."}
                       </p>
                     </div>
                     <div className="rounded-lg border p-3">
                       <p className="text-sm text-muted-foreground">ETA</p>
                       <p className="text-lg font-semibold">
-                        {estimatedTime !== null 
-                          ? `${Math.max(0, estimatedTime)} min` 
-                          : 'Calculating...'}
+                        {estimatedTime !== null
+                          ? `${Math.max(0, estimatedTime)} min`
+                          : "Calculating..."}
                       </p>
                     </div>
                   </div>
@@ -774,19 +777,23 @@ const MechanicMapPage = () => {
                     <span className="text-yellow-500">Payment Pending</span>
                   )}
                   {request?.status === "PAYMENT_AUTHORIZED" && (
-                    <span className="text-blue-500">Waiting for you to start the service...</span>
+                    <span className="text-blue-500">
+                      Waiting for you to start the service...
+                    </span>
                   )}
                   {request?.status === "IN_ROUTE" && (
                     <div className="flex items-center gap-2">
                       <Navigation className="text-green-600 animate-pulse" />
                       <span className="text-green-600">
-                        {estimatedTime !== null && estimatedTime <= 0 
-                          ? "Arrived at destination" 
-                          : <>
-                              On the way{" "}
-                              {estimatedTime !== null && `- ETA: ${Math.max(0, estimatedTime)} minutes`}
-                            </>
-                        }
+                        {estimatedTime !== null && estimatedTime <= 0 ? (
+                          "Arrived at destination"
+                        ) : (
+                          <>
+                            On the way{" "}
+                            {estimatedTime !== null &&
+                              `- ETA: ${Math.max(0, estimatedTime)} minutes`}
+                          </>
+                        )}
                       </span>
                     </div>
                   )}
@@ -796,82 +803,95 @@ const MechanicMapPage = () => {
                   {request?.status === "IN_PROGRESS" && (
                     <div className="flex items-center gap-2">
                       <MapPin className="text-green-600" />
-                      <span className="text-green-600">Service in progress</span>
+                      <span className="text-green-600">
+                        Service in progress
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="space-y-4">
-                { request.status === "PAYMENT_AUTHORIZED" && (
-                <Button
-                  className={cn(
-                    "w-full",
-                    (isLoading || isGettingLocation) && "cursor-not-allowed"
-                  )}
-                  onClick={handleStartRoute}
-                  disabled={isLoading || !mechanicLocation || isGettingLocation}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                      Starting...
-                    </>
-                  ) : isGettingLocation ? (
-                    <>
-                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                      Getting location...
-                    </>
-                  ) : !mechanicLocation ? (
-                    "Location unavailable"
-                  ) : (
-                    "Start Route"
-                  )}
-                </Button>
-                )}
-
-                {/* Arrival Button */}
-                {!isLoading && !arrivalCode && showRoute && request.status === "IN_ROUTE" && (
-                  <Button 
-                    onClick={handleArrival} 
-                    className="w-full"
-                    variant={isNearCustomer ? "default" : "outline"}
-                    disabled={!isNearCustomer || isLoading}
+                {request.status === "PAYMENT_AUTHORIZED" && (
+                  <Button
+                    className={cn(
+                      "w-full",
+                      (isLoading || isGettingLocation) && "cursor-not-allowed"
+                    )}
+                    onClick={handleStartRoute}
+                    disabled={
+                      isLoading || !mechanicLocation || isGettingLocation
+                    }
                   >
                     {isLoading ? (
                       <>
                         <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
+                        Starting...
                       </>
-                    ) : isNearCustomer ? (
-                      "I've Arrived"
-                    ) : distance !== null ? (
-                      distance === 0 ? 
-                      "You have arrived" :
-                      `${Math.max(0, distance).toFixed(1)}km away from customer`
+                    ) : isGettingLocation ? (
+                      <>
+                        <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                        Getting location...
+                      </>
+                    ) : !mechanicLocation ? (
+                      "Location unavailable"
                     ) : (
-                      "Calculating distance..."
+                      "Start Route"
                     )}
                   </Button>
                 )}
 
+                {/* Arrival Button */}
+                {!isLoading &&
+                  !arrivalCode &&
+                  showRoute &&
+                  request.status === "IN_ROUTE" && (
+                    <Button
+                      onClick={handleArrival}
+                      className="w-full"
+                      variant={isNearCustomer ? "default" : "outline"}
+                      disabled={!isNearCustomer || isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : isNearCustomer ? (
+                        "I've Arrived"
+                      ) : distance !== null ? (
+                        distance === 0 ? (
+                          "You have arrived"
+                        ) : (
+                          `${Math.max(0, distance).toFixed(1)}km away from customer`
+                        )
+                      ) : (
+                        "Calculating distance..."
+                      )}
+                    </Button>
+                  )}
+
                 {arrivalCode && request.status === "IN_PROGRESS" && (
                   <Card className="w-full bg-card/80 text-card-foreground backdrop-blur-sm shadow-lg p-4 rounded-lg border-none transform transition-all duration-300 ease-in-out">
-                    <h3 className="text-lg font-semibold mb-2 text-start">Arrival Code</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-start">
+                      Arrival Code
+                    </h3>
                     <div className="flex items-center justify-center gap-2">
-                      <p className="text-2xl font-bold text-center">{arrivalCode}</p>
+                      <p className="text-2xl font-bold text-center">
+                        {arrivalCode}
+                      </p>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => {
-                          navigator.clipboard.writeText(arrivalCode)
-                          setIsCopied(true)
+                          navigator.clipboard.writeText(arrivalCode);
+                          setIsCopied(true);
                           toast({
                             title: "Copied!",
                             description: "Arrival code copied to clipboard",
-                          })
-                          setTimeout(() => setIsCopied(false), 1000)
+                          });
+                          setTimeout(() => setIsCopied(false), 1000);
                         }}
                       >
                         {isCopied ? (
@@ -881,18 +901,35 @@ const MechanicMapPage = () => {
                         )}
                       </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2 text-center">Share this code with your client to begin service</p>
+                    <p className="text-sm text-muted-foreground mt-2 text-center">
+                      Share this code with your client to begin service
+                    </p>
                   </Card>
                 )}
 
                 {request.status === "SERVICING" && (
-                  <Button onClick={handleEndService} className={cn("w-full", isLoading && "cursor-not-allowed opacity-50")}>
-                    {isLoading ? (<>
-                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                      Completing...
-                    </>
-                    ) : ("Complete Service")}
-                  </Button>
+                  <>
+                    <Button
+                      onClick={handleEndService}
+                      className={cn(
+                        "w-full",
+                        isLoading && "cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                          Completing...
+                        </>
+                      ) : (
+                        "Complete Service"
+                      )}
+                    </Button>
+                    <AdditionalServicesModal
+                      serviceRequestId={request.id}
+                      isLoading={isLoading}
+                    />
+                  </>
                 )}
               </div>
             </div>
@@ -900,30 +937,33 @@ const MechanicMapPage = () => {
         </ServiceCardLayout>
       </HalfSheet>
       {request.status === "IN_COMPLETION" && (
-               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
-               <div className="flex flex-col h-full p-6">
-                 <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                   <div className="text-center space-y-4 max-w-md">
-                     <h2 className="text-2xl font-semibold">Enter Completion Code</h2>
-                     <p className="text-muted-foreground">
-                       Please enter the 6-digit code provided by your client to complete the service
-                     </p>
-                     <div className="mt-8">
-                       <PinInput onComplete={handleCompletionCode} />
-                     </div>
-                     {isVerifyingCode && (
-                       <div className="flex items-center justify-center mt-4">
-                         <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
-                         <span>Verifying code...</span>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               </div>
-             </div>
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
+          <div className="flex flex-col h-full p-6">
+            <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+              <div className="text-center space-y-4 max-w-md">
+                <h2 className="text-2xl font-semibold">
+                  Enter Completion Code
+                </h2>
+                <p className="text-muted-foreground">
+                  Please enter the 6-digit code provided by your client to
+                  complete the service
+                </p>
+                <div className="mt-8">
+                  <PinInput onComplete={handleCompletionCode} />
+                </div>
+                {isVerifyingCode && (
+                  <div className="flex items-center justify-center mt-4">
+                    <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
+                    <span>Verifying code...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
-  )
+  );
 }
 
 export default MechanicMapPage

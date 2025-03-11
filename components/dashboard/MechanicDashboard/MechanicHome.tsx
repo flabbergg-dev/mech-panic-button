@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { getServiceRequestsAction } from "@/app/actions/service/request/getServiceRequestsAction";
 import { AnimatePresence, motion } from "framer-motion";
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { getStripeCustomerId } from "@/app/actions/user/get-stripe-customer-id";
 
 type BookingWithService = {
   id: string;
@@ -113,13 +112,13 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     if (!isMounted.current) return;
 
     try {
-      const response = await getStripeCustomerId();
+      const response = await getStripeConnectId();
       if (!response) {
         console.info("No Stripe Connect ID available");
         return;
       }
-      if (isMounted.current && response.stripeCustomerId) {
-        setStripeConnectId(response.stripeCustomerId);
+      if (isMounted.current && response.stripeConnectId) {
+        setStripeConnectId(response.stripeConnectId);
       }
     } catch (error) {
       console.error('Error fetching Stripe Connect ID:', error);

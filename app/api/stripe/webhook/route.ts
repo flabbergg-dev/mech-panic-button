@@ -25,9 +25,9 @@ export async function POST(req: Request) {
 
   // console.log('Received webhook body:', body);
   // console.log('Received headers:', headersList);
-  for (const [key, value] of headersList.entries()) {
-  console.log(`${key}: ${value}`);
-}
+//   for (const [key, value] of headersList.entries()) {
+//   console.log(`${key}: ${value}`);
+// }
 
   let event: Stripe.Event;
 
@@ -41,10 +41,12 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
+      // This case is used upon creation of payment related event
+      // even if the payment fails we will know which tx it was
       case 'payment_intent.created': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('Payment intent created:', paymentIntent)
-        
+
         // Store the payment intent ID with the service request
         const serviceRequest = await prisma.serviceRequest.findFirst({
           where: { id: paymentIntent.metadata.serviceRequestId as string }
@@ -63,27 +65,72 @@ export async function POST(req: Request) {
 
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
-        const paymentEmail = paymentIntent.receipt_email;
-        console.log('paymentIntent succeeded:', paymentIntent)
 
-        // Find service request with this payment hold ID
-        const serviceRequest = await prisma.serviceRequest.findFirst({
-          where: { paymentHoldId: paymentIntent.id }
-        })
+        const serviceOffer = await prisma.serviceOffer.findFirst({
+          where: { serviceRequestId: paymentIntent.metadata.serviceRequestId }
+        });
+
+        const serviceRequest = await prisma.serviceRequest.findUnique({
+          where: { id: paymentIntent.metadata.serviceRequestId }
+        });
 
         if (serviceRequest) {
-          // Update service request status to PAYMENT_AUTHORIZED
-          await prisma.serviceRequest.update({
-            where: { id: serviceRequest.id },
-            data: {
-              status: ServiceStatus.PAYMENT_AUTHORIZED,
-              // lastTransactionId: paymentIntent.latest_charge as string
+            // Check if the service request status is not SERVICING
+            if (serviceRequest.firstTransactionId === null) {
+              // Update service request status to PAYMENT_AUTHORIZED
+              await prisma.serviceRequest.update({
+                where: { id: serviceRequest.id },
+                data: {
+                status: ServiceStatus.PAYMENT_AUTHORIZED,
+                totalAmount: serviceOffer?.price,
+                firstTransactionId: paymentIntent.latest_charge as string
+                }
+              });
+            } else {
+              await prisma.serviceRequest.update({
+                where: { id: serviceRequest.id },
+                data: {
+                status: ServiceStatus.SERVICING,
+                totalAmount: serviceOffer?.price,
+                secondTransactionId: paymentIntent.latest_charge as string
+                }
+              });
+
+              await prisma.serviceOffer.update({
+                where: { id: serviceOffer?.id },
+                data: {
+                  status: 'ACCEPTED'
+                }
+              });
             }
-          })
+
+            const user = await prisma.user.findUnique({
+              where: { id: serviceRequest.clientId! }
+            });
+
+            if (user) {
+              if (user.firstTransactionId) {
+                await prisma.user.update({
+                  where: { id: serviceRequest.clientId! },
+                  data: {
+                    secondTransactionId: paymentIntent.latest_charge as string
+                  }
+                });
+              } else {
+                await prisma.user.update({
+                  where: { id: serviceRequest.clientId! },
+                  data: {
+                    firstTransactionId: paymentIntent.latest_charge as string
+                  }
+                });
+              }
+            }
         }
         break
       }
 
+      // this case handles subscription details and customer,
+      // connect and other fields related to stripe account information
       case 'checkout.session.completed': {
         const session = await stripe.checkout.sessions.retrieve(
           event.data.object.id, {
@@ -101,49 +148,60 @@ export async function POST(req: Request) {
             customerEmail = (customer as Stripe.Customer).email;
           }
         }
+        // Check if the event is related to a subscription
+        if ((event.data.object as Stripe.Checkout.Session).subscription) {
+          const subscription = await stripe.subscriptions.retrieve(
+            (event.data.object as Stripe.Checkout.Session).subscription as string
+          );
+          const product = await stripe.products.retrieve(subscription.items.data[0].price.product as string);
 
-        const subscription = await stripe.subscriptions.retrieve(
-          (event.data.object as Stripe.Checkout.Session).subscription as string
-        );
+          let planName = null
 
-        const product = await stripe.products.retrieve(subscription.items.data[0].price.product as string);
+          if(product.name.includes('BASIC')) {
+            planName = 'BASIC';
+          } else if(product.name.includes('PRO')) {
+            planName = 'PRO';
+          } else {
+            planName = null;
+          }
 
-        let planName = null
+          const invoice = await stripe.invoices.retrieve(subscription.latest_invoice as string);
 
-        if(product.name.includes('BASIC')) {
-          planName = 'BASIC';
-        } else if(product.name.includes('PRO')) {
-          planName = 'PRO';
-        } else {
-          planName = null;
+          await prisma.user.update({
+            where: { email: customerEmail! },
+            data: {
+              stripeSubscriptionId: subscription.id,
+              stripeCustomerId: customerId,
+              stripeSubscriptionPlan: planName as SubscriptionPlan,
+              stripeSubscriptionStatus: subscription.id ? 'ACTIVE' as SubscriptionStatus : null,
+              stripeSubEndingDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+            }
+          });
+
+          // send invoice to customer
+          await sendInvoiceEmail({
+            to: customerEmail!,
+            subject: 'Mech-Panic Button Invoice',
+            message: 'Thank you for subscribing to Mech-Panic Button. Your subscription is now active.',
+            userName: customerEmail!,
+            link: invoice.hosted_invoice_url!
+          });
         }
 
-        const invoice = await stripe.invoices.retrieve(subscription.latest_invoice as string);
-
-        await prisma.user.update({
-          where: { email: customerEmail! },
-          data: {
-            stripeSubscriptionId: subscription.id,
-            stripeCustomerId: customerId,
-            stripeSubscriptionPlan: planName as SubscriptionPlan,
-            stripeSubscriptionStatus: subscription.id ? 'ACTIVE' as SubscriptionStatus : null,
-            stripeSubEndingDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
-          }
-        });
-
-        // send invoice to customer
-        await sendInvoiceEmail({
-          to: customerEmail!,
-          subject: 'Mech-Panic Button Invoice',
-          message: 'Thank you for subscribing to Mech-Panic Button. Your subscription is now active.',
-          userName: customerEmail!,
-          link: invoice.hosted_invoice_url!
-        });
 
         break;
       }
 
+      // This case is used to only handle subscriptions delete events
       case 'customer.subscription.deleted': {
+        const subscriptionUser = event.data.object.customer
+
+        const user = await prisma.user.findFirst({
+          where: {
+            stripeCustomerId: subscriptionUser as string
+          }
+        })
+
         const subscription = await stripe.subscriptions.retrieve(
           event.data.object.id
         );
@@ -152,7 +210,7 @@ export async function POST(req: Request) {
 
         if (event) {
           await prisma.user.update({
-            where: { email: "gregor.gr20@gmail.com" },
+            where: { email: user?.email },
             data: {
               stripeSubscriptionId: null,
               stripeSubscriptionPlan: null,
@@ -165,15 +223,17 @@ export async function POST(req: Request) {
         break;
       }
 
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object
-        await prisma.user.update({
-          where: { email: invoice.customer_email! },
-          data: {
-            lastTransactionId: typeof invoice.charge === 'string' ? invoice.charge : null,
-          }
-        })
-      }
+      // This case is used for *INVOICES* after the payment succeeded usually used
+      // to update transactin fields in the db
+      // case "invoice.payment_succeeded": {
+      //   const invoice = event.data.object
+      //   await prisma.user.update({
+      //     where: { email: invoice.customer_email! },
+      //     data: {
+      //       firstTransactionId: typeof invoice.charge === 'string' ? invoice.charge : null,
+      //     }
+      //   })
+      // }
 
       default:
         console.log(`Unhandled event type: ${event.type}`);
