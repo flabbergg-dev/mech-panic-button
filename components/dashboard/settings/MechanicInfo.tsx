@@ -2,12 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Check } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { UpdateMechanicDTO, updateMechanicProfileSchema } from "@/lib/domain/dtos/user.dto"
@@ -16,22 +14,21 @@ import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 
-const SERVICES_OFFERED = [
-  "Oil Change",
-  "Brake Service",
-  "Engine Repair",
-  "Transmission",
-  "Electrical Systems",
-  "AC Service",
-  "Tire Service",
-  "Diagnostics",
-  "Body Work",
-  "General Maintenance"
-]
+// const SERVICES_OFFERED = [
+//   "Oil Change",
+//   "Brake Service",
+//   "Engine Repair",
+//   "Transmission",
+//   "Electrical Systems",
+//   "AC Service",
+//   "Tire Service",
+//   "Diagnostics",
+//   "Body Work",
+//   "General Maintenance"
+// ]
 
 export function MechanicInfoForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { user } = useUser()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -83,40 +80,12 @@ export function MechanicInfoForm() {
       <div className="space-y-4">
         <div>
           <Label htmlFor="bio">Professional Bio</Label>
-          <Textarea 
-            {...register("bio")} 
+          <Textarea
+            {...register("bio")}
             placeholder="Tell us about your experience and expertise..."
           />
           {errors.bio && (
             <p className="text-sm text-red-500">{errors.bio.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="servicesOffered">Services Offered</Label>
-          <Controller
-            name="servicesOffered"
-            control={control}
-            render={({ field }) => (
-              <Select
-                value={field.value?.join(",")}
-                onValueChange={(value) => field.onChange(value.split(","))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select services you offer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SERVICES_OFFERED.map((service) => (
-                    <SelectItem key={service} value={service}>
-                      {service}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.servicesOffered && (
-            <p className="text-sm text-red-500">{errors.servicesOffered.message}</p>
           )}
         </div>
 

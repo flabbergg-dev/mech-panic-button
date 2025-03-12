@@ -155,7 +155,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      {isSubscribed !== null && (
+      {isSubscribed === null && (
         <Button
           onClick={handleSubscribe}
           className="sticky w-fit z-50 p-4 flex"

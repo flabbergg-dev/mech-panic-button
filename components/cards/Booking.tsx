@@ -5,7 +5,25 @@ import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
 import { CheckCircle2, Loader } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
-import { format, addDays, startOfToday } from "date-fns"
+import { format } from "date-fns"
+import { Mechanic as PrismaMechanic } from "@prisma/client"
+import { getAvailableMechanicsListAction } from "@/app/actions/mechanic/get-available-mechanics-list.action"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DateTimePicker } from "../forms/dateTimePicker";
+import { Button } from "../ui/button"
+
+type Mechanic = PrismaMechanic & {
+  isAvailable: boolean
+  location: string
+  serviceArea: string
+  servicesOffered: string[]
+}
 
 // This would come from your API/database
 type MechanicAvailability = {
@@ -16,45 +34,70 @@ type MechanicAvailability = {
 export const Booking = () => {
   const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
-  const [isSelected, setIsSelected] = useState<string[]>([])
+  const [steps, setSteps] = useState<"selectMechanic" | "selectDateTime" | "confirmBooking">("selectMechanic")
+  const [formData, setFormData] = useState({
+    mechanic: {} as Mechanic,
+    selectedDate: Date,
+  })
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [loading, setLoading] = useState(false)
   const [isConfirmed, setIsConfirmed] = useState(false)
   const [isActive, setIsActive] = useState(0)
+  const [mechanicList, setMechanicList] = useState([] as Mechanic[])
   const modalRef = useRef<HTMLDivElement>(null)
-  const [availability, setAvailability] = useState<MechanicAvailability[]>([])
+  const [availability, setAvailability] = useState([] as MechanicAvailability[])
+  const [dateTime, setDateTime] = useState<Date | undefined>();
 
-  // Fetch mechanic availability - This would be replaced with your actual API call
   useEffect(() => {
     const fetchAvailability = async () => {
-      // Simulate API call
-      const today = startOfToday()
-      const mockAvailability: MechanicAvailability[] = Array.from({ length: 7 }, (_, i) => ({
-        date: addDays(today, i),
-        // Randomly generate available slots
-        slots: ["9:00 AM", "10:00 AM", "2:00 PM", "3:00 PM"].filter(() => Math.random() > 0.3)
-      }))
-      setAvailability(mockAvailability)
-    }
+      const response = await getAvailableMechanicsListAction();
+      if (response && response.mechanic) {
+        setMechanicList(
+          response.mechanic.map((m: any) => ({
+            ...m,
+            isAvailable: m.isAvailable,
+            location: m.location,
+            serviceArea: m.serviceArea,
+            servicesOffered: m.servicesOffered,
+            availability: m.availability,
+            createdAt: m.createdAt,
+            updatedAt: m.updatedAt,
+            isApproved: m.isApproved,
+          }))
+        );
 
-    fetchAvailability()
-  }, [])
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        setAvailability(
+          response.mechanic.map((m: any) => ({
+            date: new Date(m.availability.date),
+            slots: m.availability.slots
+          }))
+        )
       }
-    }
+    };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+    fetchAvailability();
+  }, []);
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      modalRef.current &&
+      !modalRef.current.contains(event.target as Node) &&
+      !(event.target as HTMLElement).closest(".date-time-picker-container") && // Exclude DateTimePicker
+      !(event.target as HTMLElement).closest(".select-container") // Exclude Select
+    ) {
+      setIsOpen(false);
     }
-  }, [isOpen])
+  };
+
+  if (isOpen) {
+    document.addEventListener("mousedown", handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, [isOpen]);
 
   
   const bookingVariant = {
@@ -88,13 +131,6 @@ export const Booking = () => {
     return dayAvailability?.slots || []
   }
 
-  const handleDateSelect = (index: number) => {
-    const newDate = addDays(startOfToday(), index)
-    setSelectedDate(newDate)
-    setIsActive(index)
-    setIsSelected([]) // Clear selected time when date changes
-  }
-
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     try {
@@ -105,8 +141,6 @@ export const Booking = () => {
       setTimeout(() => {
         setIsOpen(false)
         setIsConfirmed(false)
-        setIsSelected([])
-        setIsActive(0)
       }, 2000)
     } catch (error) {
       console.error(error)
@@ -117,18 +151,20 @@ export const Booking = () => {
 
   if (!user) return null
 
-  // Generate next 7 days
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(startOfToday(), i)
-    return format(date, 'EEE')
-  })
-
   return (
     <div className="md:h-full flex items-end justify-center w-full z-20 p-4 pb-24">
-      <svg xmlns="http://www.w3.org/2000/svg" version="1.1" className="absolute">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        version="1.1"
+        className="absolute"
+      >
         <defs>
           <filter id="goo">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+            <feGaussianBlur
+              in="SourceGraphic"
+              stdDeviation="10"
+              result="blur"
+            />
             <feColorMatrix
               in="blur"
               mode="matrix"
@@ -154,7 +190,7 @@ export const Booking = () => {
               dragElastic={0.2}
               onDragEnd={(e, { offset, velocity }) => {
                 if (offset.y > 200 || velocity.y > 500) {
-                  setIsOpen(false)
+                  setIsOpen(false);
                 }
               }}
             >
@@ -162,7 +198,7 @@ export const Booking = () => {
                 <div className="w-10 h-1 bg-primary-foreground/20 rounded-full" />
               </div>
               <AnimatePresence>
-                {isSelected.length === 0 && (
+                {steps === "selectMechanic" && (
                   <motion.div
                     className="flex flex-col gap-6 md:gap-8"
                     initial={{ opacity: 0 }}
@@ -170,56 +206,82 @@ export const Booking = () => {
                     exit={{ opacity: 0 }}
                   >
                     <div className="flex flex-col gap-4">
-                      <h1 className="text-xl md:text-2xl font-medium">Select a Date & Time</h1>
+                      <h1 className="text-xl md:text-2xl font-medium">
+                        Select a mechanic
+                      </h1>
                       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {days.map((day, index) => {
-                          const date = addDays(startOfToday(), index)
-                          const hasSlots = getAvailableSlots(date).length > 0
+                        {mechanicList.map((mechanic, index) => {
                           return (
                             <motion.button
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleDateSelect(index)}
+                              whileTap={{
+                                scale: 0.9,
+                              }}
                               key={index}
-                              disabled={!hasSlots}
-                              className={cn(
-                                "bg-secondary backdrop-blur px-4 py-1.5 rounded-xl whitespace-nowrap text-sm md:text-base",
-                                isActive === index
-                                  ? "bg-background text-primary dark:text-white"
-                                  : "text-black dark:text-white",
-                                !hasSlots && "opacity-50 cursor-not-allowed"
-                              )}
+                              className={
+                                "bg-secondary backdrop-blur px-4 py-1.5 rounded-xl whitespace-nowrap text-sm md:text-base"
+                              }
+                              onClick={() => {
+                                setFormData({ ...formData, mechanic });
+                              }}
                             >
                               <span className="block text-center">
-                                {day}
+                                {/* {mechanic.name} */}
                               </span>
                               <span className="block text-center text-xs opacity-70">
-                                {format(date, 'd')}
+                                {mechanic.rating}
                               </span>
                             </motion.button>
-                          )
+                          );
                         })}
                       </div>
                     </div>
                     <div className="flex flex-col gap-4">
-                      <h2 className="text-lg md:text-xl font-medium">Available Times</h2>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {getAvailableSlots(selectedDate).map((time) => (
-                          <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setIsSelected([time])}
-                            key={time}
-                            className="bg-secondary backdrop-blur text-black dark:text-white px-4 py-1.5 rounded-xl whitespace-nowrap text-sm md:text-base"
-                          >
-                            {time}
-                          </motion.button>
-                        ))}
+                      <h1 className="text-xl md:text-2xl font-medium">
+                        Select a Date & Time
+                      </h1>
+                      <div className="flex items-center gap-2 pb-2 date-time-picker-container">
+                        <DateTimePicker
+                          value={dateTime}
+                          onChange={setDateTime}
+                        />
                       </div>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      <h1 className="text-xl md:text-2xl font-medium">
+                        This Mechanic Offers
+                      </h1>
+                      <Select>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Pick service" />
+                        </SelectTrigger>
+                        <SelectContent className="select-container">
+                          {mechanicList
+                            .filter((mechanic) => mechanic.servicesOffered)
+                            .map((mechanic) =>
+                              mechanic.servicesOffered.map(
+                                (service: string, index: number) => (
+                                  <SelectItem key={mechanic.id} value={service}>
+                                    {service}
+                                  </SelectItem>
+                                )
+                              )
+                            )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Button
+                        variant={"outline"}
+                        onClick={() => setSteps("confirmBooking")}
+                      >
+                        Next step
+                      </Button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
               <AnimatePresence>
-                {isSelected.length > 0 && (
+                {steps === "confirmBooking" && (
                   <motion.div
                     className="text-primary-foreground h-full w-full flex flex-col md:flex-row gap-6 md:gap-2 pb-safe"
                     initial={{ y: 0, opacity: 0 }}
@@ -230,6 +292,14 @@ export const Booking = () => {
                     exit={{ opacity: 0 }}
                   >
                     <div className="flex flex-col gap-6 w-full">
+                    <div>
+                      <Button
+                        variant={"outline"}
+                        onClick={() => setSteps("selectMechanic")}
+                      >
+                        Previous step
+                      </Button>
+                    </div>
                       <div className="flex items-center gap-4">
                         <div className="bg-background rounded-xl p-2 h-12 w-12 md:h-14 md:w-14 flex items-center justify-center">
                           <img
@@ -241,21 +311,31 @@ export const Booking = () => {
                           />
                         </div>
                         <h2 className="flex flex-col gap-1 text-sm md:text-base">
-                          <span>{format(selectedDate, 'EEEE, MMMM d yyyy')}</span>
-                          <span className="text-muted-foreground">{isSelected[0]}</span>
+                          <span>
+                            {format(selectedDate, "EEEE, MMMM d yyyy")}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {steps[0]}
+                          </span>
                         </h2>
                       </div>
                     </div>
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 md:gap-5 w-full">
+                    <form
+                      onSubmit={handleSubmit}
+                      className="flex flex-col gap-4 md:gap-5 w-full"
+                    >
                       <div className="flex flex-col gap-2">
-                        <label htmlFor="name" className="font-medium text-primary-foreground/70 text-sm">
+                        <label
+                          htmlFor="name"
+                          className="font-medium text-primary-foreground/70 text-sm"
+                        >
                           Your name
                         </label>
                         <input
                           type="text"
                           id="name"
                           name="firstName"
-                          value={user.firstName || ''}
+                          value={user.firstName || ""}
                           readOnly
                           required
                           disabled={loading}
@@ -263,14 +343,17 @@ export const Booking = () => {
                         />
                       </div>
                       <div className="flex flex-col gap-2 w-full">
-                        <label htmlFor="email" className="font-medium text-primary-foreground/70 text-sm">
+                        <label
+                          htmlFor="email"
+                          className="font-medium text-primary-foreground/70 text-sm"
+                        >
                           Your email
                         </label>
                         <input
                           type="email"
                           id="email"
                           name="email"
-                          value={user.emailAddresses[0]?.emailAddress || ''}
+                          value={user.emailAddresses[0]?.emailAddress || ""}
                           readOnly
                           required
                           disabled={loading}
@@ -332,5 +415,5 @@ export const Booking = () => {
         </div>
       </div>
     </div>
-  )
+  );
 }

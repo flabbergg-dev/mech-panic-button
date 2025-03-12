@@ -87,21 +87,23 @@ export async function POST(req: Request) {
                 }
               });
             } else {
-              await prisma.serviceRequest.update({
-                where: { id: serviceRequest.id },
-                data: {
-                status: ServiceStatus.SERVICING,
-                totalAmount: serviceOffer?.price,
-                secondTransactionId: paymentIntent.latest_charge as string
-                }
-              });
-
-              await prisma.serviceOffer.update({
-                where: { id: serviceOffer?.id },
-                data: {
+                await prisma.$transaction(async (prisma) => {
+                await prisma.serviceOffer.update({
+                  where: { id: serviceOffer?.id },
+                  data: {
                   status: 'ACCEPTED'
-                }
-              });
+                  }
+                });
+
+                await prisma.serviceRequest.update({
+                  where: { id: serviceRequest.id },
+                  data: {
+                  status: ServiceStatus.SERVICING,
+                  totalAmount: serviceOffer?.price,
+                  secondTransactionId: paymentIntent.latest_charge as string
+                  }
+                });
+                });
             }
 
             const user = await prisma.user.findUnique({

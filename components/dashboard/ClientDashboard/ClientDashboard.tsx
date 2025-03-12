@@ -606,9 +606,7 @@ export function ClientDashboard() {
                     <p className="text-muted-foreground mb-2 pb-4">
                       Wait for the mechanic to complete their service
                     </p>
-                    {/* {activeRequest.extraService === true ? (
-                      <div className="flex justify-end space-x-2"> */}
-                        {offers.map((offer) => (
+                        {offers.filter((offers) => offers.status === 'PENDING').map((offer) => (
                         <ServiceOfferCard
                           key={offer.id}
                           serviceRequestId={offer.serviceRequestId}
@@ -635,37 +633,6 @@ export function ClientDashboard() {
                           customerLocation={customerLocation}
                         />
                         ))}
-                        {/* <Button
-                          onClick={() => handleOfferAccepted()}
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Accept"
-                          )}
-                        </Button> */}
-                      {/* </div>
-                    ) : !sessionId ? (
-                      <div className="flex justify-end">
-                        <Button onClick={handleCheckout} disabled={isLoading}>
-                          {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Proceed to Checkout"
-                          )}
-                        </Button>
-                      </div>
-                    ) : secret ? (
-                      <div className="w-full">
-                        <EmbeddedCheckoutProvider
-                          stripe={stripePromise}
-                          options={{ clientSecret: secret }}
-                        >
-                          <EmbeddedCheckout />
-                        </EmbeddedCheckoutProvider>
-                      </div>
-                    ) : null} */}
                   </div>
                 </ServiceCardLayout>
               </HalfSheet>
@@ -991,7 +958,7 @@ export function ClientDashboard() {
           activeRequest
             ? activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED
               ? ["home"] // Only disable home when payment authorized
-              : ["home", "map", "requests", "history", "settings", "profile"] // Disable both when in other active states
+              : ["map"] // Disable both when in other active states
             : [] // No disabled tabs when no active request
         }
         hiddenNavigation={
