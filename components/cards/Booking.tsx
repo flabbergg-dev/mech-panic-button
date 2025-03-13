@@ -1,13 +1,14 @@
-"use client"
-
-import {  FormEvent, useState, useEffect, useRef } from "react"
-import { cn } from "@/lib/utils"
-import { AnimatePresence, motion } from "framer-motion"
-import { CheckCircle2, Loader } from "lucide-react"
-import { useUser } from "@clerk/nextjs"
-import { format } from "date-fns"
-import { Mechanic as PrismaMechanic } from "@prisma/client"
-import { getAvailableMechanicsListAction } from "@/app/actions/mechanic/get-available-mechanics-list.action"
+import { FormEvent, useState, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { CheckCircle2, Loader } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { format } from "date-fns";
+import { Mechanic as PrismaMechanic, ServiceStatus, ServiceType, Prisma, UserRole } from "@prisma/client";
+import { getAvailableMechanicsListAction } from "@/app/actions/mechanic/get-available-mechanics-list.action";
+import { getAllUsersAction } from "@/app/actions/user/get-all-users.action";
+import { createServiceRequestAction } from "@/app/actions/serviceRequestAction";
+import { useToast } from "@/hooks/use-toast";
+import { sendBookingConfirmationEmail } from "@/utils/emailNotifications";
 import {
   Select,
   SelectContent,
@@ -16,140 +17,319 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateTimePicker } from "../forms/dateTimePicker";
-import { Button } from "../ui/button"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "../ui/scroll-area";
+import { MechanicCard } from "./MechanicCard";
+import { MechanicSearch } from "../SearchComps/MechanicSearch";
+import { UserData } from "@/types";
 
-type Mechanic = PrismaMechanic & {
-  isAvailable: boolean
-  location: string
-  serviceArea: string
-  servicesOffered: string[]
+interface MechanicLocation extends Prisma.JsonObject {
+  latitude: number;
+  longitude: number;
 }
 
-// This would come from your API/database
-type MechanicAvailability = {
-  date: Date
-  slots: string[]
+interface ExtendedMechanic extends Omit<PrismaMechanic, 'location' | 'servicesOffered'> {
+  isAvailable: boolean;
+  location: MechanicLocation | null;
+  serviceArea: string;
+  servicesOffered: ServiceType[];
+  user?: string;
+  rating: number | null;
+  subscriptionPlan?: string | null;
+}
+
+interface BookingFormData {
+  mechanic: ExtendedMechanic | null;
+  selectedDate: Date | null;
+  name: string | null;
+  email: string | null;
 }
 
 export const Booking = () => {
-  const { user } = useUser()
-  const [isOpen, setIsOpen] = useState(false)
-  const [steps, setSteps] = useState<"selectMechanic" | "selectDateTime" | "confirmBooking">("selectMechanic")
-  const [formData, setFormData] = useState({
-    mechanic: {} as Mechanic,
-    selectedDate: Date,
-  })
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [loading, setLoading] = useState(false)
-  const [isConfirmed, setIsConfirmed] = useState(false)
-  const [isActive, setIsActive] = useState(0)
-  const [mechanicList, setMechanicList] = useState([] as Mechanic[])
-  const modalRef = useRef<HTMLDivElement>(null)
-  const [availability, setAvailability] = useState([] as MechanicAvailability[])
-  const [dateTime, setDateTime] = useState<Date | undefined>();
+  const { user, isLoaded } = useUser();
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [steps, setSteps] = useState("selectedMechanic");
+  const [formData, setFormData] = useState<BookingFormData>({
+    mechanic: null,
+    selectedDate: null,
+    name: user?.firstName || null,
+    email: user?.emailAddresses[0]?.emailAddress || null,
+  });
+  const [loading, setLoading] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [mechanicList, setMechanicList] = useState<ExtendedMechanic[]>([]);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchAvailability = async () => {
-      const response = await getAvailableMechanicsListAction();
-      if (response && response.mechanic) {
-        setMechanicList(
-          response.mechanic.map((m: any) => ({
-            ...m,
-            isAvailable: m.isAvailable,
-            location: m.location,
-            serviceArea: m.serviceArea,
-            servicesOffered: m.servicesOffered,
-            availability: m.availability,
-            createdAt: m.createdAt,
-            updatedAt: m.updatedAt,
-            isApproved: m.isApproved,
-          }))
-        );
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.firstName || null,
+        email: user.emailAddresses[0]?.emailAddress || null,
+      }));
+    }
+  }, [user]);
 
-        setAvailability(
-          response.mechanic.map((m: any) => ({
-            date: new Date(m.availability.date),
-            slots: m.availability.slots
-          }))
-        )
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      if (!user?.id) {
+        throw new Error("Please sign in to make a booking");
+      }
+      console.log("Form Data:", formData);  
+      if (!formData.mechanic || !formData.email || !formData.name || !formData.selectedDate) {
+        throw new Error("Please fill in all required booking information");
+      }
+
+      const mechanicLocation = formData.mechanic.location;
+      if (!mechanicLocation) {
+        throw new Error("Mechanic location information is missing");
+      }
+
+      // Get the selected service from the form
+      const selectedService = formData.mechanic.servicesOffered[0];
+      if (!selectedService) {
+        throw new Error("Please select a service");
+      }
+
+      console.log("Creating service request with:", {
+        userId: user.id,
+        location: mechanicLocation,
+        serviceType: selectedService,
+        status: ServiceStatus.BOOKED,
+        mechanicId: formData.mechanic.id,
+        startTime: formData.selectedDate
+      });
+
+      const serviceRequest = await createServiceRequestAction({
+        userId: user.id,
+        location: {
+          latitude: mechanicLocation.latitude,
+          longitude: mechanicLocation.longitude,
+        },
+        serviceType: selectedService,
+        status: ServiceStatus.BOOKED,
+        mechanicId: formData.mechanic.id,
+        startTime: formData.selectedDate
+      });
+
+      if (!serviceRequest.success) {
+        throw new Error(serviceRequest.error || "Failed to create service request");
+      }
+
+      await handleBookingConfirmation();
+
+      setIsConfirmed(true);
+      toast({
+        title: "Booking Confirmed",
+        description: "Check your email for booking details.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error submitting booking:", error);
+      toast({
+        title: "Booking Failed",
+        description: error instanceof Error ? error.message : "Failed to submit booking",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      if (isConfirmed) {
+        setTimeout(() => {
+          setSteps('finalState');
+          setFormData({
+            mechanic: null,
+            selectedDate: null,
+            name: null,
+            email: null,
+          });
+          setIsOpen(false);
+          setIsConfirmed(false);
+        }, 3000);
+      }
+    }
+  };
+
+  const handleBookingConfirmation = async () => {
+    if (!formData.mechanic || !formData.selectedDate) {
+      toast({
+        title: "Error",
+        description: "Please select a mechanic and appointment time",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendBookingConfirmationEmail({
+        to: formData.email || user?.emailAddresses[0]?.emailAddress || '',
+        subject: "Your Mech-Panic Button Booking Confirmation",
+        message: `Thank you for booking with Mech-Panic Button! We're excited to help you with your vehicle needs.`,
+        userName: formData.name || user?.firstName || '',
+        mechanicName: formData.mechanic.user,
+        bookingDate: formData.selectedDate,
+        serviceType: formData.mechanic.servicesOffered.join(', '),
+      });
+
+      setIsConfirmed(true);
+      toast({
+        title: "Success",
+        description: "Booking confirmation email sent successfully",
+      });
+    } catch (error) {
+      console.error("Error sending confirmation email:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send booking confirmation email",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchAvailableMechanics = async () => {
+      try {
+        const userResponse = await getAllUsersAction();
+        const response = await getAvailableMechanicsListAction();
+
+        console.log('All Users:', userResponse?.data);
+        console.log('All Mechanics:', response?.mechanic);
+
+        if (userResponse?.data && response?.mechanic) {
+          // First, create a map of user data for quick lookup
+          const userDataMap = new Map<string, UserData>(
+            userResponse.data.map(user => {
+              const subscriptionPlan = (() => {
+                try {
+                  return (user as any).subscription?.plan || null;
+                } catch (error) {
+                  console.warn(`Failed to get subscription plan for user ${user.id}:`, error);
+                  return null;
+                }
+              })();
+
+              return [user.id, {
+                ...user,
+                subscriptionPlan
+              } as UserData];
+            })
+          );
+
+          const filteredMechanics = response.mechanic
+            .filter((m: any) => {
+              const userData = userDataMap.get(m.userId);
+              console.log('Mechanic User Data:', {
+                mechanicId: m.id,
+                userId: m.userId,
+                userData: userData,
+                isAvailable: m.isAvailable,
+                role: userData?.role,
+                subscriptionPlan: userData?.subscriptionPlan || 'none'
+              });
+              // Include mechanics who are either PRO subscribers or have the Mechanic role
+              const isPro = userData?.subscriptionPlan?.toLowerCase() === 'pro';
+              const isMechanic = userData?.role === 'Mechanic';
+              
+              if (!m.isAvailable) {
+                console.log(`Mechanic ${m.id} is not available`);
+                return false;
+              }
+              
+              if (!isPro && !isMechanic) {
+                console.log(`Mechanic ${m.id} is neither PRO nor has Mechanic role`);
+                return false;
+              }
+
+              return true;
+            })
+            .map((m: any) => {
+              const userData = userDataMap.get(m.userId);
+              const isPro = userData?.subscriptionPlan?.toLowerCase() === 'pro';
+              console.log('Mapping Mechanic:', {
+                mechanicId: m.id,
+                userData: userData,
+                firstName: userData?.firstName,
+                isPro: isPro,
+                role: userData?.role
+              });
+              
+              return {
+                ...m,
+                isAvailable: true,
+                location: typeof m.location === 'string' ? null : m.location as MechanicLocation,
+                serviceArea: typeof m.serviceArea === 'string' ? m.serviceArea : JSON.parse(m.serviceArea),
+                servicesOffered: Array.isArray(m.servicesOffered) ? m.servicesOffered : [],
+                user: userData?.firstName || "",
+                rating: m.rating,
+                subscriptionPlan: userData?.subscriptionPlan
+              };
+            });
+
+          console.log('Final Filtered Mechanics:', filteredMechanics);
+          setMechanicList(filteredMechanics);
+        }
+      } catch (error) {
+        console.error("Error fetching mechanics:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load available mechanics",
+          variant: "destructive",
+        });
       }
     };
 
-    fetchAvailability();
-  }, []);
+    if (user) {
+      fetchAvailableMechanics();
+    }
+  }, [user, toast]);
 
-useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      modalRef.current &&
-      !modalRef.current.contains(event.target as Node) &&
-      !(event.target as HTMLElement).closest(".date-time-picker-container") && // Exclude DateTimePicker
-      !(event.target as HTMLElement).closest(".select-container") // Exclude Select
-    ) {
-      setIsOpen(false);
+  const handleMechanicSelect = (mechanicId: string) => {
+    const selectedMechanic = mechanicList.find(mechanic => mechanic.id === mechanicId);
+    if (selectedMechanic) {
+      setFormData({
+        mechanic: selectedMechanic,
+        selectedDate: formData.selectedDate,
+        name: formData.name,
+        email: formData.email,
+      });
+      setSteps("selectDateTime");
+    } else {
+      console.error("Mechanic not found");
     }
   };
 
-  if (isOpen) {
-    document.addEventListener("mousedown", handleClickOutside);
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="text-center p-6">
+            <Loader className="animate-spin h-6 w-6 mx-auto mb-2" />
+            <p className="text-gray-600">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, [isOpen]);
-
-  
-  const bookingVariant = {
-    initial: {
-      opacity: 0,
-      y: 100,
-    },
-    animate: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 200,
-        damping: 25,
-      },
-    },
-    exit: {
-      opacity: 0,
-      y: 100,
-      transition: {
-        duration: 0.2,
-      },
-    },
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="text-center p-6">
+            <h2 className="text-xl font-semibold mb-2">Sign In Required</h2>
+            <p className="text-gray-600">Please sign in to make a booking.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-
-  // Get available time slots for selected date
-  const getAvailableSlots = (date: Date) => {
-    const dayAvailability = availability.find(
-      (a) => format(a.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    )
-    return dayAvailability?.slots || []
-  }
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-    try {
-      setLoading(true)
-      // Here you would make an API call to save the booking
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setIsConfirmed(true)
-      setTimeout(() => {
-        setIsOpen(false)
-        setIsConfirmed(false)
-      }, 2000)
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!user) return null
 
   return (
     <div className="md:h-full flex items-end justify-center w-full z-20 p-4 pb-24">
@@ -181,7 +361,28 @@ useEffect(() => {
             <motion.div
               ref={modalRef}
               className="min-h-[300px] max-h-[85vh] bg-primary text-primary-foreground fixed bottom-20 left-0 right-0 md:bottom-24 md:left-4 md:right-4 md:absolute md:w-[500px] rounded-t-3xl md:rounded-3xl overflow-auto scrollbar-hide -z-10 p-4 md:p-5 mx-auto touch-pan-y"
-              variants={bookingVariant}
+              variants={{
+                initial: {
+                  opacity: 0,
+                  y: 100,
+                },
+                animate: {
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 25,
+                  },
+                },
+                exit: {
+                  opacity: 0,
+                  y: 100,
+                  transition: {
+                    duration: 0.2,
+                  },
+                },
+              }}
               initial="initial"
               animate="animate"
               exit="exit"
@@ -197,201 +398,229 @@ useEffect(() => {
               <div className="w-full flex justify-center mb-2 md:hidden">
                 <div className="w-10 h-1 bg-primary-foreground/20 rounded-full" />
               </div>
-              <AnimatePresence>
-                {steps === "selectMechanic" && (
-                  <motion.div
-                    className="flex flex-col gap-6 md:gap-8"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+              <Tabs value={steps} onValueChange={setSteps} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger
+                    value="selectedMechanic"
+                    disabled={
+                      steps !== "selectedMechanic" && !formData.mechanic
+                    }
                   >
-                    <div className="flex flex-col gap-4">
-                      <h1 className="text-xl md:text-2xl font-medium">
-                        Select a mechanic
-                      </h1>
-                      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {mechanicList.map((mechanic, index) => {
-                          return (
-                            <motion.button
-                              whileTap={{
-                                scale: 0.9,
-                              }}
-                              key={index}
-                              className={
-                                "bg-secondary backdrop-blur px-4 py-1.5 rounded-xl whitespace-nowrap text-sm md:text-base"
-                              }
-                              onClick={() => {
-                                setFormData({ ...formData, mechanic });
-                              }}
-                            >
-                              <span className="block text-center">
-                                {/* {mechanic.name} */}
-                              </span>
-                              <span className="block text-center text-xs opacity-70">
-                                {mechanic.rating}
-                              </span>
-                            </motion.button>
-                          );
-                        })}
+                    Mechanic
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="selectDateTime"
+                    disabled={
+                      !formData.mechanic ||
+                      (steps !== "selectDateTime" && !formData.selectedDate)
+                    }
+                  >
+                    Date & Service
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="confirmBooking"
+                    disabled={!formData.selectedDate || !steps}
+                  >
+                    Confirm Booking
+                  </TabsTrigger>
+                </TabsList>
+                {/* Mechanic Cards and search */}
+                <AnimatePresence>
+                  <TabsContent value="selectedMechanic" className="mt-4">
+                    <MechanicSearch
+                      mechanicList={mechanicList}
+                      onSelect={handleMechanicSelect}
+                    />
+
+                    <ScrollArea className="h-[300px] rounded-md border p-4">
+                      <div className="grid gap-4">
+                        {mechanicList.map((mechanic, index) => (
+                          <MechanicCard
+                            index={index}
+                            key={mechanic.id}
+                            mechanic={mechanic}
+                            formData={formData}
+                            setFormData={(data) => {
+                              setFormData({
+                                mechanic: data.mechanic,
+                                selectedDate: data.selectedDate,
+                                name: data.name,
+                                email: data.email,
+                              });
+                            }}
+                            onSelect={handleMechanicSelect}
+                          />
+                        ))}
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-4">
-                      <h1 className="text-xl md:text-2xl font-medium">
-                        Select a Date & Time
-                      </h1>
-                      <div className="flex items-center gap-2 pb-2 date-time-picker-container">
-                        <DateTimePicker
-                          value={dateTime}
-                          onChange={setDateTime}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-4">
-                      <h1 className="text-xl md:text-2xl font-medium">
-                        This Mechanic Offers
-                      </h1>
+                    </ScrollArea>
+                  </TabsContent>
+                </AnimatePresence>
+                {/* calendar comp */}
+                <AnimatePresence>
+                  <TabsContent value="selectDateTime" className="mt-4">
+                    <motion.div
+                      className="text-primary-foreground h-full w-full flex flex-col gap-6 md:gap-2"
+                      initial={{ y: 0, opacity: 0 }}
+                      animate={{
+                        y: isConfirmed ? -400 : 0,
+                        opacity: 1,
+                      }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <DateTimePicker
+                        value={formData.selectedDate || new Date()}
+                        onChange={(date) => {
+                          if (date) {
+                            setFormData((prevFormData) => ({
+                              ...prevFormData,
+                              selectedDate: date,
+                            }));
+                          }
+                        }}
+                      />
                       <Select>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger
+                          className="w-full"
+                          disabled={!formData.mechanic}
+                        >
                           <SelectValue placeholder="Pick service" />
                         </SelectTrigger>
                         <SelectContent className="select-container">
-                          {mechanicList
-                            .filter((mechanic) => mechanic.servicesOffered)
-                            .map((mechanic) =>
-                              mechanic.servicesOffered.map(
-                                (service: string, index: number) => (
-                                  <SelectItem key={mechanic.id} value={service}>
-                                    {service}
-                                  </SelectItem>
-                                )
-                              )
-                            )}
+                          {formData.mechanic?.servicesOffered.map(
+                            (service: ServiceType, index: number) => (
+                              <SelectItem key={index} value={service}>
+                                {service.replace(/_/g, ' ')}
+                              </SelectItem>
+                            )
+                          )}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
-                      <Button
-                        variant={"outline"}
-                        onClick={() => setSteps("confirmBooking")}
-                      >
-                        Next step
+                      <Button onClick={() => setSteps("confirmBooking")}>
+                        Go to next step
                       </Button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <AnimatePresence>
-                {steps === "confirmBooking" && (
-                  <motion.div
-                    className="text-primary-foreground h-full w-full flex flex-col md:flex-row gap-6 md:gap-2 pb-safe"
-                    initial={{ y: 0, opacity: 0 }}
-                    animate={{
-                      y: isConfirmed ? -400 : 0,
-                      opacity: 1,
-                    }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <div className="flex flex-col gap-6 w-full">
-                    <div>
-                      <Button
-                        variant={"outline"}
-                        onClick={() => setSteps("selectMechanic")}
+                    </motion.div>
+                  </TabsContent>
+                </AnimatePresence>
+                {/* user info */}
+                <AnimatePresence>
+                  <TabsContent value="confirmBooking" className="mt-4">
+                    <motion.div
+                      className="text-primary-foreground h-full w-full flex flex-col md:flex-row gap-6 md:gap-2 pb-safe"
+                      initial={{ y: 0, opacity: 0 }}
+                      animate={{
+                        y: isConfirmed ? -400 : 0,
+                        opacity: 1,
+                      }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="flex flex-col gap-6 w-full">
+                        <div>
+                          <Button
+                            variant={"outline"}
+                            onClick={() => setSteps("selectDateTime")}
+                          >
+                            Previous step
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="bg-background rounded-xl p-2 h-12 w-12 md:h-14 md:w-14 flex items-center justify-center">
+                            <img
+                              src={user.imageUrl}
+                              alt="Mechanic"
+                              width={100}
+                              height={100}
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <h2 className="flex flex-col gap-1 text-sm md:text-base">
+                            <span>
+                              {format(
+                                formData.selectedDate!,
+                                "EEEE, MMMM d yyyy"
+                              )}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {steps[0]}
+                            </span>
+                          </h2>
+                        </div>
+                      </div>
+                      <form
+                        onSubmit={handleSubmit}
+                        className="flex flex-col gap-4 md:gap-5 w-full"
                       >
-                        Previous step
-                      </Button>
-                    </div>
-                      <div className="flex items-center gap-4">
-                        <div className="bg-background rounded-xl p-2 h-12 w-12 md:h-14 md:w-14 flex items-center justify-center">
-                          <img
-                            src={user.imageUrl}
-                            alt="Mechanic"
-                            width={100}
-                            height={100}
-                            className="rounded-lg"
+                        <div className="flex flex-col gap-2">
+                          <label
+                            htmlFor="name"
+                            className="font-medium text-primary-foreground/70 text-sm"
+                          >
+                            Your name
+                          </label>
+                          <input
+                            type="text"
+                            id="name"
+                            name="firstName"
+                            value={user.firstName || ""}
+                            readOnly
+                            required
+                            disabled={loading}
+                            className="h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-4 text-sm md:text-base text-primary-foreground/70 outline-none border-background"
                           />
                         </div>
-                        <h2 className="flex flex-col gap-1 text-sm md:text-base">
-                          <span>
-                            {format(selectedDate, "EEEE, MMMM d yyyy")}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {steps[0]}
-                          </span>
-                        </h2>
-                      </div>
-                    </div>
-                    <form
-                      onSubmit={handleSubmit}
-                      className="flex flex-col gap-4 md:gap-5 w-full"
+                        <div className="flex flex-col gap-2 w-full">
+                          <label
+                            htmlFor="email"
+                            className="font-medium text-primary-foreground/70 text-sm"
+                          >
+                            Your email
+                          </label>
+                          <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            value={user.emailAddresses[0]?.emailAddress || ""}
+                            readOnly
+                            required
+                            disabled={loading}
+                            className="h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-4 text-sm md:text-base text-primary-foreground/70 outline-none border-background"
+                          />
+                        </div>
+                        <motion.button
+                          type="submit"
+                          disabled={loading}
+                          className="bg-background dark:text-white text-black flex items-center gap-2 justify-center px-4 h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base mt-auto"
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {loading && (
+                            <Loader className="animate-spin h-4 w-4" />
+                          )}
+                          Book Now
+                        </motion.button>
+                      </form>
+                    </motion.div>
+                  </TabsContent>
+                </AnimatePresence>
+                {/* Confirm component */}
+                <AnimatePresence>
+                  <TabsContent value="finalState" className="mt-4">
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      className="h-full w-full black absolute top-0 left-0 flex flex-col gap-4 items-center justify-center p-4"
                     >
-                      <div className="flex flex-col gap-2">
-                        <label
-                          htmlFor="name"
-                          className="font-medium text-primary-foreground/70 text-sm"
-                        >
-                          Your name
-                        </label>
-                        <input
-                          type="text"
-                          id="name"
-                          name="firstName"
-                          value={user.firstName || ""}
-                          readOnly
-                          required
-                          disabled={loading}
-                          className="h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-4 text-sm md:text-base text-primary-foreground/70 outline-none border-background"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2 w-full">
-                        <label
-                          htmlFor="email"
-                          className="font-medium text-primary-foreground/70 text-sm"
-                        >
-                          Your email
-                        </label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={user.emailAddresses[0]?.emailAddress || ""}
-                          readOnly
-                          required
-                          disabled={loading}
-                          className="h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-2 px-4 text-sm md:text-base text-primary-foreground/70 outline-none border-background"
-                        />
-                      </div>
-                      <motion.button
-                        type="submit"
-                        disabled={loading}
-                        className="bg-background dark:text-white text-black flex items-center gap-2 justify-center px-4 h-12 md:h-14 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base mt-auto"
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        {loading && <Loader className="animate-spin h-4 w-4" />}
-                        Book Now
-                      </motion.button>
-                    </form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <AnimatePresence>
-                {isConfirmed && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className="h-full w-full black absolute top-0 left-0 flex flex-col gap-4 items-center justify-center p-4"
-                  >
-                    <CheckCircle2
-                      className="text-primary-foreground h-12 w-12 md:h-16 md:w-16"
-                      fill="white"
-                      stroke="black"
-                    />
-                    <h1 className="text-primary-foreground font-bold flex flex-col text-center text-lg md:text-xl">
-                      <span>Booking confirmed!</span>
-                      <span>Looking forward to chatting!</span>
-                    </h1>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                      <CheckCircle2
+                        className="text-primary-foreground h-12 w-12 md:h-16 md:w-16"
+                        fill="white"
+                        stroke="black"
+                      />
+                      <h1 className="text-primary-foreground font-bold flex flex-col text-center text-lg md:text-xl">
+                        <span>Booking confirmed!</span>
+                        <span>Looking forward to chatting!</span>
+                      </h1>
+                    </motion.div>
+                  </TabsContent>
+                </AnimatePresence>
+              </Tabs>
             </motion.div>
           )}
         </AnimatePresence>
@@ -416,4 +645,4 @@ useEffect(() => {
       </div>
     </div>
   );
-}
+};

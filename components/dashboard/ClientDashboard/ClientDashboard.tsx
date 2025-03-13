@@ -10,7 +10,7 @@ import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Loader2Icon } from "lucide-react"
+import { Home, Loader2, Loader2Icon } from "lucide-react"
 import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
@@ -509,7 +509,7 @@ export function ClientDashboard() {
                 </p>
               </Card>
             </div>
-            <div className="flex items-center justify-center w-full">
+            <div className="hidden md:flex items-center justify-center w-full">
               <RippleComp>
                 <MechPanicButton
                   user={user}
@@ -662,6 +662,34 @@ export function ClientDashboard() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeRequest?.status === ServiceStatus.COMPLETED && (
+              <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
+                <div className="flex flex-col h-full p-6">
+                  <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                    <div className="text-center space-y-4 max-w-md">
+                      <h2 className="text-2xl font-semibold">
+                        Service Completed
+                      </h2>
+                      <p className="text-muted-foreground">
+                        Your service has been completed and the payment has been sent to mechanic
+                      </p>
+                    </div>
+                  <button
+                    className="bg-blue-500 text-white text-xs px-2 py-1 rounded"
+                    onClick={() => {
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 3000);
+                    }}
+                  >
+                    Go home <Home className='h-4 w-4'/>
+                  </button>
+                  </div>
+                </div>
+
               </div>
             )}
           </div>

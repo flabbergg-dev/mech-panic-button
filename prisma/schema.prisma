@@ -230,6 +230,7 @@ enum ServiceStatus {
   IN_PROGRESS
   COMPLETED
   IN_COMPLETION
+  BOOKED
 }
 
 enum SubscriptionPlan {
@@ -262,6 +263,7 @@ enum BookingStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  BOOKED
 }
 
 enum OfferStatus {
@@ -270,4 +272,5 @@ enum OfferStatus {
   DECLINED
   EXPIRED
   REJECTED
+  BOOKED
 }
