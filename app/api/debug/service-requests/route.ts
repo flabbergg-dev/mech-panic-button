@@ -7,10 +7,8 @@ import { NextResponse } from "next/server"
 export async function GET() {
   try {
     const { userId } = await auth()
-    console.log('Debug service requests for user:', userId)
     
     if (!userId) {
-      console.log('Debug failed: No userId found')
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
@@ -24,8 +22,6 @@ export async function GET() {
       }
     })
 
-    console.log(`Found ${requests.length} service requests for user ${userId}`)
-    
     // Get all offers for this user's requests
     const offers = await prisma.serviceOffer.findMany({
       where: {
@@ -48,7 +44,6 @@ export async function GET() {
       }
     })
 
-    console.log(`Found ${offers.length} service offers for user ${userId}'s requests`)
     
     // Return detailed information about each request
     const detailedRequests = requests.map(req => ({

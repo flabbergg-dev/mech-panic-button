@@ -1,10 +1,7 @@
 "use client"
 
-import React from "react"
-import { Button } from "../ui/button"
-import { ArrowBigRight, LucideIcon, MapPin, Shield, Star } from "lucide-react"
+import { type LucideIcon, MapPin, Shield, Star } from "lucide-react"
 import { motion } from "framer-motion"
-import Image from "next/image"
 import { PwaInstall } from "../PwaInstall"
 
 type SafetyFeatureProps = {
@@ -71,17 +68,8 @@ export default function SafetyAlways() {
                 description="Service where and when you need it"
               />
             </div>
-            <PwaInstall
-              title="Request Assistance"
-              className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 bg-primary text-white flex items-center justify-center space-x-2"
-            >
-              <motion.div
-                animate={{ x: [0, 5, 0] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-              >
-                <ArrowBigRight />
-              </motion.div>
-            </PwaInstall>
+            <PwaInstall/>
+              
           </motion.div>
 
           <motion.div

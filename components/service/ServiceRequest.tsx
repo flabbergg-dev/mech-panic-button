@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ServiceRequest as ServiceRequestType } from "@prisma/client"
+import type { ServiceRequest as ServiceRequestType } from "@prisma/client"
 import { ArrowRightIcon, MapPinIcon } from "lucide-react"
 import { Button } from "../ui/button"
 import { Card } from "../ui/card"
@@ -19,13 +19,11 @@ export const ServiceRequest = ({
   request,
   isScheduled
 }: ServiceRequestProps) => {
-  console.log("ServiceRequest component rendering:", request.id);
   
   const { goToServiceRequest } = useMechanicNavigation()
   const [cityName, setCityName] = useState<string>("")
 
   useEffect(() => {
-    console.log("ServiceRequest useEffect for location:", request.id);
     const fetchCityName = async () => {
       if (
         request.location &&
@@ -40,11 +38,11 @@ export const ServiceRequest = ({
         const city = await getCityName(coordinates);
         setCityName(city);
       } else {
-        console.log("No valid location for request:", request.id);
+        setCityName("Unknown City");
       }
     }
     fetchCityName()
-  }, [request.location, request.id])
+  }, [request.location])
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow bg-foreground text-background border-none pointer-events-auto cursor-pointer" onClick={() => goToServiceRequest(request.id)}>

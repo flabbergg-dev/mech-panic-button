@@ -69,28 +69,6 @@ const RequestMap = () => {
     useRealtimeServiceRequest();
   const [userCords, setUserCords] = useState<Location | null>(null)
 
-  // Log any errors or state changes
-  useEffect(() => {
-    if (serviceRequestError) {
-      console.error("RequestMap error:", serviceRequestError);
-    }
-
-    // Only log when data actually changes
-    if (!serviceRequestLoading) {
-      console.log("RequestMap state:", {
-        hasActiveRequest: !!serviceRequest,
-        activeRequestId: serviceRequest?.id,
-        activeRequestStatus: serviceRequest?.status,
-        hasMechanicLocation: !!serviceRequest?.mechanicLocation,
-      });
-    }
-  }, [
-    serviceRequest?.id,
-    serviceRequest?.status,
-    serviceRequestLoading,
-    serviceRequestError,
-  ]);
-
   // Initialize user location
   useEffect(() => {
     getUserLocation(setUserCords)

@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { ServiceRequest, ServiceStatus } from '@prisma/client';
+import type { ServiceRequest } from '@prisma/client';
 import { supabase } from '@/utils/supabase/client';
-import { RealtimePostgresChangesPayload } from '@/types/supabase';
+import type { RealtimePostgresChangesPayload } from '@/types/supabase';
 import { getServiceRequestsAction } from '@/app/actions/service/request/getServiceRequestsAction';
 
 interface ServiceRequestClient {
@@ -86,10 +86,9 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
 
   useEffect(() => {
     isMounted.current = true;
-    let pollingInterval: NodeJS.Timeout;
+    let pollingInterval: NodeJS.Timeout | null = null;
 
     if (user?.id) {
-      console.log('Initial service requests fetch for mechanic:', user.id);
       fetchRequests(true);
     }
 
@@ -108,7 +107,6 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
 
     let pollingInterval: NodeJS.Timeout | null = null;
 
-    console.log('Setting up Supabase realtime subscription for service requests');
 
     const handleUpdate = () => {
       if (isFetching.current) return;
@@ -124,24 +122,20 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
             event: '*',
             schema: 'public',
             table: 'ServiceRequest',
-            filter: `status=eq.REQUESTED`
+            filter: 'status=eq.REQUESTED'
           },
           (payload: RealtimePostgresChangesPayload) => {
-            console.log('Realtime update received for service requests:', payload);
             handleUpdate();
           }
         )
         .subscribe((status: string) => {
-          console.log('Supabase subscription status for service requests:', status);
 
           if (status !== 'SUBSCRIBED' && !pollingInterval) {
-            console.log('Falling back to polling for service request updates');
             pollingInterval = setInterval(() => fetchRequests(false), FETCH_THROTTLE_MS);
           }
         });
 
       return () => {
-        console.log('Cleaning up Supabase subscription for service requests');
         channel.unsubscribe();
         if (pollingInterval) clearInterval(pollingInterval);
       };

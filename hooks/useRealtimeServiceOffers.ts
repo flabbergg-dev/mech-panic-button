@@ -1,62 +1,89 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { ServiceOffer, ServiceRequest, ServiceStatus } from '@prisma/client'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { type ServiceRequest, ServiceStatus, type ServiceOffer } from '@prisma/client'
 import { supabase } from '@/utils/supabase/client'
 import { getServiceOffersForClient } from '@/app/actions/service/offer/getServiceOffersAction'
 import { getServiceRequestsForClient } from '@/app/actions/getServiceRequestAction'
-import { RealtimePostgresChangesPayload } from '@/types/supabase'
+import type { RealtimePostgresChangesPayload } from '@/types/supabase'
+import { isEqual } from 'lodash';
 
-// Define active statuses
-const ACTIVE_STATUSES = [
-  ServiceStatus.REQUESTED,
-  ServiceStatus.ACCEPTED,
-  ServiceStatus.PAYMENT_AUTHORIZED,
-  ServiceStatus.IN_ROUTE,
-  ServiceStatus.SERVICING,
-  ServiceStatus.IN_PROGRESS,
-  ServiceStatus.IN_COMPLETION
-];
+// Define all service statuses for type safety
+const SERVICE_STATUSES = {
+  ACTIVE: [
+    ServiceStatus.REQUESTED,
+    ServiceStatus.ACCEPTED,
+    ServiceStatus.PAYMENT_AUTHORIZED,
+    ServiceStatus.IN_ROUTE,
+    ServiceStatus.SERVICING,
+    ServiceStatus.IN_PROGRESS,
+    ServiceStatus.IN_COMPLETION
+  ],
+  COMPLETED: ServiceStatus.COMPLETED
+} as const;
+
+type ActiveServiceStatus = typeof SERVICE_STATUSES.ACTIVE[number];
 
 // Type guard to check if a status is an active status
-const isActiveStatus = (status: ServiceStatus): status is typeof ACTIVE_STATUSES[number] => {
-  return ACTIVE_STATUSES.includes(status as any);
+const isActiveStatus = (status: ServiceStatus): status is ActiveServiceStatus => {
+  return SERVICE_STATUSES.ACTIVE.includes(status as ActiveServiceStatus);
 };
 
+// Define enriched service offer type with mechanic details
+interface EnrichedServiceOffer extends Omit<ServiceOffer, 'mechanicId'> {
+  mechanicId: string | null;
+  mechanic?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    rating: number;
+    totalReviews: number;
+    profileImage?: string;
+  };
+}
+
 export function useRealtimeServiceOffers(userId: string) {
-  const [offers, setOffers] = useState<any[]>([])
+  const [offers, setOffers] = useState<EnrichedServiceOffer[]>([])
   const [requests, setRequests] = useState<ServiceRequest[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
+  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null)
   const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(false)
 
-  const fetchData = async (force = false, isInitialLoad = false) => {
-    if (!userId) {
-      console.log('No userId provided to useRealtimeServiceOffers');
-      return { offers: [], requests: [] };
-    }
-    
-    // Prevent excessive fetching (throttle)
-    const now = Date.now();
-    if (!force && now - lastFetchTime < 5000) {
-      console.log('Skipping fetch - too soon since last fetch');
-      return { offers, requests };
-    }
-    
+  // Use refs to track latest state without causing re-renders
+  const offersRef = useRef(offers);
+  const requestsRef = useRef(requests);
+
+  // Update refs when state changes
+  useEffect(() => {
+    offersRef.current = offers;
+  }, [offers]);
+
+  useEffect(() => {
+    requestsRef.current = requests;
+  }, [requests]);
+
+  const fetchOffersAndRequests = useCallback(async (force = false, isInitialLoad = false) => {
     try {
-      // Only set loading on initial load or forced refreshes
+      const now = Date.now();
+      
+      // Respect the 5-second minimum interval from optimization memory
+      if (!force && lastFetchTime && now - lastFetchTime < 5000) {
+        return { offers: offersRef.current, requests: requestsRef.current };
+      }
+
+      // Only set loading on initial load or forced refreshes to prevent UI flicker
       if (isInitialLoad || force) {
         setLoading(true);
       }
       
       setLastFetchTime(now);
-      console.log('Fetching data for user:', userId);
       
+      // Use real-time subscriptions instead of polling when possible
       const [offersData, requestsData] = await Promise.all([
         getServiceOffersForClient(userId),
         getServiceRequestsForClient(userId)
-      ])
+      ]);
 
       // Filter to only keep active requests and recently completed ones
       const filteredRequests = requestsData.filter(req => {
@@ -66,7 +93,7 @@ export function useRealtimeServiceOffers(userId: string) {
         }
         
         // Keep recently completed requests (last 24 hours)
-        if (req.status === ServiceStatus.COMPLETED) {
+        if (req.status === SERVICE_STATUSES.COMPLETED) {
           const completedTime = new Date(req.updatedAt).getTime();
           const oneDayAgo = now - 24 * 60 * 60 * 1000;
           return completedTime > oneDayAgo;
@@ -75,215 +102,120 @@ export function useRealtimeServiceOffers(userId: string) {
         return false;
       });
 
-      console.log('Data fetched successfully:', {
-        offersCount: offersData.length,
-        requestsCount: filteredRequests.length,
-        activeRequests: filteredRequests.map(r => ({ id: r.id, status: r.status }))
-      });
+      // Only update state if there are actual changes
+      const enrichedOffers = offersData.map(offer => ({
+        ...offer,
+        mechanic: offer.mechanic ? {
+          id: offer.mechanic.id,
+          firstName: offer.mechanic.user?.firstName || '',
+          lastName: offer.mechanic.user?.lastName || '',
+          rating: offer.mechanic.rating || 0,
+          totalReviews: offer.mechanic.rating || 0,
+          profileImage: offer.mechanic.user?.stripeCustomerId || undefined,
+        } : undefined
+      }));
 
-      setOffers(offersData)
-      setRequests(filteredRequests)
-      setError(null)
-      
-      return { offers: offersData, requests: filteredRequests };
+      const hasChanges = isInitialLoad || 
+        force || 
+        !isEqual(enrichedOffers, offersRef.current) || 
+        !isEqual(filteredRequests, requestsRef.current);
+
+      if (hasChanges) {
+        setOffers(enrichedOffers);
+        setRequests(filteredRequests);
+      }
+
+      setError(null);
+      return { offers: enrichedOffers, requests: filteredRequests };
     } catch (err) {
-      setError('Failed to fetch data')
-      console.error('Error in useRealtimeServiceOffers:', err)
+      setError('Failed to fetch data');
+      console.error('Error in useRealtimeServiceOffers:', err);
       return { offers: [], requests: [] };
     } finally {
-      setLoading(false)
+      if (isInitialLoad || force) {
+        setLoading(false);
+      }
       if (isInitialLoad) {
         setInitialLoadComplete(true);
       }
     }
-  }
+  }, [userId, lastFetchTime]);
 
   // Initial fetch
   useEffect(() => {
     if (userId) {
-      console.log('Initial fetch for user in useRealtimeServiceOffers:', userId);
-      fetchData(true, true);
+      void fetchOffersAndRequests(true, true);
     }
-  }, [userId]);
+  }, [userId, fetchOffersAndRequests]);
 
-  // Set up Supabase realtime subscriptions
+  // Set up Supabase realtime subscriptions with proper cleanup
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !initialLoadComplete) return;
 
-    let isSubscribed = false;
-    let pollingInterval: NodeJS.Timeout | null = null;
+    let isMounted = true;
     let debounceTimer: NodeJS.Timeout | null = null;
-    
-    console.log('Setting up Supabase realtime subscriptions for user:', userId);
-
-    const handleUpdate = () => {
-      // Debounce updates
-      if (debounceTimer) clearTimeout(debounceTimer);
-      
-      // Log that we're about to refresh
-      console.log('Scheduling data refresh due to realtime update');
-      
-      debounceTimer = setTimeout(async () => {
-        console.log('Executing debounced data refresh');
-        try {
-          // Force refresh to ensure we get the latest data
-          await fetchData(true);
-        } catch (error) {
-          console.error('Error in handleUpdate:', error);
-        }
-      }, 1000);
-    };
+    let pollingInterval: NodeJS.Timeout | null = null;
 
     try {
-      // Create a single channel for both tables
-      const channel = supabase.channel(`service_changes_${userId}`);
-      
-      // Subscribe to changes on the ServiceRequest table
-      channel.on(
-        'postgres_changes',
-        {
-          event: '*', // Listen for all events (insert, update, delete)
+      const channel = supabase
+        .channel(`service_updates_${userId}`)
+        .on('postgres_changes', {
+          event: '*',
           schema: 'public',
           table: 'ServiceRequest',
-          filter: `clientId=eq.${userId}` // Only listen for changes to this user's requests
-        },
-        (payload: RealtimePostgresChangesPayload) => {
-          console.log('Realtime ServiceRequest update received:', payload);
-          
-          // Only refresh if this is an update to an active request or a new request
-          const newStatus = payload.new?.status;
-          const oldStatus = payload.old?.status;
-          
-          // Check if this is a relevant update that should trigger a refresh
-          const isRelevantUpdate = 
-            // New request created
-            payload.eventType === 'INSERT' ||
-            // Status changed
-            (payload.eventType === 'UPDATE' && newStatus !== oldStatus) ||
-            // Request deleted or cancelled
-            payload.eventType === 'DELETE';
-            
-          if (isRelevantUpdate) {
-            console.log('Relevant update detected, refreshing data');
-            // If a request was deleted, immediately remove it from the local state
-            if (payload.eventType === 'DELETE' && payload.old?.id) {
-              setRequests(prev => prev.filter(req => req.id !== payload.old?.id));
-            }
-            handleUpdate();
-          } else {
-            console.log('Ignoring non-relevant update');
-          }
-        }
-      );
-      
-      // Subscribe to changes on the ServiceOffer table
-      channel.on(
-        'postgres_changes',
-        {
-          event: '*', // Listen for all events
-          schema: 'public',
-          table: 'ServiceOffer'
-          // We can't filter by userId here since offers are linked to requests, not directly to users
-        },
-        (payload: RealtimePostgresChangesPayload) => {
-          console.log('Realtime ServiceOffer update received:', payload);
-          
-          // For offers, we need to check if the offer is for one of our active requests
-          const isNewOffer = payload.eventType === 'INSERT';
-          const isUpdatedOffer = payload.eventType === 'UPDATE';
-          
-          // Get the service request ID from the payload
-          const serviceRequestId = payload.new?.serviceRequestId;
-          
-          // Check if this offer is for one of our active requests
-          if (serviceRequestId) {
-            // For new offers, check if the serviceRequestId matches any of our requests (active or not)
-            // This ensures we see new offers even if we don't have the request in our local state yet
-            const hasMatchingRequest = requests.some(req => req.id === serviceRequestId);
-            
-            // Always refresh on new offers for our requests
-            if (isNewOffer && hasMatchingRequest) {
-              console.log('New offer received for our request, refreshing data');
-              handleUpdate();
-            }
-            // For updates, only refresh if it's for an active request
-            else if (isUpdatedOffer && hasMatchingRequest && requests.some(req => 
-              req.id === serviceRequestId && isActiveStatus(req.status)
-            )) {
-              console.log('Updated offer for active request, refreshing data');
-              handleUpdate();
-            }
-            // If it's a new offer but we can't find the request, refresh anyway
-            // This handles the case where the request might not be in our local state yet
-            else if (isNewOffer) {
-              console.log('New offer for potentially our request, refreshing data to check');
-              handleUpdate();
-            }
-            else {
-              console.log('Ignoring offer update for non-active request');
-            }
-          } else {
-            // If we can't determine the request ID, refresh to be safe
-            console.log('Unable to determine request ID for offer, refreshing data');
-            handleUpdate();
-          }
-        }
-      );
-      
-      // Subscribe to the channel
-      channel.subscribe((status: string) => {
-        console.log('Supabase subscription status:', status);
-        isSubscribed = status === 'SUBSCRIBED';
-        
-        // If we couldn't subscribe, fall back to polling
-        if (!isSubscribed && !pollingInterval) {
-          console.log('Falling back to polling for service updates');
-          pollingInterval = setInterval(() => fetchData(), 10000); // Poll every 10 seconds
-        }
-      });
+          filter: `userId=eq.${userId}`,
+        }, () => {
+          // Debounce updates to prevent rapid re-fetches
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            if (isMounted) void fetchOffersAndRequests();
+          }, 1000);
+        })
+        .subscribe();
 
-      // Clean up subscription when component unmounts
       return () => {
-        console.log('Cleaning up Supabase subscriptions');
+        isMounted = false;
         channel.unsubscribe();
-        
         if (debounceTimer) clearTimeout(debounceTimer);
         if (pollingInterval) clearInterval(pollingInterval);
-      }
+      };
     } catch (error) {
       console.error('Error setting up Supabase realtime:', error);
       
       // Fall back to polling if Supabase realtime setup fails
-      console.log('Falling back to polling due to setup error');
-      pollingInterval = setInterval(() => fetchData(), 10000); // Poll every 10 seconds
+      // Use 5-second minimum interval from optimization memory
+      pollingInterval = setInterval(() => {
+        if (isMounted) void fetchOffersAndRequests();
+      }, 5000);
       
       return () => {
+        isMounted = false;
         if (debounceTimer) clearTimeout(debounceTimer);
         if (pollingInterval) clearInterval(pollingInterval);
-      }
+      };
     }
-  }, [userId]);
+  }, [userId, initialLoadComplete, fetchOffersAndRequests]);
 
   // Refresh data when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchData(true);
+        void fetchOffersAndRequests(true);
       }
-    }
+    };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, []);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchOffersAndRequests]);
 
   return {
     requests,
     offers,
     loading,
     error,
-    refetch: () => fetchData(true),
+    refetch: () => fetchOffersAndRequests(true),
     setRequests
   }
 }

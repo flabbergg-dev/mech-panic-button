@@ -11,10 +11,8 @@ export async function POST(
     try {
         const { id } = await params
         const { userId } = await auth()
-        console.log('Accepting service offer:', id, 'for user:', userId)
         
         if (!userId) {
-            console.log('Unauthorized: No userId found')
             return new NextResponse('Unauthorized', { status: 401 })
         }
 
@@ -59,12 +57,6 @@ export async function POST(
                 status: 'ACCEPTED',
                 updatedAt: new Date(),
             },
-        })
-
-        console.log('Service offer accepted:', {
-            id: updatedServiceOffer.id,
-            status: updatedServiceOffer.status,
-            mechanicId: updatedServiceOffer.mechanicId,
         })
 
         return NextResponse.json(updatedServiceOffer)

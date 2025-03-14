@@ -1,14 +1,11 @@
 "use client"
 
-import React from "react"
 import {
-  ArrowBigRight,
   CheckCircle,
   Clock,
-  LucideIcon,
+ type LucideIcon,
   Star,
 } from "lucide-react"
-import { Button } from "../ui/button"
 import { motion } from "framer-motion"
 import { PwaInstall } from "../PwaInstall"
 
@@ -71,19 +68,7 @@ export default function SecondKnowMore() {
                 description="We respect your time and strive for efficient, punctual service."
               />
             </div>
-            <PwaInstall
-            title="Request Your Mechanic Now!"
-            
-           
-              className="w-full sm:w-auto text-base sm:text-lg px-4 sm:px-8 py-3 sm:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 bg-primary text-white flex items-center justify-center space-x-2"
-            >
-              <motion.div
-                animate={{ x: [0, 5, 0] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-              >
-                <ArrowBigRight />
-              </motion.div>
-            </PwaInstall>
+            <PwaInstall/>
           </motion.div>
 
           <motion.div

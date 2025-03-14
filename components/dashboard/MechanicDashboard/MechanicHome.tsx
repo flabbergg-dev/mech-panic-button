@@ -2,7 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMechanicServiceRequests } from '@/hooks/useMechanicServiceRequests';
 import { getActiveMechanicOfferAction } from "@/app/actions/getActiveMechanicOfferAction";
 import { BalanceCard } from "@/components/cards/BalanceCard";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { getServiceRequestsAction } from "@/app/actions/service/request/getServiceRequestsAction";
 import { AnimatePresence, motion } from "framer-motion";
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { toast } from "sonner";
 
 type BookingWithService = {
   id: string;
@@ -48,11 +49,15 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
   const [currentAvailableBalance, setCurrentAvailableBalance] = useState(0);
   
-  const {
-    location,
-    error: locationError,
-    isLoading: locationLoading
-  } = useGeolocation();
+  // Use geolocation hook with proper type handling
+  const { latitude, longitude, error: locationError } = useGeolocation({
+    minDistance: 30, // 30 meters minimum distance
+    updateInterval: 60000 // 60 seconds update interval
+  });
+
+  // Convert geolocation state to location object
+  const location = latitude && longitude ? { latitude, longitude } : null;
+  const locationLoading = !location && !locationError;
 
   const {
     serviceRequests,
@@ -71,12 +76,10 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
 
   const fetchBalance = useCallback(async () => {
     if (!stripeConnectId) {
-      console.log("No Stripe Connect ID available");
       return;
     }
 
-    console.log("Fetching balance for Stripe Connect ID:", stripeConnectId);
-    
+   
     try {
       const response = await fetch('/api/stripe/connect-balance-funds', {
         method: 'POST',
@@ -95,7 +98,6 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
       }
 
       const data = await response.json();
-      console.log("Balance data:", data);
       
       if (isMounted.current) {
         setCurrentAvailableBalance(data.available || 0);
@@ -135,6 +137,14 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     fetchStripeConnectId();
   }, [fetchStripeConnectId]);
 
+  useEffect(() => {
+    if (!isMounted.current) return;
+
+    if (locationError) {
+      toast.error('The location service is not enabled. Please enable location services to receive service requests.');
+    }
+  }, [locationError]);
+
   if (!user) {
     return <Loader title="Searching on the toolbox..." />;
   }
@@ -143,7 +153,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     return (
       <div className="flex justify-center items-center h-[50vh]">
         <div className="relative inline-block h-12 w-12">
-          <div className="absolute h-full w-full animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+          <div className="absolute h-full w-full animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"/>
         </div>
       </div>
     );
@@ -190,7 +200,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
       {/* Only show loading state on initial load */}
       {requestsLoading && serviceRequests.length === 0 ? (
         <div className="flex justify-center items-center h-[50vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"/>
         </div>
       ) : requestsError ? (
         <div className="text-red-500 p-4 rounded-lg bg-red-50">

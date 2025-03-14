@@ -11,10 +11,8 @@ export async function POST(
     try {
         const { id } = await params
         const { userId } = await auth()
-        console.log('Deleting service offer:', id, 'for user:', userId)
         
         if (!userId) {
-            console.log('Unauthorized: No userId found')
             return new NextResponse('Unauthorized', { status: 401 })
         }
 
@@ -40,8 +38,6 @@ export async function POST(
                 id: id,
             },
         })
-
-        console.log('Service offer deleted:', id)
 
         return new NextResponse('Service offer deleted successfully', { status: 200 })
     } catch (error) {

@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { ServiceRequest, User, ServiceOffer } from "@prisma/client"
+import { useEffect, useState, useCallback } from "react"
+import type{ ServiceRequest, User, ServiceOffer } from "@prisma/client"
 import { MapboxMapComp } from "@/components/MapBox/MapboxMapComp"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { createServiceOfferAction } from "@/app/actions/serviceOfferAction"
 import { getServiceRequestAction } from "@/app/actions/getServiceRequestAction"
 import { getMechanicServiceOfferAction } from "@/app/actions/getMechanicServiceOfferAction"
-import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/utils/supabase/client"
 import { getUserToken } from "@/app/actions/getUserToken"
 import { useParams, useRouter } from "next/navigation"
@@ -26,6 +25,7 @@ import { cn } from "@/lib/utils"
 import { updateOfferStatus } from "@/app/actions/updateOfferStatusAction"
 import { Card } from "../ui/card"
 import useMechanicId from "@/hooks/useMechanicId";
+import { toast } from "sonner"
 
 interface ServiceRequestDetailsProps {
   mechanicId: string
@@ -51,14 +51,14 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
   const [note, setNote] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [mechanicLocation, setMechanicLocation] = useState<{latitude: number; longitude: number} | null>(null)
-  const { toast } = useToast()
   const router = useRouter()
   const {sendEmail} = useEmailNotification()
   const [expirationTime, setExpirationTime] = useState<string | null>(null)
   const mechanicIdHook = useMechanicId()
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
+      setIsLoading(true)
       const [requestResult, offerResult] = await Promise.all([
         getServiceRequestAction(requestId),
         getMechanicServiceOfferAction(mechanicId, requestId)
@@ -67,99 +67,120 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       if (requestResult.success) {
         setRequest(requestResult.data)
       } else {
-        toast({
-          title: "Request not found",
-          description:` Request was cancelled by the client. Returning to dashboard...`,
-          variant: "destructive"
-        })
+        toast.error('Request was cancelled by the client. Returning to dashboard...')
         setIsRedirecting(true)
         setTimeout(() => {
-          router.push(`/dashboard/mechanic`)
+          router.push('/dashboard/mechanic')
         }, 1000)
+        return
       }
 
-      if (offerResult) {
-        if (offerResult.success && offerResult.data) {
-          setServiceOffer(offerResult.data)
-          console.log(offerResult.data)
-          // If there's an existing offer, set the form values
-          if (offerResult.data.price) {
-            setPrice(offerResult.data.price.toString())
-          }
-          if (offerResult.data.note) {
-            setNote(offerResult.data.note)
-          }
+      if (offerResult?.success && offerResult.data) {
+        setServiceOffer(offerResult.data)
+        // If there's an existing offer, set the form values
+        if (offerResult.data.price) {
+          setPrice(offerResult.data.price.toString())
         }
-      } else {
-        console.log("No offer result received");
+        if (offerResult.data.note) {
+          setNote(offerResult.data.note)
+        }
       }
-
     } catch (error) {
       console.error("Error fetching data:", error)
-     
+      toast.error('Failed to fetch request details')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [requestId, mechanicId, router])
 
-
+  // Set up real-time subscriptions and initial data fetch
   useEffect(() => {
-    fetchData()
+    let isMounted = true
+    void fetchData()
     
-    const getToken = async () => {
+    const setupSubscriptions = async () => {
       const token = await getUserToken()
-      if (!token) {
-        console.log("No token available")
-        return
-      }
+      if (!token || !isMounted) return
+
       supabase.realtime.setAuth(token)
 
-      const subscribeServiceRequestToChannel = supabase.channel(`service_request_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceRequest', filter: `id=eq.${requestId}`  }, (payload: any) => {
-        console.log('Request Received payload:', payload)
-        fetchData()
+      const subscribeServiceRequestToChannel = supabase.channel(`service_request_${requestId}`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'ServiceRequest', 
+          filter: `id=eq.${requestId}` 
+        }, () => {
+          if (isMounted) void fetchData()
+        })
+        .subscribe()
 
-      }).subscribe()
+      const subscribeServiceOfferToChannel = supabase.channel(`service_offer_${requestId}`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'ServiceOffer', 
+          filter: `serviceRequestId=eq.${requestId}` 
+        }, () => {
+          if (isMounted) void fetchData()
+        })
+        .subscribe()
 
-      const subscribeServiceOfferToChannel = supabase.channel(`service_offer_${requestId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'ServiceOffer', filter: `serviceRequestId=eq.${requestId}`  }, (payload: any) => {
-        console.log('Offer Received payload:', payload)
-        fetchData()
-
-      }).subscribe()
-
-      const unsubscribeFromChannels = () => {
-        supabase.removeChannel(subscribeServiceRequestToChannel)
-        supabase.removeChannel(subscribeServiceOfferToChannel)
+      return () => {
+        if (isMounted) {
+          supabase.removeChannel(subscribeServiceRequestToChannel)
+          supabase.removeChannel(subscribeServiceOfferToChannel)
+        }
       }
-
-      return unsubscribeFromChannels
     }
 
-    getToken()
+    void setupSubscriptions()
 
-  }, [requestId, mechanicId, toast])
+    return () => {
+      isMounted = false
+    }
+  }, [requestId, fetchData])
 
+  // Handle geolocation with 60-second interval
   useEffect(() => {
+    let isMounted = true
+    let watchId: number | null = null
+
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 60000 // 60-second interval as per optimization memory
+      }
+
+      watchId = navigator.geolocation.watchPosition(
         (position) => {
-          setMechanicLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          })
+          if (isMounted) {
+            setMechanicLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            })
+          }
         },
         (error) => {
           console.error("Error getting location:", error)
-          toast({
-            title: "Location Error",
-            description: "Unable to get your location. Please enable location services.",
-            variant: "destructive"
-          })
-        }
+          if (isMounted) {
+            toast.error("Unable to get your location. Please enable location services.")
+          }
+        },
+        options
       )
     }
-  }, [toast])
 
-  {useEffect(() => {
+    return () => {
+      isMounted = false
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
 
     const expiresAt = new Date(serviceOffer?.expiresAt ?? new Date())
     if (!expiresAt || !serviceOffer || serviceOffer.status === 'EXPIRED') return;
@@ -180,13 +201,14 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     const timer = setInterval(updateExpirationTime, 1000);
 
     return () => clearInterval(timer);
-  }, [expirationTime, serviceOffer?.expiresAt])}
+  }, [serviceOffer])
+
   if (isLoading || !request) return <Loader title="Loading Request..." />
   if (isRedirecting) return <Loader title="Redirecting to dashboard..." />
 
   if (request.status === "COMPLETED") {
     setTimeout(() => {
-      router.push(`/dashboard`)
+      router.push('/dashboard')
     }, 1000)
     return (
       <div className="flex items-center justify-center h-screen">
@@ -207,11 +229,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
   const handleServiceOffer = async () => {
     if (!request || !price || !mechanicLocation) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields and enable location services",
-        variant: "destructive"
-      })
+      toast.error('Please fill in all required fields and enable location services')
       return
     }
 
@@ -220,7 +238,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       const result = await createServiceOfferAction({
         mechanicId: mechanicId,
         serviceRequestId: request.id,
-        price: parseFloat(price),
+        price: Number(price),
         note: note || undefined,
         location: {
           latitude: mechanicLocation.latitude,
@@ -262,10 +280,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
         console.log('response', response)
         console.log('userResponse', userResponse)
 
-        toast({
-          title: "Success",
-          description: "Service offer submitted successfully",
-        })
+        toast.success('Service offer submitted successfully')
         try {
           sendEmail({
             to: request.client.email,
@@ -281,19 +296,11 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           // Continue with the flow even if email fails
         }
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to submit offer",
-          variant: "destructive"
-        })
+        toast.error(result.error || "Failed to submit offer")
       }
     } catch (error) {
       console.error("Error creating service offer:", error)
-      toast({
-        title: "Error",
-        description: "Failed to submit offer",
-        variant: "destructive"
-      })
+      toast.error('Failed to submit offer')
     } finally {
       setIsSubmitting(false)
      
@@ -311,32 +318,11 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       console.log('response', response)
     } catch (error) {
       console.error("Error cancelling service offer:", error)
-      toast({
-        title: "Error",
-        description: "Failed to cancel offer",
-        variant: "destructive"
-      })
+      toast.error('Failed to cancel offer')
     } finally {
       setIsSubmitting(false)
     }
   }
-
-  // const deleteOffer = async () => {
-  //   try {
-  //     const response = await fetch(`/api/service-offer/${serviceOffer?.id}/delete`, {
-  //       method: 'POST',
-  //     });
-  //     const result = await response.json();
-  //     console.log('response', result);
-  //   } catch (error) {
-  //     console.error("Error deleting service offer:", error)
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to delete offer",
-  //       variant: "destructive"
-  //     })
-  //   }
-  // }
 
   const getOfferStatusMessage = () => {
     if (!serviceOffer) return null;
@@ -346,10 +332,6 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     if (isExpired) {
       return "Offer has expired. You can cancel the service request.";
     }
-
-    // if (isExpired) {
-    //   deleteOffer();
-    // }
 
     switch (serviceOffer.status) {
       case 'PENDING':
@@ -368,40 +350,29 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
 
   }
 
-  const goToMap = (request: ServiceRequestWithClient) => {
+  const goToMap = async (request: ServiceRequestWithClient) => {
     try {
-      const createChat = async () => {
-        try {
-          await createChatWithUserAction(request.clientId, mechanicIdHook.mechanicUserId!);
-          return null;
-        } catch (error) {
-          throw new Error(`Error creating chat: ${error}`);
-        }
-      };
-      createChat();
+      if (!mechanicIdHook.mechanicUserId) {
+        toast.error('Mechanic ID is not available');
+        return;
+      }
 
-    } catch (error) {
-      console.error("Error creating chat:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create chat",
-        variant: "destructive"
-      });
-    } finally {
       if (
         !request.location ||
         typeof request.location !== "object" ||
         !("latitude" in request.location)
       ) {
-        toast({
-          title: "Error",
-          description: "Location information is not available",
-          variant: "destructive",
-        });
+        toast.error('Location information is not available');
         return;
       }
+
+      await createChatWithUserAction(request.clientId, mechanicIdHook.mechanicUserId);
+      
       // Navigate to the map route with the destination coordinates
-      router.push(`/dashboard/mechanic/${userId}/map/${requestId}?destLat=${request.location.latitude}&destLng=${request.location.longitude}`)
+      router.push(`/dashboard/mechanic/${mechanicIdHook.mechanicUserId}/map/${requestId}?destLat=${request.location.latitude}&destLng=${request.location.longitude}`);
+    } catch (error) {
+      console.error("Error creating chat:", error);
+      toast.error('Failed to create chat');
     }
   }
 

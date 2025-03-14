@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
-import { LocationType } from '../types';
+import { useEffect, useRef, useCallback, type RefObject } from 'react';
+import type { LocationType } from '../types';
+import type mapboxgl from 'mapbox-gl';
 
 interface UseMapRouteProps {
-  map: React.MutableRefObject<mapboxgl.Map | null>;
+  map: RefObject<mapboxgl.Map>;
   mapReady: boolean;
   showRoute: boolean;
   mechanicLocation?: LocationType;
@@ -27,7 +27,9 @@ export const useMapRoute = ({
   useEffect(() => {
     if (!mapReady || !map.current) return;
 
-    map.current.addSource('route', {
+    const mapInstance = map.current;
+
+    mapInstance.addSource('route', {
       type: 'geojson',
       data: {
         type: 'Feature',
@@ -39,7 +41,7 @@ export const useMapRoute = ({
       }
     });
 
-    map.current.addLayer({
+    mapInstance.addLayer({
       id: 'route',
       type: 'line',
       source: 'route',
@@ -54,24 +56,24 @@ export const useMapRoute = ({
       }
     });
 
-    routeSource.current = map.current.getSource('route') as mapboxgl.GeoJSONSource;
+    routeSource.current = mapInstance.getSource('route') as mapboxgl.GeoJSONSource;
 
     return () => {
-      if (map.current?.getLayer('route')) {
-        map.current.removeLayer('route');
+      if (mapInstance?.getLayer('route')) {
+        mapInstance.removeLayer('route');
       }
-      if (map.current?.getSource('route')) {
-        map.current.removeSource('route');
+      if (mapInstance?.getSource('route')) {
+        mapInstance.removeSource('route');
       }
     };
-  }, [mapReady]);
+  }, [mapReady, map]);
 
-  // Calculate and display route
-  const calculateRoute = async (from: LocationType, to: LocationType) => {
+  // Calculate and display route with debouncing
+  const calculateRoute = useCallback(async (from: LocationType, to: LocationType) => {
     if (!routeSource.current || !map.current || !showRoute) return;
-    
-    console.log("Calculating route from", from, "to", to);
-    
+
+    const mapInstance = map.current;
+       
     try {
       const response = await fetch(
         `https://api.mapbox.com/directions/v5/mapbox/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?steps=true&geometries=geojson&overview=full&annotations=duration,distance,speed&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`
@@ -91,8 +93,6 @@ export const useMapRoute = ({
       
       const route = data.routes[0];
       const { coordinates } = route.geometry;
-      
-      console.log(`Route received with ${coordinates.length} coordinate points`);
       
       routeCoordinates.current = coordinates;
       routeCalculated.current = true;
@@ -117,16 +117,21 @@ export const useMapRoute = ({
       routeCalculated.current = false;
       if (onRouteCalculated) onRouteCalculated(0, 0);
     }
-  };
+  }, [map, showRoute, onRouteCalculated]);
 
   // Update route when locations change
   useEffect(() => {
     if (!mapReady || !showRoute || !mechanicLocation || !customerLocation) return;
     
-    if (!routeCalculated.current) {
-      calculateRoute(mechanicLocation, customerLocation);
-    }
-  }, [mapReady, showRoute, mechanicLocation, customerLocation]);
+    // Add debouncing to prevent excessive API calls
+    const timeoutId = setTimeout(() => {
+      if (!routeCalculated.current) {
+        calculateRoute(mechanicLocation, customerLocation);
+      }
+    }, 1000); // 1-second debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [mapReady, showRoute, mechanicLocation, customerLocation, calculateRoute]);
 
   return {
     routeCalculated,

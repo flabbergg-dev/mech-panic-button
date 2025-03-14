@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { ServiceRequest, ServiceStatus } from '@prisma/client'
+import type { ServiceRequest } from '@prisma/client'
 
 // Define the interface for the API response
 interface ServiceRequestWithMechanicLocation extends Omit<ServiceRequest, 'mechanicLocation'> {
@@ -31,7 +31,7 @@ export function useServiceRequest(): UseServiceRequestReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
-  const fetchRequest = async () => {
+  const fetchRequest = useCallback(async () => {
     if (!user?.id) {
       setIsLoading(false)
       return
@@ -44,12 +44,7 @@ export function useServiceRequest(): UseServiceRequestReturn {
         throw new Error('Failed to fetch service request')
       }
       const request = await response.json()
-      console.log('Active request data:', {
-        id: request?.id,
-        status: request?.status,
-        mechanicId: request?.mechanicId,
-        mechanicLocation: request?.mechanicLocation
-      })
+     
       setActiveRequest(request)
       setError(null)
     } catch (err) {
@@ -58,23 +53,26 @@ export function useServiceRequest(): UseServiceRequestReturn {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user?.id])
 
   // Fetch initial data
   useEffect(() => {
-    fetchRequest()
-  }, [user?.id])
+    void fetchRequest()
+  }, [fetchRequest])
 
-  // Set up polling for active requests
+  // Set up polling for active requests with 5-second minimum interval
   useEffect(() => {
     if (!activeRequest || !isActiveStatus(activeRequest.status)) {
       return
     }
 
-    const intervalId = setInterval(fetchRequest, 5000) // Poll every 5 seconds
+    // Poll every 5 seconds as per optimization memory
+    const intervalId = setInterval(() => {
+      void fetchRequest()
+    }, 5000)
 
     return () => clearInterval(intervalId)
-  }, [activeRequest?.status])
+  }, [activeRequest, fetchRequest])
 
   return {
     activeRequest,

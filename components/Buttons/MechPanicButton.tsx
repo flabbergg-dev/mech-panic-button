@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ApproveButton } from "@/components/ui/approveButton"
 import { Button } from "@/components/ui/button"
-
 import { ModalMapComp } from "@/components/MapBox/ModalMapComp"
 import { Modal } from "@/components/Modal/Modal"
 import { CheckIcon, ChevronRightIcon, Loader2, WrenchIcon } from "lucide-react"
@@ -10,6 +9,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { createServiceRequestAction } from "@/app/actions/serviceRequestAction"
 import { toast } from "@/hooks/use-toast"
+import { useUser } from "@clerk/clerk-react"
+
 
 const getUserLocation = (
   setUserCords: React.Dispatch<
@@ -34,12 +35,12 @@ const getUserLocation = (
 }
 
 type MechPanicButtonProps = {
-  user: any;
   onRequestCreated?: () => void;
   setActiveTab?: (tab: string) => void;
 };
 
-export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPanicButtonProps) => {
+export const MechPanicButton = ({ onRequestCreated, setActiveTab }: MechPanicButtonProps) => {
+  const { user } = useUser()
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
   const [isServiceTypeModalOpen, setIsServiceTypeModalOpen] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -92,14 +93,7 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
         // throw new Error("Location not available")
       }
 
-      console.log('Sending service request with:', {
-        userId: user.id,
-        location: finalLocation,
-        serviceType: selectedService,
-        status: ServiceStatus.REQUESTED
-      });
-
-      const result = await createServiceRequestAction({
+           const result = await createServiceRequestAction({
         userId: user.id,
         location: {
           latitude: finalLocation.latitude,
@@ -114,8 +108,6 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
           setActiveTab("map")
         }
       }, 3000)
-
-      console.log('Service request result:', result);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to create service request')
@@ -142,18 +134,17 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
 
   return (
     <> 
-      <button 
+      <Button 
+        type="button"
         className="btn-class-name" 
         onClick={() => setIsLocationModalOpen(true)}
         disabled={isSubmitting}
       >
-        <span className="back">
-          <WrenchIcon className="w-6 h-6" />
-        </span>
+
         <span className="front">
           <WrenchIcon className="w-6 h-6" />
         </span>
-      </button>
+      </Button>
       <style>
         {`
         .btn-class-name {
@@ -235,6 +226,7 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
         </div>
         <div className="flex justify-between">
           <Button
+            type="button"
             variant="outline"
             onClick={() => setIsLocationModalOpen(false)}
           >
@@ -296,12 +288,14 @@ export const MechPanicButton = ({ user, onRequestCreated, setActiveTab }: MechPa
         </div>
         <div className="flex justify-between mt-4">
           <Button
+            type="button"
             variant="outline"
             onClick={() => setIsServiceTypeModalOpen(false)}
           >
             Back
           </Button>
           <Button
+            type="button"
             onClick={handleServiceRequest}
             disabled={isSubmitting}
           >

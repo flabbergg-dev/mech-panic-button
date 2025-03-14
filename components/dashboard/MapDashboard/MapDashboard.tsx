@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useUser } from "@clerk/nextjs"
-import { ServiceRequest, ServiceStatus } from "@prisma/client"
+import { ServiceStatus } from "@prisma/client"
 import { useServiceRequestStore } from "@/store/serviceRequestStore"
-import { toast } from "@/hooks/use-toast"
 import ServiceRequestMap from "@/components/MapBox/ServiceRequestMap"
+import { toast } from "sonner"
+import { Loader } from "@/components/loader"
 
 interface Location {
   latitude: number
@@ -44,29 +45,27 @@ export const MapDashboard = ({ serviceRequest }: MapDashboardProps) => {
             latitude: 37.7749,
             longitude: -122.4194,
           });
-          toast({
-            title: "Error getting location",
-            description: "Please enable location services to see your location",
-          })
-          // console.error("Error getting location:", error)
+          toast('Please enable location services to see your location')
         }
       )
     }
-  }, [])
-
-  console.log('customerLocation', customerLocation)
-  console.log('mechanicLocation', mechanicLocation)
+  }, [setMechanicLocation])
 
   // Show loading state if locations aren't ready
   if (!customerLocation || !user) {
-    return <div className="flex items-center justify-center h-[80vh]">Loading map...</div>
+    return <Loader title="Loading map" />
+  }
+
+  if(!mechanicLocation){
+    return <Loader title="Loading mechanic location" />
   }
 
     return (
+
       <ServiceRequestMap
         serviceRequest={serviceRequest}
         customerLocation={customerLocation}
-        mechanicLocation={mechanicLocation!}
+        mechanicLocation={mechanicLocation}
         showMechanicLocation={serviceStatus !== ServiceStatus.PAYMENT_AUTHORIZED}
       />
     )

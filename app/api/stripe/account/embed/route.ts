@@ -6,9 +6,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { id } = body;
 
-    console.log("Request body:", body); // Log the entire request body
-    console.log("id being passed in is: " + id); // Log the ID
-
     if (!id) {
       return new NextResponse("Account ID cannot be empty", { status: 400 });
     }

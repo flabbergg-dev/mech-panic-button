@@ -1,4 +1,4 @@
-import { NotificationEmailProps, sendInvoiceEmailProps } from '@/types';
+import type { NotificationEmailProps, sendInvoiceEmailProps } from '@/types';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_API_KEY);

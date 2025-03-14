@@ -5,14 +5,11 @@ import { auth } from '@clerk/nextjs/server'
 export async function GET() {
   try {
     const { userId } = await auth()
-    console.log('Auth check for user:', userId)
     
     if (!userId) {
-      console.log('Unauthorized: No userId found')
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    console.log('Fetching active request for user:', userId)
     
     // First check if there are any service requests for this user
     const allRequests = await prisma.serviceRequest.findMany({
@@ -28,10 +25,6 @@ export async function GET() {
         updatedAt: 'desc'
       }
     });
-    
-    console.log(`Found ${allRequests.length} total requests for user ${userId}:`, 
-      allRequests.map(r => ({ id: r.id, status: r.status }))
-    );
     
     // Then find the active request
     const request = await prisma.serviceRequest.findFirst({
@@ -74,16 +67,6 @@ export async function GET() {
         updatedAt: 'desc'
       }
     })
-
-    console.log('Found active request:', request ? {
-      id: request.id,
-      status: request.status,
-      mechanicId: request.mechanicId,
-      location: request.mechanicLocation,
-      clientId: request.clientId,
-      createdAt: request.createdAt,
-      updatedAt: request.updatedAt
-    } : 'No active request found')
 
     return NextResponse.json(request || null)
   } catch (error) {

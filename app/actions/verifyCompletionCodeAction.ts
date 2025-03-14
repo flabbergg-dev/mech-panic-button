@@ -5,7 +5,6 @@ import { ServiceStatus } from "@prisma/client"
 
 export async function verifyCompletionCodeAction(serviceRequestId: string, code: string) {
   try {
-    console.log('Verifying completion code for request ID:', serviceRequestId)
     
     const serviceRequest = await prisma.serviceRequest.findUnique({
       where: {

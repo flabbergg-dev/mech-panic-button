@@ -1,6 +1,7 @@
 "use server"
 
 import { ServiceStatus, ServiceType } from "@prisma/client"
+import type { ServiceRequest } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { v4 as uuidv4 } from 'uuid'
 
@@ -16,7 +17,7 @@ type ServiceRequestInput = {
 
 type ServiceRequestResponse = {
   success: boolean;
-  data?: any;
+  data?: ServiceRequest;
   mechanic?: {
     name: string;
     rating: number;
@@ -59,14 +60,13 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
         serviceType: ServiceType[serviceType as keyof typeof ServiceType],
         status: ServiceStatus[input.status as keyof typeof ServiceStatus],
         location: input.location,
-        description: serviceType.toLowerCase().replace(/_/g, ' ') + ' service request',
+        description: `${serviceType.toLowerCase().replace(/_/g, ' ')} service request`,
         totalAmount: 0, // Required by schema
         
         updatedAt: new Date(), // Required by schema
       }
     })
 
-    console.log('Service request created:', serviceRequest);
 
     return {
       success: true,

@@ -16,8 +16,14 @@ import { getServiceOfferStatusAction } from '@/app/actions/service/offer/getServ
 import { calculateEstimatedTime } from '@/utils/location';
 import { Loader2 } from 'lucide-react'
 
+const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+if (!stripePublicKey) {
+  throw new Error('Stripe publishable key is not defined')
+}
+
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+  stripePublicKey
 );
 
 interface Location {
@@ -129,7 +135,7 @@ export function ServiceOfferCard({
     getEstimatedTime();
   }, [mechanicLocation, customerLocation]);
 
-  {useEffect(() => {
+  useEffect(() => {
     if (!expiresAt) return;
 
     const updateExpirationTime = () => {
@@ -148,7 +154,7 @@ export function ServiceOfferCard({
     const timer = setInterval(updateExpirationTime, 1000);
 
     return () => clearInterval(timer);
-  }, [expiresAt])}
+  }, [expiresAt])
 
   const handleOffer = async (accepted: boolean) => {
     try {

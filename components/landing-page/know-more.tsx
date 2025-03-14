@@ -1,9 +1,7 @@
 "use client"
 
-import React from "react"
-import { Car, Clock, LucideIcon, Shield, Wrench } from "lucide-react"
+import { Car, CheckIcon, Clock, type LucideIcon, Shield, Wrench } from "lucide-react"
 import { motion } from "framer-motion"
-import { Button } from "../ui/button"
 import { PwaInstall } from "../PwaInstall"
 
 interface FeatureCardProps {
@@ -78,8 +76,7 @@ export default function KnowMore() {
                 24/7 availability for emergencies
               </li>
             </ul>
-          <PwaInstall title="Book Your Mechanic Now" className="text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105
-" />
+          <PwaInstall />
           </div>
         </div>
       </div>
@@ -105,19 +102,3 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
   className?: string
 }
 
-const CheckIcon: React.FC<IconProps> = (props) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5 13l4 4L19 7"
-    />
-  </svg>
-)

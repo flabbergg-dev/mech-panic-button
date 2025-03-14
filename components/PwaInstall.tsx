@@ -2,94 +2,109 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { usePathname } from 'next/navigation';
+import { Card } from './ui/card';
 import { Separator } from './ui/separator';
+import { toast } from 'sonner';
 
-let deferredPrompt: any;
-
-interface PwaInstallProps {
-  title: string;
-  className?: string;
-  children?: React.ReactNode;
+// Define the BeforeInstallPromptEvent interface
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
 }
 
-export function PwaInstall(props: PwaInstallProps) {
-  const [installable, setInstallable] = useState(false);
-  const { toast } = useToast();
+declare global {
+  interface WindowEventMap {
+    beforeinstallprompt: BeforeInstallPromptEvent;
+  }
+}
+
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+
+interface PwaInstallProps {
+  className?: string;
+}
+
+export function PwaInstall({ className }: PwaInstallProps) {
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
+    // Check if the app is running in standalone mode
+    const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    setIsStandalone(isRunningStandalone);
+
+    // Handle the beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
       deferredPrompt = e;
-      setInstallable(true);
-    });
+      setIsInstallable(true);
+    };
 
-    window.addEventListener('appinstalled', () => {
-      deferredPrompt = null;
-      setInstallable(false);
-      toast({
-        title: 'Successfully installed',
-        description: 'You can use this app from your home screen',
-        className: 'bg-green-500 text-white',
-      });
-    });
+    // Listen for the beforeinstallprompt event
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Listen for display mode changes
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleDisplayModeChange = (e: MediaQueryListEvent) => {
+      setIsStandalone(e.matches);
+    };
+    mediaQuery.addEventListener('change', handleDisplayModeChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      mediaQuery.removeEventListener('change', handleDisplayModeChange);
+    };
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      return;
+    if (!deferredPrompt) return;
+
+    try {
+      await deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+
+      if (choiceResult.outcome === 'accepted') {
+        toast.success('App installed successfully!');
+      } else {
+        toast.info('App installation cancelled');
+      }
+
+      // Reset the deferred prompt
+      deferredPrompt = null;
+      setIsInstallable(false);
+    } catch (error) {
+      console.error('Error installing app:', error);
+      toast.error('Failed to install app');
     }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    deferredPrompt = null;
-    setInstallable(false);
   };
 
-  if (!installable) {
-    return (
-      <Button
-        onClick={() => {
-          if (!installable) {
-          toast({
-            title: 'Installation not available',
-            description: (
-              <div>
-                To install this app, you must use a supported browser like Edge, or Chrome. 
-                <Separator />
-                <br/>
-                If you're in an iPhone, use the add to home screen option.
-                <br/>
-                <a href="/installpwa" className="underline bg-white text-primary hover:text-blue-400">... or click here to see how to install it on any device</a>
-              </div>
-            ),
-            className: 'bg-red-500 text-white',
-          })
-            
-            return;
-          } else {
-            handleInstallClick();
-          }
-        }}
-        className={cn("z-50", props.className)}
-      >
-        {props.title}
-        {props.children ? props.children : null}
-      </Button>
-    )
+  if (isStandalone || !isInstallable) {
+    return null;
   }
 
-
-
   return (
-    <Button
-      onClick={handleInstallClick}
-      className={cn("z-50", props.className)}
-    >
-      {props.title}
-      {props.children ? props.children : null}
-    </Button>
+    <Card className={`p-4 ${className || ''}`}>
+      <div className="flex flex-col space-y-4">
+        <h3 className="text-lg font-semibold">Install Mech Panic</h3>
+        <p className="text-sm text-muted-foreground">
+          Install our app for a better experience and quick access from your home screen.
+        </p>
+        <Separator />
+        <div className="flex justify-end">
+          <Button
+            variant="default"
+            onClick={handleInstallClick}
+            className="w-full sm:w-auto"
+          >
+            Install App
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }

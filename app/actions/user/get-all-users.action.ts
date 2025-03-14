@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma"
 
 export async function getAllUsersAction() {
     try {
-        console.log("Fetching all users")
 
         const users = await prisma.user.findMany({
         select: {
@@ -20,7 +19,6 @@ export async function getAllUsersAction() {
         },
         })
 
-        console.log("Database result:", users)
 
         if (!users) {
         console.error("Users not found")

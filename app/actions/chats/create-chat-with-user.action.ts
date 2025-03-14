@@ -17,7 +17,6 @@ export async function createChatWithUserAction(userId: string, mechanicId: strin
         });
 
         if (existingChat) {
-            console.log("Chat already exists:", existingChat);
             return {
                 success: false,
                 error: "A chat already exists between users.",

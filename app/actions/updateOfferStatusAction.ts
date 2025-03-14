@@ -1,7 +1,7 @@
 "use server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@clerk/nextjs/server"
-import { OfferStatus } from "@prisma/client"
+import type { OfferStatus } from "@prisma/client"
 
 export async function  updateOfferStatus(offerId: string, status: OfferStatus) {
     try {
@@ -29,7 +29,7 @@ export async function  updateOfferStatus(offerId: string, status: OfferStatus) {
         return updatedOffer
  
     } catch (error) {
-        console.log(error)
+        return null
     }
  
 }

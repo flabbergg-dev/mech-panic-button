@@ -36,6 +36,7 @@ export async function updateServiceRequestByIdAction(
       [ServiceStatus.SERVICING]: [ServiceStatus.IN_COMPLETION],
       [ServiceStatus.IN_COMPLETION]: [ServiceStatus.COMPLETED],
       [ServiceStatus.COMPLETED]: [],
+      [ServiceStatus.BOOKED]: [],
     };
 
     const allowedNextStates = validTransitions[currentRequest.status];

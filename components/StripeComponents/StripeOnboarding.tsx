@@ -55,7 +55,6 @@ export const StripeOnboarding = ({
   const handleExit = () => {
     setOnboardingExited(true);
     setCurrentStep("documents");
-    console.log("Stripe account created:", stripeConnectId);
     toast({
       title: "Success",
       description: "Your account has been created",

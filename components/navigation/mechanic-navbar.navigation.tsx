@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-
-import { PushNotificationButton } from "../PushNotificationButton"
 import { UserAvatar } from "../user-avatar"
 
 export const Navbar = () => {
@@ -15,7 +13,7 @@ export const Navbar = () => {
 
   useEffect(() => {
     setIsOpen(false)
-  }, [pathname])
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,7 +22,7 @@ export const Navbar = () => {
     }
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
-  }, [pathname])
+  }, [])
 
 
 
@@ -50,7 +48,6 @@ export const Navbar = () => {
 
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-4">
-              <PushNotificationButton className="hover:bg-transparent p-2 rounded-md transition-colors duration-200" />   
               <UserAvatar />         
             </div>
           </div>

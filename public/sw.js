@@ -22,24 +22,22 @@ if (!self.define) {
   const singleRequire = (uri, parentUri) => {
     uri = new URL(uri + ".js", parentUri).href;
     return registry[uri] || (
-      
-        new Promise(resolve => {
-          if ("document" in self) {
-            const script = document.createElement("script");
-            script.src = uri;
-            script.onload = resolve;
-            document.head.appendChild(script);
-          } else {
-            nextDefineUri = uri;
-            importScripts(uri);
-            resolve();
-          }
-        })
-      
+      new Promise(resolve => {
+        if ("document" in self) {
+          const script = document.createElement("script");
+          script.src = uri;
+          script.onload = resolve;
+          document.head.appendChild(script);
+        } else {
+          nextDefineUri = uri;
+          importScripts(uri);
+          resolve();
+        }
+      })
       .then(() => {
         let promise = registry[uri];
         if (!promise) {
-          throw new Error(`Module ${uri} didn’t register its module`);
+          throw new Error(`Module ${uri} didn't register its module`);
         }
         return promise;
       })
@@ -47,7 +45,7 @@ if (!self.define) {
   };
 
   self.define = (depsNames, factory) => {
-    const uri = nextDefineUri || ("document" in self ? document.currentScript.src : "") || location.href;
+    const uri = nextDefineUri || ("document" in self ? document.currentScript?.src : "") || location.href;
     if (registry[uri]) {
       // Module is already loading or loaded.
       return;
@@ -73,15 +71,16 @@ self.addEventListener('push', function(event) {
   if (event.data) {
     try {
       const data = event.data.json();
-      console.log('Push notification received:', data);
       
       event.waitUntil(
         self.registration.showNotification(data.title, {
           body: data.body,
-          icon: data.icon,
-          badge: data.icon,
-          data: data.data,
-          vibrate: [200, 100, 200]
+          icon: data.icon || '/icon-192x192.png', // Fallback icon
+          badge: data.badge || '/icon-192x192.png', // Fallback badge
+          data: data.data || {},
+          vibrate: [200, 100, 200],
+          requireInteraction: true, // Keep notification visible until user interacts
+          actions: data.actions || [] // Support for notification actions
         })
       );
     } catch (error) {
@@ -92,45 +91,101 @@ self.addEventListener('push', function(event) {
 
 // Notification click handler
 self.addEventListener('notificationclick', function(event) {
-  console.log('Notification clicked:', event);
   event.notification.close();
 
-  if (event.notification.data && event.notification.data.url) {
-    // Open the URL when notification is clicked
-    event.waitUntil(
-      clients.openWindow(event.notification.data.url)
-    );
-  }
+  // Focus on existing window if available, otherwise open new one
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(windowClients => {
+        // Check if there is already a window/tab open with the target URL
+        const url = event.notification.data?.url || '/';
+        for (const client of windowClients) {
+          if (client.url === url && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // If no window/tab is open, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(url);
+        }
+      })
+  );
 });
 
-define(['./workbox-8817a5e5'], (function (workbox) { 'use strict';
+// Register workbox routes
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    Promise.all([
+      // Pre-cache your important resources here
+      self.skipWaiting(),
+    ])
+  );
+});
 
-  importScripts();
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      // Clean up old caches here
+      clients.claim(),
+    ])
+  );
+});
+
+// Load workbox
+define(['./workbox-8817a5e5'], (function (workbox) { 'use strict';
   self.skipWaiting();
   workbox.clientsClaim();
-  workbox.registerRoute("/", new workbox.NetworkFirst({
-    "cacheName": "start-url",
-    plugins: [{
-      cacheWillUpdate: async ({
-        request,
-        response,
-        event,
-        state
-      }) => {
-        if (response && response.type === 'opaqueredirect') {
-          return new Response(response.body, {
-            status: 200,
-            statusText: 'OK',
-            headers: response.headers
-          });
-        }
-        return response;
-      }
-    }]
-  }), 'GET');
-  workbox.registerRoute(/.*/i, new workbox.NetworkOnly({
-    "cacheName": "dev",
-    plugins: []
-  }), 'GET');
 
+  // Start URL caching strategy
+  workbox.registerRoute(
+    "/",
+    new workbox.NetworkFirst({
+      cacheName: "start-url",
+      plugins: [{
+        cacheWillUpdate: async ({response}) => {
+          if (response && response.type === 'opaqueredirect') {
+            return new Response(response.body, {
+              status: 200,
+              statusText: 'OK',
+              headers: response.headers
+            });
+          }
+          return response;
+        }
+      }]
+    }),
+    'GET'
+  );
+
+  // Development mode - no caching
+  if (process.env.NODE_ENV === 'development') {
+    workbox.registerRoute(
+      /.*/i,
+      new workbox.NetworkOnly({
+        cacheName: "dev",
+      }),
+      'GET'
+    );
+  } else {
+    // Production caching strategies
+    workbox.registerRoute(
+      /\.(js|css)$/i,
+      new workbox.StaleWhileRevalidate({
+        cacheName: 'static-resources',
+      })
+    );
+
+    workbox.registerRoute(
+      /\.(png|jpg|jpeg|svg|gif|ico)$/i,
+      new workbox.CacheFirst({
+        cacheName: 'images',
+        plugins: [
+          new workbox.ExpirationPlugin({
+            maxEntries: 50,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          }),
+        ],
+      })
+    );
+  }
 }));

@@ -10,7 +10,6 @@ export async function deleteServiceOfferAction(serviceRequestId: string) {
         }
     })
 
-    console.log(`Deleted service offer with id: ${serviceRequestId}`)
 
     return deletedOffers
 }

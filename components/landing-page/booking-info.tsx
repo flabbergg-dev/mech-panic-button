@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { ArrowRight, Calendar, LucideIcon, MapPin, Wrench } from "lucide-react"
+import { Calendar, type LucideIcon, MapPin, Wrench } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "../ui/button"
 import { PwaInstall } from "../PwaInstall"
@@ -47,9 +47,8 @@ export default function BookingInfo() {
               variant="ghost"
               asChild
             ><div className="flex items-center">
-              <PwaInstall title="Request Mechanic" >
-              <ArrowRight className="w-4 h-4 ml-2" />
-              </PwaInstall>
+              <PwaInstall / >
+             
             </div>
             </Button>
           </motion.div>

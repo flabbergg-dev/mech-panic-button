@@ -6,8 +6,6 @@ import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '
 import { useUser } from '@clerk/nextjs';
 import { Bell, BellOff, Mail, MailOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Switch } from './ui/switch';
-import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { useEmailNotification } from '@/hooks/useEmailNotification';
 import { getUserEmailPreferenceAction } from '@/app/actions/user/getUserEmailPreferenceAction';
@@ -53,7 +51,6 @@ export function PushNotificationButton({ className }: { className?: string }) {
         }
 
         const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('Service Worker registered:', registration);
 
         const subscription = await registration.pushManager.getSubscription();
         setIsPushSubscribed(!!subscription);
@@ -82,9 +79,9 @@ export function PushNotificationButton({ className }: { className?: string }) {
         await subscribeToPushNotifications();
         setIsPushSubscribed(true);
       }
-    } catch (err: any) {
-      console.error('Error toggling notifications:', err);
-      setError(err.message || 'Failed to toggle notifications');
+    } catch (error: unknown) {
+      console.error('Error toggling notifications:', error);
+      setError(error instanceof Error ? error.message : 'Failed to toggle notifications');
     } finally {
       setLoading(false);
     }
@@ -93,15 +90,27 @@ export function PushNotificationButton({ className }: { className?: string }) {
   const toggleEmailNotifications = async () => {
     try {
       setIsEmailEnabled(!isEmailEnabled);
-      // You can add an API call here to update user preferences in your database
-      if (!user?.id) return;
-      await updateUserEmailPreferenceAction(user?.id, !isEmailEnabled);
-      sendEmail({to:"fernando.aponte@digital-sunsets.com", subject:"Test email", message:"This is a test email", userName:"Fernando Aponte"})
-      .then(() => console.log('Email sent successfully'))
-      .catch((err) => console.error('Error sending email:', err));
-    } catch (err) {
-      console.error('Error toggling email notifications:', err);
-      setIsEmailEnabled(!isEmailEnabled); // Revert on error
+      
+      if (!user?.id) {
+        throw new Error('User ID is required to update email preferences');
+      }
+      
+      await updateUserEmailPreferenceAction(user.id, !isEmailEnabled);
+      
+      try {
+        await sendEmail({
+          to: "fernando.aponte@digital-sunsets.com",
+          subject: "Test email",
+          message: "This is a test email",
+          userName: "Fernando Aponte"
+        });
+        console.log('Email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+      }
+    } catch (error) {
+      console.error('Error updating email preferences:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update email preferences');
     }
   };
 
@@ -112,29 +121,30 @@ export function PushNotificationButton({ className }: { className?: string }) {
       <div className="flex flex-row gap-2">
 
         
-       {!error && ( <div className="flex items-center justify-between py-2">
+       {!error && ( <div className="">
         <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          
-          <button 
+        <TooltipTrigger asChild> 
+          <Button 
+          variant="ghost"
            onClick={togglePushNotifications}
            disabled={loading || !!error}
           className="flex items-center justify-between w-full py-2 hover:opacity-80 transition-opacity">
           {isPushSubscribed ?  <Bell className="h-4 w-4" />:   <BellOff className="h-4 w-4" />}
           
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent>
           <p>{isPushSubscribed ? 'Disable' : 'Enable'} push notifications</p>
         </TooltipContent>
       </Tooltip>
-    </TooltipProvider>
+        </TooltipProvider>
         </div>)}
         <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-        <button 
+        <Button 
+          variant="ghost"
           onClick={toggleEmailNotifications}
           className="flex items-center justify-between w-full py-2 hover:opacity-80 transition-opacity"
         >
@@ -145,7 +155,7 @@ export function PushNotificationButton({ className }: { className?: string }) {
             ) : ( <Mail className="h-4 w-4" />
             )}
           </div>
-        </button> 
+        </Button> 
         </TooltipTrigger>
           <TooltipContent>
           <p>{isEmailEnabled ? 'Disable' : 'Enable'} email notifications</p>

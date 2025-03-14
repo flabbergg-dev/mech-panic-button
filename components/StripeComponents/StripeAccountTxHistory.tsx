@@ -6,9 +6,15 @@ import {
 } from "@stripe/react-connect-js";
 import React, { useEffect, useState, useRef } from "react";
 
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripePublishableKey) {
+  throw new Error("Missing Stripe publishable key");
+}
+
 export const StripeAccountTxHistory = () => {
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
-  const stripeConnectInstance = useRef<any>(null);
+  const stripeConnectInstance = useRef<ReturnType<typeof loadConnectAndInitialize> | null>(null);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -16,7 +22,6 @@ export const StripeAccountTxHistory = () => {
 
       if (response) {
         setStripeConnectId(response.stripeConnectId);
-        console.log("Stripe Connect ID: ", response.stripeConnectId);
       } else {
         console.error("Error fetching Stripe Connect ID");
       }
@@ -30,30 +35,33 @@ export const StripeAccountTxHistory = () => {
   useEffect(() => {
     if (!stripeConnectId) return;
 
-    const fetchClientSecret = async () => {
-      const response = await fetch("/api/stripe/tx-history", {
-        method: "POST",
+    const fetchClientSecret = async (): Promise<string> => {
+      const response = await fetch('/api/stripe/connect/client-secret', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          destinationAccount: stripeConnectId,
+          accountId: stripeConnectId,
         }),
       });
 
       if (!response.ok) {
         const { error } = await response.json();
-        console.log("An error occurred: ", error);
-        return undefined;
-      } else {
-        const { client_secret: clientSecret } = await response.json();
-        return clientSecret;
+        throw new Error(error || 'Failed to fetch client secret');
       }
+
+      const { clientSecret } = await response.json();
+      if (!clientSecret) {
+        throw new Error('No client secret received');
+      }
+
+      return clientSecret;
     };
 
     // Initialize the Stripe instance
     stripeConnectInstance.current = loadConnectAndInitialize({
-      publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      publishableKey: stripePublishableKey,
       fetchClientSecret: fetchClientSecret,
       appearance: {
         overlays: "dialog",

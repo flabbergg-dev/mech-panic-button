@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { loadConnectAndInitialize } from "@stripe/connect-js";
 
-import { StripeConnectInstance } from "@stripe/connect-js";
+import type { StripeConnectInstance } from "@stripe/connect-js";
+
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripePublishableKey) {
+  throw new Error("Missing Stripe publishable key");
+}
 
 export const useStripeConnect = (connectedAccountId: unknown) => {
   const [stripeConnectInstance, setStripeConnectInstance] = useState<StripeConnectInstance | undefined>(undefined);
@@ -22,18 +28,16 @@ export const useStripeConnect = (connectedAccountId: unknown) => {
         if (!response.ok) {
           // Handle errors on the client side here
           const {error} = await response.json();
-          console.log('An error occurred: ', error);
-          return undefined;
-        } else {
-          const {client_secret: clientSecret} = await response.json();
-          return clientSecret;
-        }
+          return error;
+        } 
+        const { clientSecret } = await response.json();
+        return clientSecret;
       };
 
       setStripeConnectInstance(
         loadConnectAndInitialize({
-          publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-          fetchClientSecret: fetchClientSecret,
+          publishableKey: stripePublishableKey,
+          fetchClientSecret,
           appearance: {
             overlays: "dialog",
             variables: {

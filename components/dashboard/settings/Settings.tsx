@@ -29,7 +29,7 @@ import { StripeAccountManagement } from "@/components/StripeComponents/StripeAcc
 import { StripeAccountBalance } from "@/components/StripeComponents/StripeAccountBalance"
 import { ServiceSelector } from "./ServiceSelector"
 
-const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: any; label: string; description: string; badge?: string }[] = [
+const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: React.ElementType; label: string; description: string; badge?: string }[] = [
   { 
     id: "personal", 
     icon: User, 
@@ -83,19 +83,18 @@ const SettingsPage = () => {
 
   const handleSubscriptionCancel = async () => {
     if (isSubscribed.subscriptionId) {
-      fetch(`/api/stripe/subscriptionPlans/cancel-subscription`, {
+      fetch('/api/stripe/subscriptionPlans/cancel-subscription', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          subscriptionId: isSubscribed!.subscriptionId,
+          subscriptionId: isSubscribed?.subscriptionId,
         }),
       })
         .then((response) => response.json())
         .then((data) => {
           window.location.reload()
-          console.log(data);
         })
         .catch((error) => {
           console.error("Error:", error);
@@ -105,33 +104,18 @@ const SettingsPage = () => {
     }
   }
 
-  // const handleWithdrawFunds = async () => {
-  //   fetch(`/api/stripe/connect-withdraw-funds`, {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify({
-  //       // TODO: add amount to withdraw
-  //       amount: 400,
-  //       destination: stripeConnectId,
-  //     }),
-  //   })
-  //     .then((response) => response.json())
-  //     .then((data) => {
-  //       console.log(data);
-  //     })
-  //     .catch((error) => {
-  //       console.error("Error:", error);
-  //     });
-  // }
 
   useEffect(() => {
-    setIsLoading(true)
-    if(isSubscribed.isSubscribed !== null) {
-      setIsLoading(false)
+    try {
+      setIsLoading(true);
+      if(isSubscribed.isSubscribed !== null) {
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Error loading subscription status:", error);
+      setIsLoading(false);
     }
-  }, [isSubscribed, isLoading])
+  }, [isSubscribed])
 
 
     // TODO: review this logic
@@ -268,7 +252,7 @@ const SettingsPage = () => {
                 }}
                 transition={{
                   duration: 2,
-                  repeat: Infinity,
+                  repeat: Number.POSITIVE_INFINITY,
                   ease: "easeInOut",
                 }}
               />

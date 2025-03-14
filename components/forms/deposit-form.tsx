@@ -1,11 +1,12 @@
 import React from 'react'
 import { useState } from "react";
 import { CardElement, useElements } from "@stripe/react-stripe-js";
-import { StripeCardElement } from "@stripe/stripe-js";
+import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import { createPaymentIntent } from "@/app/actions/stripe/create-payment-intent";
+import { Button } from '../ui/button';
 
 interface DepositFormProps {
-    stripePromise: any;
+    stripePromise: Promise<Stripe | null>;
 }
 
 export const DepositForm = ({stripePromise}: DepositFormProps) => {
@@ -27,7 +28,7 @@ export const DepositForm = ({stripePromise}: DepositFormProps) => {
       return;
     }
 
-    const cardElement = elements!.getElement(CardElement) as StripeCardElement;
+    const cardElement = elements?.getElement(CardElement) as StripeCardElement;
     if (!cardElement) {
       setError("Card element not found");
       return;
@@ -43,7 +44,6 @@ export const DepositForm = ({stripePromise}: DepositFormProps) => {
       setError(stripeError.message || "An unknown error occurred");
     } else {
       // Handle successful payment here
-      console.log("Payment successful");
     }
   };
 
@@ -56,7 +56,7 @@ export const DepositForm = ({stripePromise}: DepositFormProps) => {
           onChange={(e) => setAmount(Number(e.target.value))}
           placeholder="Enter amount"
         />
-        <button onClick={handleDeposit}>Deposit</button>
+        <Button onClick={handleDeposit}>Deposit</Button>
         {error && <p>{error}</p>}
     </div>
   )

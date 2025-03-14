@@ -2,8 +2,8 @@ import { ThemeProvider } from "next-themes";
 import localFont from "next/font/local"
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Toaster } from "@/components/ui/toaster";
-import { Viewport } from "next";
+import { Toaster } from "sonner";
+import type { Viewport } from "next";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`

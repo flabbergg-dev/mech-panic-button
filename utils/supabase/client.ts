@@ -21,7 +21,6 @@ export const createClient = () => {
     }
     
     initializationAttempts++;
-    console.log(`Initializing Supabase client (attempt ${initializationAttempts})`);
     
     supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
       realtime: {
@@ -50,7 +49,6 @@ export const createClient = () => {
 
     // If we haven't reached max attempts, try again after a delay
     if (initializationAttempts < MAX_ATTEMPTS) {
-      console.log(`Will retry Supabase initialization in 1 second (attempt ${initializationAttempts}/${MAX_ATTEMPTS})`);
       setTimeout(createClient, 1000);
     }
 
@@ -63,7 +61,7 @@ export const createClient = () => {
           subscribe: () => ({ unsubscribe: () => {} })
         };
       }
-    } as any;
+    } as unknown as ReturnType<typeof createBrowserClient>;
   }
 };
 
