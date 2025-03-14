@@ -13,6 +13,8 @@ type ServiceRequestInput = {
   }
   serviceType: ServiceType | string
   status: ServiceStatus
+  mechanicId?: string
+  startTime?: Date
 }
 
 type ServiceRequestResponse = {
@@ -30,7 +32,7 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
   try {
     // Validate input
     if (!input || !input.userId || !input.location || !input.serviceType || !input.status) {
-      throw new Error("Invalid input: All fields are required")
+      throw new Error("Invalid input: All required fields are required")
     }
 
     if (!input.location.latitude || !input.location.longitude) {
@@ -51,19 +53,19 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
       throw new Error("User not found in database")
     }
 
-
     // Create service request with proper enum handling
     const serviceRequest = await prisma.serviceRequest.create({
       data: {
         id: uuidv4(),
-        clientId: user.id,
-        serviceType: ServiceType[serviceType as keyof typeof ServiceType],
-        status: ServiceStatus[input.status as keyof typeof ServiceStatus],
+        clientId: input.userId,
+        status: input.status,
+        serviceType,
         location: input.location,
         description: `${serviceType.toLowerCase().replace(/_/g, ' ')} service request`,
-        totalAmount: 0, // Required by schema
-        
-        updatedAt: new Date(), // Required by schema
+        mechanicId: input.mechanicId,
+        startTime: input.startTime,
+        totalAmount: 0, // Required by Prisma schema
+        updatedAt: new Date()
       }
     })
 
@@ -71,7 +73,6 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
     return {
       success: true,
       data: serviceRequest,
-      
     }
   } catch (error) {
     console.error("Error in createServiceRequestAction:", error);

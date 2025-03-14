@@ -4,20 +4,17 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMechanicServiceRequests } from '@/hooks/useMechanicServiceRequests';
-import { getActiveMechanicOfferAction } from "@/app/actions/getActiveMechanicOfferAction";
 import { BalanceCard } from "@/components/cards/BalanceCard";
 import { ServiceRequest } from "@/components/service/ServiceRequest";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader } from "@/components/loader";
 import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id";
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed";
 import { Magnet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getServiceRequestsAction } from "@/app/actions/service/request/getServiceRequestsAction";
 import { AnimatePresence, motion } from "framer-motion";
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { ServiceStatus } from "@prisma/client";
 import { toast } from "sonner";
 
 type BookingWithService = {
@@ -176,7 +173,6 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
       )}
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">Welcome, {user.firstName}!</h1>
-       
       </div>
 
       {locationError && (
@@ -252,6 +248,53 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
           </div>
         </div>
       )}
+
+      {requestsLoading && serviceRequests.length === 0 ? (
+        <div className="flex justify-center items-center h-[50vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        </div>
+      ) : requestsError ? (
+        <div className="text-red-500 p-4 rounded-lg bg-red-50">
+          Error loading service requests: {requestsError.message}
+        </div>
+      ) : serviceRequests.filter((request) => request.status === ServiceStatus.BOOKED).length === 0 ? (
+        <>
+        </>
+      ) : (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Available Requests ({serviceRequests.filter((request) => request.status === ServiceStatus.BOOKED).length})</h3>
+            <ScrollArea
+              className="h-[80dvh]w-full rounded-md "
+            >
+              <div className="space-y-4 pr-4">
+                <AnimatePresence mode="popLayout">
+                  {serviceRequests
+                    .filter((request) => request.status === ServiceStatus.BOOKED)
+                    .map((request) => (
+                      <motion.div
+                        key={request.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className="mb-4"
+                        layout
+                      >
+                        <ServiceRequest
+                          request={request}
+                          isScheduled={false}
+                        />
+                      </motion.div>
+                    ))}
+                </AnimatePresence>
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+export default MechanicHome;
