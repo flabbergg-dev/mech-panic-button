@@ -26,15 +26,11 @@ import RequestMap from '@/components/MapBox/RequestMap'
 import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
-import { EnrichedServiceOffer } from '@/app/actions/service/offer/getServiceOffersAction'
 import { ChatBox } from '@/components/Chat/ChatBox'
-// import { useServiceRequestStore } from "@/store/serviceRequestStore";
 import { calculateEstimatedTime } from '@/utils/location';
 import { Booking } from '@/components/cards/Booking'
 import { ReviewModal } from '@/components/reviews/ReviewModal'
 import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
-import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
 import { getStripeConnectId } from '@/app/actions/user/get-stripe-connect-id'
 
 
@@ -70,14 +66,12 @@ export function ClientDashboard() {
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
-  );
-  const [sessionId, setSessionId] = useState();
-  const [secret, setSecret] = useState();
+  const [canRefund, setCanRefund] = useState(false);
+  const [timeUntilRefund, setTimeUntilRefund] = useState<string>('');
   const [mechanicConnectId, setMechanicConnectId] = useState<string | null>(
     null
   );
+  const [isRefunding, setIsRefunding] = useState(false);
 
   // Initialize reviewedRequestIds from localStorage
   useEffect(() => {
@@ -307,6 +301,50 @@ export function ClientDashboard() {
     }
   }, [mechanicLocation, activeRequest?.status, updateEstimatedTime]);
 
+  // Check refund eligibility
+  useEffect(() => {
+    // Only show refund option for IN_ROUTE status
+    if (!activeRequest?.updatedAt || activeRequest.status !== ServiceStatus.IN_ROUTE) {
+      setCanRefund(false);
+      setTimeUntilRefund('');
+      return;
+    }
+
+    const checkRefundEligibility = () => {
+      // Ensure we have valid dates
+      const now = new Date();
+      const updatedAt = new Date(activeRequest.updatedAt);
+      
+      const timeDiff = now.getTime() - updatedAt.getTime();
+      const twoMinutes = 2 * 60 * 1000;
+      
+      if (timeDiff < twoMinutes) {
+        const timeLeft = twoMinutes - timeDiff;
+        const seconds = Math.floor(timeLeft / 1000);
+        setTimeUntilRefund(`${seconds}s`);
+        setCanRefund(false);
+        console.log('Time until refund:', seconds, 'seconds', 'Request status:', activeRequest.status);
+      } else {
+        setTimeUntilRefund('');
+        setCanRefund(true);
+        console.log('Refund now available, status:', activeRequest.status);
+      }
+    };
+
+    // Check immediately
+    checkRefundEligibility();
+
+    // Update every second for more accurate countdown
+    const interval = setInterval(checkRefundEligibility, 1000);
+
+    console.log('Started refund eligibility checker for request:', activeRequest.id, 'Status:', activeRequest.status);
+
+    return () => {
+      clearInterval(interval);
+      console.log('Cleaned up refund eligibility checker');
+    };
+  }, [activeRequest?.updatedAt, activeRequest?.status, activeRequest?.id]);
+
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
     if (activeRequest) {
@@ -398,6 +436,66 @@ export function ClientDashboard() {
       // Set a small delay to show the animation
       setTimeout(() => setIsRefreshing(false), remainingTime);
     });
+  };
+
+  const handleRefund = async (id: string) => {
+    try {
+      setIsRefunding(true);
+      if (!id) {
+        toast({
+          title: "Error",
+          description: "No transaction ID found for this service request",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get primary email from Clerk user
+      const userEmail = user?.primaryEmailAddress?.emailAddress;
+      if (!userEmail) {
+        toast({
+          title: "Error",
+          description: "Could not find user email. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = await fetch('/api/stripe/refund', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          id,
+          requestId: activeRequest?.id,
+          userEmail,
+          mechanicId: activeRequest?.mechanicId
+        }),
+      });
+
+      // if (!result.ok) {
+      //   throw new Error('Failed to process refund');
+      // }
+
+      const data = await result.json();
+      if (data.refund) {
+        toast({
+          title: "Success",
+          description: "Refund processed successfully. You'll receive a confirmation email shortly.",
+        });
+        refetchServiceRequest();
+      }
+    } catch (error) {
+      console.error('Error processing refund:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process refund. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefunding(false);
+    }
   };
 
   // Function to handle when an offer is accepted
@@ -548,25 +646,47 @@ export function ClientDashboard() {
             )}
             {activeRequest?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
-                <ServiceCardLayout className="flex justify-between items-center">
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg">
-                    <h2 className="text-xl font-semibold mb-2">
-                      Mechanic on their way
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {estimatedTime
-                        ? `Mechanic will be there in ${estimatedTime}`
-                        : "Calculating arrival time..."}
-                    </p>
-                    {!mechanicLocation && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Waiting for mechanic's location...
+                <ServiceCardLayout>
+                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg flex justify-around items-center">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">
+                        Mechanic on their way
+                      </h2>
+                      <p className="text-muted-foreground">
+                        {estimatedTime
+                          ? `Mechanic will be there in ${estimatedTime}`
+                          : "Calculating arrival time..."}
                       </p>
+                      {!mechanicLocation && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Waiting for mechanic's location...
+                        </p>
+                      )}
+                      {!canRefund && timeUntilRefund && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Can request refund in: {timeUntilRefund}
+                        </p>
+                      )}
+                      {canRefund && activeRequest.firstTransactionId && (
+                        <Button
+                          onClick={() => {
+                            handleRefund(activeRequest.firstTransactionId!);
+                          }}
+                          disabled={isRefunding || activeRequest.status !== ServiceStatus.IN_ROUTE}
+                          className="mt-4"
+                        >
+                          {isRefunding ? (
+                            "Processing Refund..."
+                          ) : (
+                            "Cancel and Refund"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    {activeRequest.mechanicId && (
+                      <ChatBox userId={activeRequest.clientId} />
                     )}
                   </div>
-                  {activeRequest.mechanicId && (
-                    <ChatBox userId={activeRequest.clientId} />
-                  )}
                 </ServiceCardLayout>
               </HalfSheet>
             )}
