@@ -26,7 +26,6 @@ export async function updateMechanicLocationAction(location: Location) {
       longitude: Number(location.longitude.toFixed(6))
     };
 
-    console.log("Updating mechanic location for user:", userId, "Location:", formattedLocation);
 
     // First check if mechanic exists
     const existingMechanic = await prisma.mechanic.findUnique({
@@ -35,14 +34,12 @@ export async function updateMechanicLocationAction(location: Location) {
 
     if (!existingMechanic) {
       // Create mechanic if doesn't exist
-      console.log("Creating new mechanic record for user:", userId);
       const mechanic = await prisma.mechanic.create({
         data: {
           userId,
           location: formattedLocation
         }
       });
-      console.log("Created new mechanic with location:", mechanic.location);
       return {
         success: true,
         location: mechanic.location
@@ -57,7 +54,6 @@ export async function updateMechanicLocationAction(location: Location) {
       }
     });
 
-    console.log("Updated mechanic location:", mechanic.location);
 
     return {
       success: true,

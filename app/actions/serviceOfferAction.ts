@@ -1,14 +1,15 @@
 'use server'
 
 import { ServiceStatus, OfferStatus } from '@prisma/client'
+import type { ServiceOffer } from '@prisma/client'
 import { prisma } from "@/lib/prisma"
 
-type Location = {
-  latitude: number;
-  longitude: number;
-};
+interface Location {
+  latitude: number
+  longitude: number
+}
 
-type CreateServiceOfferInput = {
+interface CreateServiceOfferInput {
   mechanicId: string
   serviceRequestId: string
   price: number
@@ -17,9 +18,9 @@ type CreateServiceOfferInput = {
   expiresAt?: Date
 }
 
-type ServiceOfferResponse = {
+interface ServiceOfferResponse {
   success: boolean
-  data?: any
+  data?: Partial<ServiceOffer>
   error?: string
 }
 
@@ -82,7 +83,6 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
       data: offer
     }
   } catch (error) {
-    console.log(input)
     console.error("Error in createServiceOfferAction:", error)
     if (error instanceof Error) {
       return { success: false, error: error.message }
@@ -204,7 +204,7 @@ export async function handleServiceOfferAction(
     return {
       success: true,
       data: {
-        status: accepted ? 'accepted' : 'declined'
+        status: accepted ? OfferStatus.ACCEPTED : OfferStatus.DECLINED
       }
     };
   } catch (error) {
@@ -238,10 +238,13 @@ export async function handleSecondTransaction(serviceRequestId: string, updatedP
         throw new Error("No existing service offer found for this service request");
       }
 
+      if (!updatedServiceRequest.mechanicId) {
+        throw new Error("Mechanic ID is missing");
+      }
       // Create an additional service offer with the updated price and provided location
       const additionalOffer = await prisma.serviceOffer.create({
         data: {
-          mechanicId: updatedServiceRequest.mechanicId!,
+          mechanicId: updatedServiceRequest.mechanicId,
           serviceRequestId: serviceRequestId,
           price: updatedPrice,
           note: note,

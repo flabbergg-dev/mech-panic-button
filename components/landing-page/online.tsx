@@ -1,9 +1,7 @@
 "use client"
 
-import React from "react"
-import { Clock, LucideIcon, MessageCircle } from "lucide-react"
+import { Clock, type LucideIcon, MessageCircle } from "lucide-react"
 import { motion } from "framer-motion"
-import { Button } from "../ui/button"
 import { PwaInstall } from "../PwaInstall"
 
 interface FeatureCardProps {
@@ -60,8 +58,6 @@ export default function Online() {
               />
             </div>
             <PwaInstall
-            title="Download Mech-Panic Button"
-              className="text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 bg-[#001529] text-white"
             />
           </motion.div>
 
@@ -73,7 +69,7 @@ export default function Online() {
           >
             <div className="relative w-full h-[400px] bg-[#001529] rounded-xl shadow-2xl overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-20 h-20 border-4 border-[#F4D48A] border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-20 h-20 border-4 border-[#F4D48A] border-t-transparent rounded-full animate-spin"/>
               </div>
               <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#001529] to-transparent flex items-end justify-center pb-8">
                 <p className="text-[#F4D48A] text-2xl font-semibold">

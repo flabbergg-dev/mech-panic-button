@@ -27,7 +27,6 @@ export type EnrichedServiceOffer = {
 }
 
 export async function getServiceOffersForClient(userId: string) {
-  console.log('Fetching offers for user:', userId)
   
   try {
     // First, get all service requests for this user
@@ -41,12 +40,10 @@ export async function getServiceOffersForClient(userId: string) {
     })
     
     if (serviceRequests.length === 0) {
-      console.log('No service requests found for user:', userId)
       return []
     }
     
     const serviceRequestIds = serviceRequests.map(req => req.id)
-    console.log('Found service request IDs:', serviceRequestIds)
     
     // Get all pending offers for these service requests that haven't expired
     const offers = await prisma.serviceOffer.findMany({
@@ -62,7 +59,6 @@ export async function getServiceOffersForClient(userId: string) {
       }
     })
     
-    console.log(`Found ${offers.length} offers for user ${userId}`)
 
     // For pending offers, fetch mechanic details
     const enrichedOffers = await Promise.all(

@@ -16,7 +16,7 @@ export default function Header() {
 
   return (
     <section className="relative flex flex-col items-center justify-center min-h-screen bg-[url('/hero.webp')] bg-cover bg-no-repeat bg-center w-full pt-12 md:pt-0">
-      <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px]"></div>
+      <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px]"/>
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 50 }}
@@ -36,13 +36,13 @@ export default function Header() {
             </h1>
             
             <p className="text-lg sm:text-xl mb-8 text-foreground/80 max-w-2xl mx-auto">
-              Get instant access to certified mechanics, real-time diagnostics, and upfront pricing. 
+              Get instant access to mechanics, real-time diagnostics, and upfront pricing. 
               No surprises, just reliable car care at your fingertips.
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
            
-              <PwaInstall title="Get Started - It's Free" className="w-full sm:w-auto text-lg px-8 py-6 rounded-full bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 "/>
+              <PwaInstall />
 
                 
               

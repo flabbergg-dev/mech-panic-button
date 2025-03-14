@@ -1,250 +1,184 @@
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { MechanicListCard } from "@/components/layouts/MechanicListCard.Layout"
-import { HalfSheet } from "@/components/ui/HalfSheet"
-import { User2Icon } from "lucide-react"
-import { DynamicAvatar } from "../../DynamicAvatar/DynamicAvatar"
-import { Mechanic } from "@prisma/client"
-import { createMessageAction } from "@/app/actions/chats/create-message.action"
-import { RealtimeChannel } from "@supabase/supabase-js"
-import supabase from "@/utils/supabase/specialClient"
+import { supabase } from "@/utils/supabase"
+import { LoaderIcon } from "lucide-react"
+import type { ServiceRequest } from "@prisma/client"
+import MapboxDisplay from "@/components/MapBox/MapboxDisplay"
+
+interface Message {
+  id: string;
+  sender: string;
+  message: string;
+  timestamp: number;
+}
 
 interface UserCoordinates {
-  latitude: number
-  longitude: number
+  latitude: number;
+  longitude: number;
 }
 
 interface MechanicUser {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  role: "Mechanic"
-  profileImage?: string
-  phoneNumber?: string | null
-  documentsUrl?: string[]
-  dob?: string
-  currentLocation?: UserCoordinates
-  createdAt?: Date
-  updatedAt?: Date
-  props?: any
-  isMechanic?: boolean
-  isCustomer?: boolean
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: "Mechanic";
+  profileImage?: string;
+  phoneNumber?: string | null;
+  documentsUrl?: string[];
+  dob?: string;
+  currentLocation?: UserCoordinates;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-interface clientMapProps {
-  selectedUser: any
-  selectedMechanic: any
+interface ClientMapProps {
+  selectedUser: {
+    id: string;
+    location?: UserCoordinates;
+  };
+  selectedMechanic: MechanicUser;
+  serviceRequest?: ServiceRequest;
 }
 
-export const ClientMap = ({
+export default function ClientMap({
   selectedUser,
   selectedMechanic,
-}: clientMapProps) => {
-  // managing the chat identidier
-  const [chatId, setChatId] = useState(0)
-  // messages based on chat based in user (creating in client)
-  const [messages, setMessages] = useState<
-    {
-      user: string;
-      message: string;
-    }[]
-  >([]);
-  // state for user and mechanic messages (fetching from db)
-  const [userMessages, setUserMessages] = useState<{
-    id: number
-    chatId: number
-    userId: string
-    content: string
-  }[]>([])
-  const [mechanicMessages, setMechanicMessages] = useState<{
-    id: number
-    chatId: number
-    userId: string
-    content: string
-  }[]>([])
-  const { user: currentUser } = useUser()
-  const [mechanicServices, setMechanicServices] = useState<Mechanic | null>(
-    null
-  )
-  const channelRef = useRef<RealtimeChannel | null>(null)
+  serviceRequest
+}: ClientMapProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [isConnected, setIsConnected] = useState(false);
+  const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
+  const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  const handleRealtimeInsert = (payload: any) => {
-    const { new: newMessage } = payload
-    // const { user: {id: userId}, chatId, content } = newMessage
-    console.log("New message: ", newMessage)
-    const message = {
-      ...newMessage,
-      // user: currentUser?.id,
+  // Handle route calculation with proper types
+  const handleRouteCalculated = (duration: number, steps: unknown[], distance: number) => {
+    if (duration && distance) {
+      const durationMinutes = Math.round(duration / 60);
+      const distanceKm = Math.round(distance / 1000);
+      setEstimatedTime(durationMinutes);
+      setEstimatedDistance(distanceKm);
     }
+  };
 
-    setMessages((prevMessages: any) => [...prevMessages, message])
-    console.log("New message: ", message)
-  }
-  const handleRealtimeUpdate = (payload: any) => {}
-  const handleRealtimeDelete = (payload: any) => {}
+  // Initialize real-time chat with proper cleanup
+  useEffect(() => {
+    if (!selectedUser?.id || !selectedMechanic?.id) return;
 
-  const realTimeSubscription = () => {
-    const channel = supabase.channel("message").on(
-      'postgres_changes',
-      {
-        event: "*",
-        schema: "public",
-        table: "Message",
-      },
-      (payload: any) => {
-        console.log('Change received!', payload)
-        switch (payload.eventType) {
-          case "INSERT":
-            handleRealtimeInsert(payload)
-            break
-          case "UPDATE":
-            handleRealtimeUpdate(payload)
-            break
-          case "DELETE":
-            handleRealtimeDelete(payload)
-            break
-          default:
-            console.log("Unknown event type: ", payload.eventType)
-            break
-        }
-      }
-    )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          console.log("Channel status: ", status)
-          channelRef.current = channel
-        }
+    const channel = supabase.channel(`chat-${selectedUser.id}-${selectedMechanic.id}`);
+    channelRef.current = channel;
+
+    channel
+      .on("broadcast", { event: "message" }, ({ payload }) => {
+        setMessages((prev) => [...prev, {
+          id: crypto.randomUUID(),
+          ...payload,
+          timestamp: Date.now()
+        }]);
       })
-
-    return channel
-  }
-
-  const createNewMessage = async (message: {
-    userId: string
-    chatId: number
-    authorId: string
-    content: string
-  }) => {
-    console.log("Message: ", message)
-    if (!message.userId || !message.chatId || !message.content) {
-      throw new Error(`Message parameters cannot be null userID ${message.userId}, chatID ${message.chatId}, content: ${message.content}`)
-    }
-    try {
-      const newMessage = await createMessageAction(message.userId, message.chatId, message.content)
-      setUserMessages((prevMessages: any) => [...prevMessages, newMessage])
-      return newMessage
-    } catch (error) {
-      throw new Error(`Error sending message: ${error}`)
-    }
-  }
-
-  const handleNewMessage = async (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const newMessage = {
-      user: currentUser!.id,
-      message: ev.target.value,
-    }
-    setMessages((prevMessages: any) => [...prevMessages, newMessage])
-  }
-
-  useEffect(() => {
-    if (selectedMechanic) {
-      setMechanicServices(selectedMechanic)
-    }
-  }, [selectedMechanic])
-
-  useEffect(() => {
-      if (currentUser && selectedUser) {
-        console.log("channelRef: ", channelRef.current)
-        channelRef.current = realTimeSubscription()
-      }
+      .subscribe((status) => {
+        setIsConnected(status === "SUBSCRIBED");
+      });
 
     return () => {
-      if(channelRef.current) {
-        channelRef.current.unsubscribe()
-      }
+      channel.unsubscribe();
+      channelRef.current = null;
+    };
+  }, [selectedUser?.id, selectedMechanic?.id]);
+
+  // Send message with proper error handling
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !channelRef.current) return;
+
+    try {
+      await channelRef.current.send({
+        type: "broadcast",
+        event: "message",
+        payload: {
+          sender: selectedUser.id,
+          message: newMessage.trim()
+        }
+      });
+      setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
     }
-  }, [currentUser, selectedUser])
+  };
 
   return (
-    <HalfSheet>
-      <MechanicListCard>
-        <div className="flex flex-col justify-between">
-          <h1 className="p-2 bg-slate-600 text-white rounded-md w-fit my-4">
-            Chat with mechanic
-          </h1>
-          <div className="flex items-center gap-2 my-4">
-            <DynamicAvatar
-            src={selectedUser?.profileImage || <User2Icon/>}
-            fallbackText={selectedUser?.firstName.slice(0, 2)}
-            className="border-2 border-slate-500"
-            />
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <p className="text-3xl">{selectedUser?.firstName}</p>
-                <p className="text-xl">{selectedUser?.lastName}</p>
-              </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-1">
+        <MapboxDisplay
+          center={selectedUser?.location}
+          markers={[
+            {
+              location: selectedUser?.location || { latitude: 0, longitude: 0 },
+              color: "blue",
+              popupText: "You are here"
+            },
+            {
+              location: selectedMechanic?.currentLocation || { latitude: 0, longitude: 0 },
+              color: "red",
+              popupText: "Mechanic location"
+            }
+          ]}
+          showRoute={true}
+          followMechanic={true}
+          onRouteCalculated={handleRouteCalculated}
+        />
+      </div>
+      <div className="p-4 bg-white rounded-lg shadow">
+        <div className="flex flex-col gap-2">
+          {estimatedTime && estimatedDistance && (
+            <div className="text-sm text-gray-600">
+              <p>Estimated arrival: {estimatedTime} minutes</p>
+              <p>Distance: {estimatedDistance} km</p>
             </div>
-          </div>
-          <Separator />
-          <div className="grid gap-4 my-4">
-            {mechanicMessages.map((msg) => (
+          )}
+          <Separator className="my-2" />
+          <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
+            {messages.map((msg) => (
               <div
-                key={msg.content}
-                className="place-self-left h-auto gap-4 w-24 flex items-center justify-center"
+                key={msg.id}
+                className={`p-2 rounded ${
+                  msg.sender === selectedUser.id ? "bg-blue-100 ml-auto" : "bg-gray-100"
+                }`}
               >
-                <DynamicAvatar className="border-2" src={typeof currentUser?.username === 'string' ? currentUser.username : undefined} fallbackText={currentUser?.firstName ? currentUser.firstName.slice(0, 2) : "NA"} />
-                <div className="flex w-[-webkit-fill-available]">
-                  <p className="text-white bg-slate-600 p-2 rounded-lg">
-                    {msg.content}
-                  </p>
-                </div>
+                {msg.message}
               </div>
             ))}
-            {userMessages.map((msg) => (
-              <div
-                key={msg.content}
-                className="place-self-right h-auto gap-4 w-24 flex items-center justify-center"
+          </div>
+          {isConnected && (
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                placeholder="Type a message..."
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={!newMessage.trim()}
               >
-                <div className="flex w-32">
-                  <DynamicAvatar className="border-2" src={typeof currentUser?.username === 'string' ? currentUser.username : undefined} fallbackText={currentUser?.firstName ? currentUser.firstName.slice(0, 2) : "NA"} />
-                </div>
-                <div className="flex w-32">
-                  <p className="text-white bg-slate-600 p-2 rounded-lg">
-                    {msg.content}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {chatId && (
-              <div className="flex gap-4 my-4">
-                <Input
-                  placeholder="Type a message"
-                  onChange={(ev) => handleNewMessage(ev)}
-                />
-                <Button
-                  variant={"secondary"}
-                  onClick={() => createNewMessage({
-                    userId: currentUser!.id!,
-                    chatId: chatId,
-                    authorId: currentUser!.id!,
-                    content: messages[messages.length - 1].message
-                  })}
-                >
-                  Send
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 h-32">
-            <p>Subscription Status: </p>
-            <p>{channelRef.current ? "Active" : "Inactive"}</p>
-          </div>
+                Send
+              </Button>
+            </div>
+          )}
         </div>
-      </MechanicListCard>
-    </HalfSheet>
-  )
+        <div className="flex items-center gap-2 mt-2">
+          <p>Connection Status:</p>
+          {isConnected ? (
+            <span className="text-green-500">Connected</span>
+          ) : (
+            <span className="text-red-500">Disconnected</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

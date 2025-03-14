@@ -19,7 +19,6 @@ export const getNotificationsEmailState = async (clientEmail: string) => {
         return { success: true, data: isEnabled.notificationsEmailEnabled }
 }
     catch (error) {
-        console.log(error)
         return { error: "Something went wrong" }
     }
 }

@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { ServiceRequest, ServiceStatus } from '@prisma/client'
+import type{ ServiceRequest } from '@prisma/client'
 import { supabase } from '@/utils/supabase/client'
-import { RealtimePostgresChangesPayload } from '@/types/supabase'
+import type { RealtimePostgresChangesPayload } from '@/types/supabase'
 
 // Define the interface for the API response
 interface ServiceRequestWithMechanicLocation extends Omit<ServiceRequest, 'mechanicLocation'> {
@@ -61,7 +61,7 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
     setServiceRequestLoading(true)
     
     try {
-      const response = await fetch(`/api/service-request/active`, {
+      const response = await fetch('/api/service-request/active', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -91,7 +91,6 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
 
   // Add a public method to trigger a refresh
   const refreshRequest = useCallback(() => {
-    console.log('Manual refresh triggered');
     fetchRequest(true);
   }, [fetchRequest]);
 
@@ -100,7 +99,6 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
     const shouldFetch = effectiveUserId && !serviceRequest;
     
     if (shouldFetch) {
-      console.log('Initial fetch for user:', effectiveUserId);
       fetchRequest(true);
     }
   }, [effectiveUserId, serviceRequest, fetchRequest]);
@@ -112,9 +110,7 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
     isMounted.current = true;
     let pollingInterval: NodeJS.Timeout | null = null;
     let debounceTimer: NodeJS.Timeout | null = null;
-    
-    console.log('Setting up Supabase realtime subscription for active request');
-    
+      
     const handleUpdate = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => fetchRequest(false), DEBOUNCE_MS);
@@ -132,21 +128,16 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
             filter: `clientId=eq.${effectiveUserId}`
           },
           (payload: RealtimePostgresChangesPayload) => {
-            console.log('Realtime update received for active request:', payload);
             handleUpdate();
           }
         )
         .subscribe((status: string) => {
-          console.log('Supabase subscription status for active request:', status);
-          
           if (status !== 'SUBSCRIBED' && !pollingInterval) {
-            console.log('Falling back to polling for active request updates');
             pollingInterval = setInterval(() => fetchRequest(false), POLLING_INTERVAL_MS);
           }
         });
 
       return () => {
-        console.log('Cleaning up Supabase subscription for active request');
         isMounted.current = false;
         channel.unsubscribe();
         

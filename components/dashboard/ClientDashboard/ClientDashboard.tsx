@@ -21,7 +21,7 @@ import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
 import SettingsPage from '../settings/Settings'
 import { Profile } from '@/components/profile/Profile'
 import { motion, AnimatePresence } from 'framer-motion';
-import { ServiceStatus, ServiceRequest } from '@prisma/client'
+import { ServiceStatus, type ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
 import { HalfSheet } from '@/components/ui/HalfSheet'
 import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
@@ -31,8 +31,24 @@ import { calculateEstimatedTime } from '@/utils/location';
 import { Booking } from '@/components/cards/Booking'
 import { ReviewModal } from '@/components/reviews/ReviewModal'
 import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
+import { loadStripe } from '@stripe/stripe-js';
 import { getStripeConnectId } from '@/app/actions/user/get-stripe-connect-id'
 
+interface Location {
+  latitude: number;
+  longitude: number;
+}
+
+function isLocation(value: unknown): value is Location {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'latitude' in value &&
+    'longitude' in value &&
+    typeof (value as Location).latitude === 'number' &&
+    typeof (value as Location).longitude === 'number'
+  );
+}
 
 export function ClientDashboard() {
   const { user } = useUser();
@@ -51,10 +67,7 @@ export function ClientDashboard() {
     refetchServiceRequest,
   } = useRealtimeServiceRequest(user?.id || "");
   const [activeTab, setActiveTab] = useState<string>(tab || "home");
-  const [customerLocation, setCustomerLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -66,12 +79,7 @@ export function ClientDashboard() {
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [canRefund, setCanRefund] = useState(false);
-  const [timeUntilRefund, setTimeUntilRefund] = useState<string>('');
-  const [mechanicConnectId, setMechanicConnectId] = useState<string | null>(
-    null
-  );
-  const [isRefunding, setIsRefunding] = useState(false);
+  const [mechanicConnectIds, setMechanicConnectIds] = useState<Map<string, string>>(new Map());
 
   // Initialize reviewedRequestIds from localStorage
   useEffect(() => {
@@ -145,7 +153,7 @@ export function ClientDashboard() {
 
   const updateEstimatedTime = useCallback(
     async (
-      mechanicLocation: { latitude: number; longitude: number } | null
+      mechanicLocation: Location | null
     ) => {
       if (mechanicLocation) {
         const time = await calculateEstimatedTime(
@@ -182,18 +190,32 @@ export function ClientDashboard() {
     serviceRequest ||
     requests.find((request: ServiceRequest) => isActiveStatus(request.status));
 
-  // Capture the active request's mechanic connect ID
-  useEffect(() => {
-    const fetchMechanicConnectId = async (mechanicId: string) => {
+  // Fetch mechanic connect IDs with throttling
+  const fetchMechanicConnectId = useCallback(async (mechanicId: string) => {
+    if (!mechanicId || mechanicConnectIds.has(mechanicId)) return;
+
+    try {
       const response = await getStripeConnectId(mechanicId);
-      if (response) {
-      setMechanicConnectId(response!.stripeConnectId);
+      if (response?.stripeConnectId) {
+        setMechanicConnectIds(prev => new Map(prev).set(mechanicId, response.stripeConnectId || ""));
       }
+    } catch (error) {
+      console.error("Error fetching mechanic connect ID:", error);
     }
+  }, [mechanicConnectIds]);
 
-    fetchMechanicConnectId(activeRequest?.mechanicId!);
+  // Fetch connect IDs for all mechanics in offers
+  useEffect(() => {
+    const uniqueMechanicIds = Array.from(new Set(
+      offers
+        .map(offer => offer.mechanicId)
+        .filter((id): id is string => !!id)
+    ));
 
-  }, [activeRequest]);
+    for (const mechanicId of uniqueMechanicIds) {
+      fetchMechanicConnectId(mechanicId);
+    }
+  }, [offers, fetchMechanicConnectId]);
 
   // Add debugging for requests and offers
   useEffect(() => {
@@ -228,7 +250,7 @@ export function ClientDashboard() {
     }
   }, [
     activeRequest?.id,
-    activeRequest?.status,
+    activeRequest,
     loading,
     serviceRequest?.status,
   ]);
@@ -245,7 +267,8 @@ export function ClientDashboard() {
         !reviewedRequestIds.has(request.id) // Don't show if we've already shown the modal for this request
     );
 
-    if (recentlyCompleted && recentlyCompleted.mechanicId) {
+    if (recentlyCompleted  ) {
+      if (!recentlyCompleted.mechanicId) return;
       console.log(
         "Found completed request needing review:",
         recentlyCompleted.id
@@ -300,50 +323,6 @@ export function ClientDashboard() {
       updateEstimatedTime(mechanicLocation);
     }
   }, [mechanicLocation, activeRequest?.status, updateEstimatedTime]);
-
-  // Check refund eligibility
-  useEffect(() => {
-    // Only show refund option for IN_ROUTE status
-    if (!activeRequest?.updatedAt || activeRequest.status !== ServiceStatus.IN_ROUTE) {
-      setCanRefund(false);
-      setTimeUntilRefund('');
-      return;
-    }
-
-    const checkRefundEligibility = () => {
-      // Ensure we have valid dates
-      const now = new Date();
-      const updatedAt = new Date(activeRequest.updatedAt);
-      
-      const timeDiff = now.getTime() - updatedAt.getTime();
-      const twoMinutes = 2 * 60 * 1000;
-      
-      if (timeDiff < twoMinutes) {
-        const timeLeft = twoMinutes - timeDiff;
-        const seconds = Math.floor(timeLeft / 1000);
-        setTimeUntilRefund(`${seconds}s`);
-        setCanRefund(false);
-        console.log('Time until refund:', seconds, 'seconds', 'Request status:', activeRequest.status);
-      } else {
-        setTimeUntilRefund('');
-        setCanRefund(true);
-        console.log('Refund now available, status:', activeRequest.status);
-      }
-    };
-
-    // Check immediately
-    checkRefundEligibility();
-
-    // Update every second for more accurate countdown
-    const interval = setInterval(checkRefundEligibility, 1000);
-
-    console.log('Started refund eligibility checker for request:', activeRequest.id, 'Status:', activeRequest.status);
-
-    return () => {
-      clearInterval(interval);
-      console.log('Cleaned up refund eligibility checker');
-    };
-  }, [activeRequest?.updatedAt, activeRequest?.status, activeRequest?.id]);
 
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
@@ -436,66 +415,6 @@ export function ClientDashboard() {
       // Set a small delay to show the animation
       setTimeout(() => setIsRefreshing(false), remainingTime);
     });
-  };
-
-  const handleRefund = async (id: string) => {
-    try {
-      setIsRefunding(true);
-      if (!id) {
-        toast({
-          title: "Error",
-          description: "No transaction ID found for this service request",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get primary email from Clerk user
-      const userEmail = user?.primaryEmailAddress?.emailAddress;
-      if (!userEmail) {
-        toast({
-          title: "Error",
-          description: "Could not find user email. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const result = await fetch('/api/stripe/refund', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          id,
-          requestId: activeRequest?.id,
-          userEmail,
-          mechanicId: activeRequest?.mechanicId
-        }),
-      });
-
-      // if (!result.ok) {
-      //   throw new Error('Failed to process refund');
-      // }
-
-      const data = await result.json();
-      if (data.refund) {
-        toast({
-          title: "Success",
-          description: "Refund processed successfully. You'll receive a confirmation email shortly.",
-        });
-        refetchServiceRequest();
-      }
-    } catch (error) {
-      console.error('Error processing refund:', error);
-      toast({
-        title: "Error",
-        description: "Failed to process refund. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefunding(false);
-    }
   };
 
   // Function to handle when an offer is accepted
@@ -610,7 +529,6 @@ export function ClientDashboard() {
             <div className="hidden md:flex items-center justify-center w-full">
               <RippleComp>
                 <MechPanicButton
-                  user={user}
                   onRequestCreated={handleRequestCreated}
                 />
                 {/* <MechPanicButtonLogo/> */}
@@ -646,47 +564,25 @@ export function ClientDashboard() {
             )}
             {activeRequest?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
-                <ServiceCardLayout>
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg flex justify-around items-center">
-                    <div>
-                      <h2 className="text-xl font-semibold mb-2">
-                        Mechanic on their way
-                      </h2>
-                      <p className="text-muted-foreground">
-                        {estimatedTime
-                          ? `Mechanic will be there in ${estimatedTime}`
-                          : "Calculating arrival time..."}
+                <ServiceCardLayout className="flex justify-between items-center gap-2">
+                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg w-full">
+                    <h2 className="text-xl font-semibold mb-2">
+                      Mechanic on their way
+                    </h2>
+                    <p className="text-muted-foreground">
+                      {estimatedTime
+                        ? `Mechanic will be there in ${estimatedTime}`
+                        : "Calculating arrival time..."}
+                    </p>
+                    {!mechanicLocation && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Waiting for mechanic's location...
                       </p>
-                      {!mechanicLocation && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Waiting for mechanic's location...
-                        </p>
-                      )}
-                      {!canRefund && timeUntilRefund && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Can request refund in: {timeUntilRefund}
-                        </p>
-                      )}
-                      {canRefund && activeRequest.firstTransactionId && (
-                        <Button
-                          onClick={() => {
-                            handleRefund(activeRequest.firstTransactionId!);
-                          }}
-                          disabled={isRefunding || activeRequest.status !== ServiceStatus.IN_ROUTE}
-                          className="mt-4"
-                        >
-                          {isRefunding ? (
-                            "Processing Refund..."
-                          ) : (
-                            "Cancel and Refund"
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    {activeRequest.mechanicId && (
-                      <ChatBox userId={activeRequest.clientId} />
                     )}
                   </div>
+                  {activeRequest.mechanicId && (
+                    <ChatBox userId={activeRequest.clientId} />
+                  )}
                 </ServiceCardLayout>
               </HalfSheet>
             )}
@@ -726,33 +622,35 @@ export function ClientDashboard() {
                     <p className="text-muted-foreground mb-2 pb-4">
                       Wait for the mechanic to complete their service
                     </p>
-                        {offers.filter((offers) => offers.status === 'PENDING').map((offer) => (
-                        <ServiceOfferCard
-                          key={offer.id}
-                          serviceRequestId={offer.serviceRequestId}
-                          mechanicId={offer.mechanicId!}
-                          mechanicConnectId={
-                            offer.mechanic.user.stripeConnectId
-                          }
-                          mechanicName={`${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`}
-                          mechanicRating={offer.mechanic.rating || undefined}
-                          price={offer.price}
-                          note={offer.note || undefined}
-                          expiresAt={offer.expiresAt || undefined}
-                          onOfferHandled={async () => {
-                            try {
-                              await acceptOffer(offer.id);
-                              // The UI will update automatically through real-time subscription
-                            } catch (error) {
-                              console.error("Error accepting offer:", error);
-                              // Handle error (show toast, etc.)
-                            }
-                          }}
-                          userId={user.id}
-                          mechanicLocation={mechanicLocation}
-                          customerLocation={customerLocation}
-                        />
-                        ))}
+                    {offers.filter((offers) => offers.status === 'PENDING').map((offer) => (
+                    <ServiceOfferCard
+                      key={offer.id}
+                      serviceRequestId={offer.serviceRequestId}
+                      mechanicId={offer.mechanicId || ""}
+                      mechanicConnectId={offer.mechanicId ? mechanicConnectIds.get(offer.mechanicId) || "" : ""}
+                      mechanicName={
+                        offer.mechanic
+                          ? `${offer.mechanic.firstName} ${offer.mechanic.lastName}`
+                          : "Unknown Mechanic"
+                      }
+                      mechanicRating={offer.mechanic?.rating || undefined}
+                      price={offer.price}
+                      note={offer.note || undefined}
+                      expiresAt={offer.expiresAt || undefined}
+                      onOfferHandled={async () => {
+                        try {
+                          await acceptOffer(offer.id);
+                          // The UI will update automatically through real-time subscription
+                        } catch (error) {
+                          console.error("Error accepting offer:", error);
+                          // Handle error (show toast, etc.)
+                        }
+                      }}
+                      userId={user.id}
+                      mechanicLocation={mechanicLocation}
+                      customerLocation={customerLocation}
+                    />
+                    ))}
                   </div>
                 </ServiceCardLayout>
               </HalfSheet>
@@ -828,30 +726,17 @@ export function ClientDashboard() {
                 <div className="bg-gray-100 p-2 mb-4 rounded-md">
                   <h3 className="text-sm font-semibold mb-2">Debug Controls</h3>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={handleRefresh}
                       className="bg-blue-500 text-white text-xs px-2 py-1 rounded"
                     >
                       {isRefreshing ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="animate-spin"
-                        >
-                          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
-                        </svg>
+                      <Loader2 className="animate-spin"/>
                       ) : (
                         <span>Refresh Requests</span>
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={async () => {
                         try {
                           const response = await fetch(
@@ -872,7 +757,7 @@ export function ClientDashboard() {
                       className="bg-purple-500 text-white text-xs px-2 py-1 rounded"
                     >
                       Debug Requests
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -889,20 +774,7 @@ export function ClientDashboard() {
                         className="flex items-center gap-1"
                       >
                         {isRefreshing ? (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="animate-spin"
-                          >
-                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
-                          </svg>
+                         <Loader2 className="animate-spin"/>
                         ) : (
                           <span>Refresh</span>
                         )}
@@ -954,20 +826,7 @@ export function ClientDashboard() {
                       disabled={isLoading}
                     >
                       {isLoading ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="animate-spin"
-                        >
-                          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
-                        </svg>
+                        <Loader2 className="animate-spin"/>
                       ) : (
                         <span>Refresh</span>
                       )}
@@ -976,8 +835,8 @@ export function ClientDashboard() {
                   <div className="space-y-4">
                     <AnimatePresence mode="popLayout">
                       {offers.map((offer) => {
-                        // Ensure location objects have the correct shape
-                        const mechanicLocation = offer.location
+                        // Ensure location objects have the correct shape using type guard
+                        const mechanicLocation = isLocation(offer.location)
                           ? {
                               longitude: offer.location.longitude,
                               latitude: offer.location.latitude,
@@ -993,7 +852,7 @@ export function ClientDashboard() {
                             transition={{ duration: 0.3 }}
                             layout
                           >
-                            {!offer.mechanic || !offer.mechanic.user ? (
+                            {!offer.mechanic ? (
                               <span className="text-red-500">
                                 No mechanic found in this offer
                               </span>
@@ -1001,13 +860,15 @@ export function ClientDashboard() {
                               <ServiceOfferCard
                                 key={offer.id}
                                 serviceRequestId={offer.serviceRequestId}
-                                mechanicId={offer.mechanicId!}
-                                mechanicConnectId={
-                                  offer.mechanic.user.stripeConnectId
+                                mechanicId={offer.mechanicId || ""}
+                                mechanicConnectId={offer.mechanicId ? mechanicConnectIds.get(offer.mechanicId) || "" : ""}
+                                mechanicName={
+                                  offer.mechanic
+                                    ? `${offer.mechanic.firstName} ${offer.mechanic.lastName}`
+                                    : "Unknown Mechanic"
                                 }
-                                mechanicName={`${offer.mechanic.user.firstName} ${offer.mechanic.user.lastName}`}
                                 mechanicRating={
-                                  offer.mechanic.rating || undefined
+                                  offer.mechanic?.rating || undefined
                                 }
                                 price={offer.price}
                                 note={offer.note || undefined}
@@ -1071,7 +932,6 @@ export function ClientDashboard() {
             <div className="flex items-center   justify-center min-h-[400px] w-full">
               <RippleComp>
                 <MechPanicButton
-                  user={user}
                   onRequestCreated={handleRequestCreated}
                 />
                 {/* <MechPanicButtonLogo/> */}

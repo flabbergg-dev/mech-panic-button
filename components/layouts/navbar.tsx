@@ -38,7 +38,7 @@ export const Navbar = () => {
 
   useEffect(() => {
     setIsOpen(false)
-  }, [pathname])
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,7 +47,7 @@ export const Navbar = () => {
     }
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
-  }, [pathname])
+  }, [])
 
   return (
     <nav
@@ -81,7 +81,7 @@ export const Navbar = () => {
               ) : (
                 <>
                   <Button variant="outline" asChild>
-                    <Link href={`/dashboard`}>Dashboard</Link>
+                    <Link href={'/dashboard'}>Dashboard</Link>
                   </Button>
                   <SignOutButton />
                 </>
@@ -116,7 +116,7 @@ export const Navbar = () => {
           >
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               <NavLinks
-                textStyles={`block px-3 py-2 rounded-md text-foreground font-medium hover:text-text/80 hover:bg-background/90 transition-colors duration-200`}
+                textStyles={'block px-3 py-2 rounded-md text-foreground font-medium hover:text-text/80 hover:bg-background/90 transition-colors duration-200'}
                 userId={userId}
               />
             </div>
@@ -129,14 +129,13 @@ export const Navbar = () => {
                 ) : (
                   <div className="flex items-center space-x-4 w-full">
                     <Button asChild className="w-full flex-1 bg-blue-800">
-                      <Link href={`/dashboard`}>Dashboard</Link>
+                      <Link href={'/dashboard'}>Dashboard</Link>
                     </Button>
                     <SignOutButton />
                   </div>
                 )}
-                <>
+
                 <ThemeSwitcher />
-                </>
               </div>
             </div>
           </motion.div>

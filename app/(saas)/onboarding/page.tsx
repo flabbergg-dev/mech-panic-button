@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
 import { checkUserRoleAction } from "@/app/actions/user/check-user-role.action"
-import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { MechanicOnboarding } from "@/components/onboarding/mechanic-onboarding"
+import { toast } from "sonner"
 
 // TODO: 
 // - Add param on page  to  catch the redirect of stripe
@@ -27,7 +27,6 @@ import { MechanicOnboarding } from "@/components/onboarding/mechanic-onboarding"
 export default function OnboardingPage() {
   const { user } = useUser()
   const router = useRouter()
-  const { toast } = useToast()
   const [selectedRole, setSelectedRole] = useState<"Customer" | "Mechanic" | null>(null)
   const [pendingRole, setPendingRole] = useState<"Customer" | "Mechanic" | null>(null)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
@@ -96,14 +95,9 @@ export default function OnboardingPage() {
 
     // Check if formData is fully populated
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.make || !formData.model || !formData.year || !formData.license) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields before submitting.",
-        className: "bg-red-500 text-white",
-      })
-      return
+       toast("Please fill in all fields before submitting.")
+        return
     }
-    console.log("Submitting form with data:", formData);
 
     try {
       setIsSubmitting(true)
@@ -111,7 +105,7 @@ export default function OnboardingPage() {
       if (selectedRole === "Customer") {
         const result = await onboardUserAction({
           ...formData,
-          year: parseInt(formData.year.toString(), 10),
+          year: Number.parseInt(formData.year.toString(), 10),
           role: selectedRole,
         })
 
@@ -130,11 +124,7 @@ export default function OnboardingPage() {
       // User will be created when documents are submitted
     } catch (error) {
       console.error("Error onboarding user:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create user",
-        variant: "destructive",
-      })
+      toast(error instanceof Error ? error.message : "Failed to create user")
       setSelectedRole(null)
     } finally {
       setIsSubmitting(false)

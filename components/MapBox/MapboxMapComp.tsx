@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useUserRole } from "@/hooks/use-user-role"
 import { FileText } from "lucide-react"
@@ -9,19 +9,36 @@ import mapboxgl from "mapbox-gl"
 import { InTransitInstructions } from "./InTransitInstructions"
 
 import "mapbox-gl/dist/mapbox-gl.css"
-
 import Image from "next/image"
 import {  usePathname } from "next/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Modal } from "@/components/Modal/Modal"
-import { Mechanic } from "@prisma/client"
+
+interface Mechanic {
+  userId: string;
+  user: {
+    firstName: string;
+    lastName: string;
+  };
+  rating?: number;
+  bannerImage?: string;
+  bio?: string;
+  isAvailable?: boolean;
+  servicesOffered?: string[];
+}
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
 
 interface MapboxProps {
   userCords: { latitude: number; longitude: number }
-  selectedMechanic?: any
-  setSelectedMechanic?: React.Dispatch<React.SetStateAction<any | undefined>>
-  selectedUser?: any
-  setSelectedUser?: React.Dispatch<React.SetStateAction<any | undefined>>
+  selectedMechanic?: Mechanic
+  setSelectedMechanic?: React.Dispatch<React.SetStateAction<Mechanic | undefined>>
+  selectedUser?: User
+  setSelectedUser?: React.Dispatch<React.SetStateAction<User | undefined>>
   mechanics?: Mechanic[]
   mechanicMarkers?: {
     id: string
@@ -29,10 +46,16 @@ interface MapboxProps {
   }[]
 }
 
+interface ExtendedMap extends mapboxgl.Map {
+  getRoute?: (end: [number, number]) => Promise<void>;
+}
+
 export const MapboxMapComp = ({
   userCords,
   selectedMechanic,
   setSelectedMechanic,
+  selectedUser,
+  setSelectedUser,
   mechanics,
   mechanicMarkers,
 }: MapboxProps) => {
@@ -40,180 +63,166 @@ export const MapboxMapComp = ({
   const isStartDrive = usePathname().includes("start-drive")
   const isServiceRequest = usePathname().includes("service-request")
   const isInTransit = usePathname().includes("in-transit")
-  const mapRef = useRef<mapboxgl.Map | null>(null)
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
+  const mapRef = useRef<ExtendedMap | null>(null)
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
   const [showDirections, setShowDirections] = useState(false)
   const [showMechanicDetails, setShowMechanicDetails] = useState(false)
-  const [currentInstructions, setCurrentInstructions] = useState({
-    duration: 0,
-    currentStep: "",
-    nextStep: "",
+  const [routeData, setRouteData] = useState({
+    distance: '',
+    duration: '',
+    currentStep: '',
+    nextStep: ''
   })
+
+  // Validate required environment variable
+  const mapboxAccess = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+  if (!mapboxAccess) {
+    throw new Error("Missing required environment variable: NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN")
+  }
+
   useMemo(() => {
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!
-    if (mapContainerRef.current) {
+    // Set access token
+    mapboxgl.accessToken = mapboxAccess
+
+    // Initialize map if container exists and not already initialized
+    if (mapContainerRef.current && !mapRef.current) {
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
-        center: [-66.9, 18.03],
-        zoom: 9,
-        // interactive: isStartDrive || isServiceRequest,
-      })
-      const map = mapRef.current
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [userCords.longitude, userCords.latitude],
+        zoom: 15,
+      }) as ExtendedMap
 
-      const getRoute = async (end: any[]) => {
-        const query = await fetch(
-          `https://api.mapbox.com/directions/v5/mapbox/driving/${userCords.longitude},${userCords.latitude};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`,
-          { method: "GET" }
-        )
-        const json = await query.json()
-        const data = json.routes[0]
-        const route = data.geometry.coordinates
-        const geojson: GeoJSON.Feature<GeoJSON.LineString> = {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates: route,
-          },
-        }
-        if (map.getSource("route")) {
-          ;(map.getSource("route") as mapboxgl.GeoJSONSource).setData(geojson)
-        } else {
-          map.addLayer({
-            id: "route",
-            type: "line",
-            source: {
-              type: "geojson",
-              data: geojson,
-            },
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": "#3887be",
-              "line-width": 5,
-              "line-opacity": 0.75,
-            },
-          })
-        }
-
-        const instructions = document.getElementById("instructions")
-        const steps = data.legs[0].steps
-
-        let tripInstructions = ""
-        steps.forEach(
-          (step: { maneuver: { instruction: any } }, index: number) => {
-            tripInstructions += `<li class="p-4 bg-slate-200 rounded-md">${index + 1}. ${step.maneuver.instruction}</li>`
+      // Route calculation function with debouncing
+      const getRoute = async (end: [number, number]) => {
+        try {
+          const query = await fetch(
+            `https://api.mapbox.com/directions/v5/mapbox/driving/${userCords.longitude},${userCords.latitude};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxAccess}`,
+            { method: "GET" }
+          )
+          const json = await query.json()
+          
+          if (!json.routes?.[0]) {
+            console.error('No route found')
+            return
           }
-        )
-        instructions!.innerHTML = `<div class="flex flex-col"><p class="font-bold text-lg mb-2">Trip duration: ${Math.floor(
-          data.duration / 60
-        )} min</p><ol class="flex flex-col gap-4">${tripInstructions}</ol></div>`
 
-        // Update current instructions
-        setCurrentInstructions({
-          duration: data.duration / 60,
-          currentStep: steps[0]?.maneuver.instruction || "",
-          nextStep: steps[1]?.maneuver.instruction || "",
-        })
-      }
+          const data = json.routes[0]
+          const route = data.geometry.coordinates
+          
+          // Update route data with minimal state changes
+          setRouteData(prev => {
+            const newDistance = `${Math.round(data.distance / 1000)} km`
+            const newDuration = `${Math.round(data.duration / 60)} min`
+            const newCurrentStep = data.legs[0]?.steps[0]?.maneuver?.instruction || ''
+            const newNextStep = data.legs[0]?.steps[1]?.maneuver?.instruction || ''
 
-      map.on("load", () => {
-        mechanicMarkers!.forEach(
-          (mechanicMarkers: {
-            id: string
-            currentLocation: { longitude: number; latitude: number }
-          }) => {
-            if (mechanicMarkers) {
-              const marker = new mapboxgl.Marker()
-                .setLngLat([
-                  mechanicMarkers.currentLocation.longitude,
-                  mechanicMarkers.currentLocation.latitude,
-                ])
-                .addTo(map)
+            // Only update if values have changed
+            if (
+              prev.distance === newDistance &&
+              prev.duration === newDuration &&
+              prev.currentStep === newCurrentStep &&
+              prev.nextStep === newNextStep
+            ) {
+              return prev
+            }
 
-              marker.getElement().addEventListener("click", () => {
-                const selectedMechanicUserInfo = mechanics?.find(
-                  (mechanic) => mechanic.userId === mechanicMarkers.id
-                )
-                setSelectedMechanic!(selectedMechanicUserInfo)
-                setShowMechanicDetails(true)
-                console.log("Selected Mechanic", selectedMechanicUserInfo)
-              })
+            return {
+              distance: newDistance,
+              duration: newDuration,
+              currentStep: newCurrentStep,
+              nextStep: newNextStep
+            }
+          })
+
+          // Add route to map
+          const geojson: GeoJSON.Feature<GeoJSON.LineString> = {
+            type: 'Feature' as const,
+            properties: {},
+            geometry: {
+              type: 'LineString' as const,
+              coordinates: route
             }
           }
-        )
-      })
 
-      // map.on("click", (event) => {
-      //   getRoute([userCords.longitude, userCords.latitude])
-      //   const coords = [event.lngLat.lng, event.lngLat.lat]
-      //   const end: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
-      //     type: "FeatureCollection",
-      //     features: [
-      //       {
-      //         type: "Feature",
-      //         properties: {},
-      //         geometry: {
-      //           type: "Point",
-      //           coordinates: coords,
-      //         },
-      //       },
-      //     ],
-      //   }
-      //   if (map.getLayer("end")) {
-      //     ;(map.getSource("end") as mapboxgl.GeoJSONSource).setData(end)
-      //   } else {
-      //     map.addLayer({
-      //       id: "end",
-      //       type: "symbol",
-      //       source: {
-      //         type: "geojson",
-      //         data: {
-      //           type: "FeatureCollection",
-      //           features: [
-      //             {
-      //               type: "Feature",
-      //               properties: {},
-      //               geometry: {
-      //                 type: "Point",
-      //                 coordinates: coords,
-      //               },
-      //             },
-      //           ],
-      //         },
-      //       },
-      //       layout: {
-      //         "icon-image": "/images/pin.svg", // hypothetical image
-      //         "icon-size": 1.5,
-      //       },
-      //     })
-      //   }
-      //   getRoute(coords)
-      // })
-    }
+          if (mapRef.current?.getSource('route')) {
+            (mapRef.current.getSource('route') as mapboxgl.GeoJSONSource).setData(geojson)
+          } else if (mapRef.current) {
+            mapRef.current.addLayer({
+              id: 'route',
+              type: 'line',
+              source: {
+                type: 'geojson',
+                data: geojson
+              },
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': '#3887be',
+                'line-width': 5,
+                'line-opacity': 0.75
+              }
+            })
+          }
+        } catch (error) {
+          console.error('Error calculating route:', error)
+        }
+      }
 
-    if (mapRef.current) {
-      new mapboxgl.Marker()
+      // Add mechanic markers
+      for (const mechanicMarker of (mechanicMarkers ?? [])) {
+        if (mechanicMarker) {
+          const marker = new mapboxgl.Marker()
+            .setLngLat([
+              mechanicMarker.currentLocation.longitude,
+              mechanicMarker.currentLocation.latitude,
+            ])
+            .addTo(mapRef.current)
+
+          markersRef.current.set(mechanicMarker.id, marker)
+
+          marker.getElement().addEventListener("click", () => {
+            const selectedMechanicUserInfo = mechanics?.find(
+              (mechanic) => mechanic.userId === mechanicMarker.id
+            )
+            if (selectedMechanicUserInfo && setSelectedMechanic) {
+              setSelectedMechanic(selectedMechanicUserInfo)
+              setShowMechanicDetails(true)
+            }
+          })
+        }
+      }
+
+      // Add user marker
+      new mapboxgl.Marker({ color: '#FF0000' })
         .setLngLat([userCords.longitude, userCords.latitude])
         .addTo(mapRef.current)
+
+      // Store getRoute function
+      mapRef.current.getRoute = getRoute
     }
 
+    // Update map center when coordinates change
+    if (mapRef.current) {
+      mapRef.current.setCenter([userCords.longitude, userCords.latitude])
+    }
+
+    // Cleanup function
     return () => {
       if (mapRef.current) {
+        // Remove all markers
+        for (const marker of Array.from(markersRef.current.values())) {
+          marker.remove()
+        }
+        markersRef.current.clear()
         mapRef.current.remove()
-      } else {
-        return
+        mapRef.current = null
       }
     }
-  }, [
-    userCords.longitude,
-    userCords.latitude,
-    mechanicMarkers,
-    mechanics,
-    setSelectedMechanic,
-  ])
+  }, [mapboxAccess, userCords.longitude, userCords.latitude, mechanicMarkers, mechanics, setSelectedMechanic])
 
   return (
     <>
@@ -229,7 +238,7 @@ export const MapboxMapComp = ({
           zIndex: 0,
         }}
         ref={mapContainerRef}
-      ></div>
+      />
 
       <Modal
         dialogText="Mechanic Information"
@@ -251,13 +260,17 @@ export const MapboxMapComp = ({
               <p className="text-lg font-bold mt-4">
                 {selectedMechanic.isAvailable ? "Available" : "Not Available"}
               </p>
-              <p className="">{selectedMechanic.bio}</p>
+              <p className="">Bio: {selectedMechanic.bio}</p>
               <p className="">Rating: {selectedMechanic.rating}</p>
-              {/* {selectedMechanic.servicesOffered.map((service: string) => (
-                <p key={service} className="text-center">
-                  {service}
-                </p>
-              ))} */}
+              {selectedMechanic.servicesOffered && (
+                <ul>
+                  {selectedMechanic.servicesOffered.map((service: string) => (
+                    <li key={service} className="text-center">
+                      {service}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         )}
@@ -291,13 +304,13 @@ export const MapboxMapComp = ({
               zIndex: 45,
               boxShadow: "-2px 0 10px rgba(0,0,0,0.1)",
             }}
-          ></div>
+          />
 
           {isInTransit && (
             <InTransitInstructions
-              duration={currentInstructions.duration}
-              currentStep={currentInstructions.currentStep}
-              nextStep={currentInstructions.nextStep}
+              duration={Number(routeData.duration.split(' ')[0])}
+              currentStep={routeData.currentStep}
+              nextStep={routeData.nextStep}
             />
           )}
         </>

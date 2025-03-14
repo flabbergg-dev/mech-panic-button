@@ -1,115 +1,113 @@
-import { useEffect, useRef } from 'react';
-import { LocationType } from '../types';
-import { ServiceStatus } from '@prisma/client';
-import { getMechanicLocation } from '@/app/actions/location';
+import { useEffect, useRef, useCallback } from 'react';
+import type { ServiceRequest } from '@prisma/client';
 
-const STORAGE_KEY_PREFIX = {
-  MECHANIC: "mechanic_location_",
-  CUSTOMER: "customer_location_"
-};
-
-interface UseLocationTrackingProps {
-  serviceRequest: {
-    id: string;
-    status: ServiceStatus;
-    mechanicId?: string;
-  };
-  mechanicLocation?: LocationType;
-  customerLocation?: LocationType;
-  onLocationUpdate: (location: LocationType) => void;
+// Define location type locally since it's specific to this component
+interface MechanicLocation {
+  latitude: number;
+  longitude: number;
 }
 
-export const useLocationTracking = ({
+interface UseLocationTrackingProps {
+  serviceRequest: ServiceRequest | null;
+  onLocationUpdate: (location: MechanicLocation) => void;
+  mechanicLocation: MechanicLocation | null;
+}
+
+export function useLocationTracking({
   serviceRequest,
+  onLocationUpdate,
   mechanicLocation,
-  onLocationUpdate
-}: UseLocationTrackingProps) => {
-  const locationPollingInterval = useRef<NodeJS.Timeout | null>(null);
-  const lastMechanicLocation = useRef<LocationType | null>(null);
-  const currentStatus = useRef<ServiceStatus | null>(null);
+}: UseLocationTrackingProps) {
+  const watchId = useRef<number | null>(null);
+  const lastUpdate = useRef<number>(0);
+  const isMounted = useRef(true);
+  // 60 seconds from memory
+  const MIN_UPDATE_INTERVAL = 60000; 
+  // 30 meters from memory
+  const MIN_DISTANCE = 30; 
 
-  // Fetch mechanic location from server
-  const fetchMechanicLocation = async () => {
-    if (serviceRequest.status !== ServiceStatus.IN_ROUTE || !serviceRequest.mechanicId) return;
-    
-    try {
-      console.log("Fetching mechanic location for mechanic ID:", serviceRequest.mechanicId);
-      const location = await getMechanicLocation(serviceRequest.mechanicId);
-      
-      if (!location) {
-        console.log("Server location not available, using fallback");
-        if (mechanicLocation) {
-          console.log("Using effective mechanic location from props or localStorage");
-          return;
-        }
-        console.log("No fallback location available");
-        return;
-      }
-      
-      console.log("Received mechanic location:", location);
-      
-      // Only update if location has changed significantly
-      if (!lastMechanicLocation.current || 
-          Math.abs(lastMechanicLocation.current.latitude - location.latitude) > 0.0001 || 
-          Math.abs(lastMechanicLocation.current.longitude - location.longitude) > 0.0001) {
-        
-        console.log("Location changed significantly, updating");
-        lastMechanicLocation.current = location;
-        
-        // Store in localStorage
-        try {
-          localStorage.setItem(
-            `${STORAGE_KEY_PREFIX.MECHANIC}${serviceRequest.id}`, 
-            JSON.stringify(location)
-          );
-        } catch (e) {
-          console.error("Failed to store mechanic location:", e);
-        }
-        
-        onLocationUpdate(location);
-      } else {
-        console.log("Location hasn't changed significantly");
-      }
-    } catch (error) {
-      console.error("Error fetching mechanic location:", error);
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
     }
-  };
+  }, []);
 
-  // Start/stop location polling based on service status
-  useEffect(() => {
-    // Check if status has changed
-    if (currentStatus.current !== serviceRequest.status) {
-      console.log(`Status changed from ${currentStatus.current} to ${serviceRequest.status}`);
-      currentStatus.current = serviceRequest.status;
-    }
-    
-    // Start polling for IN_ROUTE status
-    if (serviceRequest.status === ServiceStatus.IN_ROUTE && !locationPollingInterval.current) {
-      console.log("Starting location polling for IN_ROUTE status");
-      
-      // Initial fetch
-      fetchMechanicLocation();
-      
-      // Set up polling interval with a minimum of 5 seconds between updates
-      locationPollingInterval.current = setInterval(fetchMechanicLocation, 5000);
-    } 
-    // Stop polling for other statuses
-    else if (serviceRequest.status !== ServiceStatus.IN_ROUTE && locationPollingInterval.current) {
-      console.log("Stopping location polling");
-      clearInterval(locationPollingInterval.current);
-      locationPollingInterval.current = null;
-    }
-    
-    // Clean up on unmount or status change
-    return () => {
-      if (locationPollingInterval.current) {
-        clearInterval(locationPollingInterval.current);
-        locationPollingInterval.current = null;
-      }
+  // Calculate distance between two points
+  const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  }, []);
+
+  // Handle location updates with throttling and distance check
+  const handleLocationUpdate = useCallback((position: GeolocationPosition) => {
+    if (!isMounted.current) return;
+
+    const now = Date.now();
+    if (now - lastUpdate.current < MIN_UPDATE_INTERVAL) return;
+
+    const newLocation = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
     };
-  }, [serviceRequest.status]);
 
-  return {
-    lastMechanicLocation
-  };
-};
+    // Check if we've moved enough to warrant an update
+    if (mechanicLocation) {
+      const distance = calculateDistance(
+        mechanicLocation.latitude,
+        mechanicLocation.longitude,
+        newLocation.latitude,
+        newLocation.longitude
+      );
+
+      if (distance < MIN_DISTANCE) return;
+    }
+
+    lastUpdate.current = now;
+    onLocationUpdate(newLocation);
+  }, [mechanicLocation, onLocationUpdate, calculateDistance]);
+
+  // Start location tracking
+  useEffect(() => {
+    if (!serviceRequest?.mechanicId || serviceRequest.status !== 'IN_ROUTE') {
+      cleanup();
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      console.error('Geolocation is not supported by this browser.');
+      return;
+    }
+
+    watchId.current = navigator.geolocation.watchPosition(
+      handleLocationUpdate,
+      (error) => console.error('Error getting location:', error),
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+
+    return cleanup;
+  }, [serviceRequest?.mechanicId, serviceRequest?.status, handleLocationUpdate, cleanup]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+      cleanup();
+    };
+  }, [cleanup]);
+}

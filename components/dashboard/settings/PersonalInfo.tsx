@@ -8,17 +8,16 @@ import { useForm } from "react-hook-form"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { UpdateUserDTO, updateUserSchema } from "@/lib/domain/dtos/user.dto"
+import  { type UpdateUserDTO, updateUserSchema } from "@/lib/domain/dtos/user.dto"
 import { updateUserProfileAction } from "@/app/actions/user/update-user-profile.action"
 import { getUserProfileAction } from "@/app/actions/user/get-user-profile.action"
-import { useToast } from "@/hooks/use-toast"
 import { ProfileImageUpload } from "@/components/dashboard/settings/ProfileImageUpload"
+import { toast } from "sonner"
 
 export function PersonalInfoForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const { user, isLoaded: isUserLoaded } = useUser()
-  const { toast } = useToast()
   const router = useRouter()
 
   const {
@@ -42,29 +41,22 @@ export function PersonalInfoForm() {
 
   // Watch form values for debugging
   const formValues = watch();
-  useEffect(() => {
-    console.log("Current form values:", formValues);
-  }, [formValues]);
 
   useEffect(() => {
     async function loadUserProfile() {
       if (!isUserLoaded) return;
       
       if (!user?.id) {
-        console.log("No user ID available");
         setIsLoading(false);
         return;
       }
 
       try {
-        console.log("Loading profile for Clerk user ID:", user.id);
         
         // First, try to get the user profile
         const result = await getUserProfileAction(user.id);
-        console.log("Profile fetch result:", result);
 
         if (result.success && result.data) {
-          console.log("Setting form data with:", result.data);
           reset({
             firstName: result.data.firstName || "",
             lastName: result.data.lastName || "",
@@ -74,30 +66,18 @@ export function PersonalInfoForm() {
             currentLocation: result.data.currentLocation || null,
             documentsUrl: result.data.documentsUrl || [],
           }, { keepDefaultValues: false });
-          // Verify form values were set
-          console.log("Form values after reset:", watch());
         } else {
-          console.error("Failed to fetch profile:", result.error);
-          toast({
-            title: "Error",
-            description: result.error || "Failed to load profile data",
-            variant: "destructive",
-          });
+          toast('Failed to load profile data');
         }
       } catch (error) {
-        console.error("Error in loadUserProfile:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load profile data",
-          variant: "destructive",
-        });
+        toast('Failed to load profile data');
       } finally {
         setIsLoading(false);
       }
     }
 
     loadUserProfile();
-  }, [isUserLoaded, user?.id, reset, toast, watch]);
+  }, [isUserLoaded, reset, user?.id]);
 
   const onSubmit = async (data: UpdateUserDTO) => {
     if (!user?.id) {
@@ -107,7 +87,6 @@ export function PersonalInfoForm() {
 
     try {
       setIsSubmitting(true);
-      console.log("Form data being submitted:", data);
       
       const formData = {
         firstName: data.firstName,
@@ -120,27 +99,19 @@ export function PersonalInfoForm() {
         documentsUrl: data.documentsUrl || [],
       };
 
-      console.log("Processed form data:", formData);
       const result = await updateUserProfileAction(formData, false);
-      console.log("Update result:", result);
 
       if (!result.success) {
-        throw new Error(result.error);
+        toast('Failed to update profile');
+        return;
       }
 
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      });
+      toast('Profile Updated Successfully');
 
       router.refresh();
     } catch (error) {
       console.error("Error in onSubmit:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update profile",
-        variant: "destructive",
-      });
+      toast('Failed to update profile');
     } finally {
       setIsSubmitting(false);
     }

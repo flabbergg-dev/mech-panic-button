@@ -2,14 +2,19 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { headers } from 'next/headers';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY
+
+if (!stripeSecretKey) {
+  throw new Error('Stripe secret key not found')
+}
+
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2025-01-27.acacia",
 })
 
 export async function POST(request: Request) {
   try {
     const { serviceRequestId, amount, userId, mechanicConnectId } = await request.json()
-    console.log('passed in params:', serviceRequestId, amount, userId, mechanicConnectId)
     const headersList = await headers()
     const origin = headersList.get('origin')
 

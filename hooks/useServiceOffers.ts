@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ServiceOffer } from '@prisma/client';
+import type { ServiceOffer } from '@prisma/client';
 import { supabase } from '@/utils/supabase/client';
-import { RealtimePostgresChangesPayload } from '@/types/supabase';
+import type { RealtimePostgresChangesPayload } from '@/types/supabase';
 
 export interface EnrichedServiceOffer extends ServiceOffer {
   mechanic?: {
@@ -34,6 +34,7 @@ export function useServiceOffers(serviceRequestId: string): UseServiceOffersRetu
   const isMounted = useRef(true);
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchOffers = useCallback(async (force = false) => {
     if (!serviceRequestId || isFetching.current || (!force && Date.now() - lastFetchTime.current < FETCH_THROTTLE_MS)) {
@@ -113,9 +114,8 @@ export function useServiceOffers(serviceRequestId: string): UseServiceOffersRetu
     if (!serviceRequestId) return;
 
     isMounted.current = true;
-    console.log('Setting up Supabase real-time subscription for offers');
 
-    const channel = supabase
+    const subscription = supabase
       .channel(`service_offers_${serviceRequestId}`)
       .on(
         'postgres_changes',
@@ -126,21 +126,28 @@ export function useServiceOffers(serviceRequestId: string): UseServiceOffersRetu
           filter: `serviceRequestId=eq.${serviceRequestId}`
         },
         (payload: RealtimePostgresChangesPayload) => {
-          console.log('Real-time update received for offers:', payload);
-          fetchOffers(true);
+          void fetchOffers(true);
         }
       )
       .subscribe((status: string) => {
-        console.log('Supabase subscription status for offers:', status);
+        if (status !== 'SUBSCRIBED' && !pollingIntervalRef.current && isMounted.current) {
+          // Use 5-second interval as per optimization memory
+          pollingIntervalRef.current = setInterval(() => {
+            void fetchOffers(false);
+          }, FETCH_THROTTLE_MS);
+        }
       });
 
     // Initial fetch
-    fetchOffers(true);
+    void fetchOffers(true);
 
     return () => {
-      console.log('Cleaning up Supabase subscription for offers');
       isMounted.current = false;
-      channel.unsubscribe();
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      void subscription.unsubscribe();
     };
   }, [serviceRequestId, fetchOffers]);
 

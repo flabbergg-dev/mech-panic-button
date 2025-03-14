@@ -13,17 +13,18 @@ import { Card } from '@/components/ui/card'
 import { getUserToken } from '@/app/actions/getUserToken'
 import { supabase } from '@/utils/supabase/client'
 import { getServiceRequestAction } from '@/app/actions/getServiceRequestAction'
-import { ServiceRequest, User } from '@prisma/client'
+import type { ServiceRequest, User } from '@prisma/client'
 import { Loader } from '@/components/loader'
 import { PinInput } from '@/components/ui/PinInput'
 import { verifyCompletionCodeAction } from '@/app/actions/verifyCompletionCodeAction'
 import { updateMechanicLocation } from '@/app/actions/updateMechanicLocation'
-import { useToast } from '@/hooks/use-toast'
 import { ChatBox } from '@/components/Chat/ChatBox'
 import ServiceRequestMap from '@/components/MapBox/ServiceRequestMap'
-import { JsonValue } from '@prisma/client/runtime/library'
+import type { JsonValue } from '@prisma/client/runtime/library'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import useMechanicId from '@/hooks/useMechanicId'
 import { AdditionalServicesModal } from '@/components/Modal/AdditionalServicesModal'
+import { toast } from 'sonner'
 
 interface Location {
   latitude: number
@@ -55,7 +56,6 @@ const MechanicMapPage = () => {
   const { id: requestId } = params
   const destLat = searchParams.get('destLat')
   const destLng = searchParams.get('destLng')
-  const { toast } = useToast()
   const { sendEmail } = useEmailNotification();
   const [isLoading, setIsLoading] = useState(false)
   const [showRoute, setShowRoute] = useState(false)
@@ -84,8 +84,8 @@ const MechanicMapPage = () => {
 
   // Define customer location early
   const customerLocation = destLat && destLng ? {
-    longitude: parseFloat(destLng),
-    latitude: parseFloat(destLat),
+    longitude: Number(destLng),
+    latitude: Number(destLat),
   } : null;
 
   // Memoize fetchData to prevent unnecessary re-renders and add throttling
@@ -106,17 +106,12 @@ const MechanicMapPage = () => {
       isFetching.current = true;
       setIsLoading(true);
       
-      console.log("Fetching service request data...");
       const result = await getServiceRequestAction(requestId.toString());
       
       lastFetchTime.current = Date.now();
       
       if (!result.success) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
+        toast("Failed to fetch service request details");
         redirect("/dashboard/mechanic");
       }
 
@@ -125,17 +120,13 @@ const MechanicMapPage = () => {
       }
     } catch (error) {
       console.error("Error fetching service request:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch service request details",
-        variant: "destructive",
-      });
+      toast("Failed to fetch service request details");
       redirect("/dashboard/mechanic");
     } finally {
       setIsLoading(false);
       isFetching.current = false;
     }
-  }, [requestId, toast]);
+  }, [requestId]);
 
   // Only fetch data once on initial load
   useEffect(() => {
@@ -147,7 +138,7 @@ const MechanicMapPage = () => {
       
       const token = await getUserToken();
       if (!token) {
-        console.log("No token available");
+        console.error("No token available");
         return;
       }
       
@@ -161,8 +152,7 @@ const MechanicMapPage = () => {
             table: 'ServiceRequest', 
             filter: `id=eq.${requestId}` 
           }, 
-          (payload: any) => {
-            console.log('Request update received:', payload);
+          (payload: RealtimePostgresChangesPayload<ServiceRequest>) => {
             fetchData(true); // Force fetch on real-time update
           }
         )
@@ -179,11 +169,7 @@ const MechanicMapPage = () => {
   // Memoize the startLocationTracking function
   const startLocationTracking = useCallback(() => {
     if (!navigator.geolocation) {
-      toast({
-        title: "Location Error",
-        description: "Geolocation is not supported by your browser",
-        variant: "destructive"
-      });
+      toast("Geolocation is not supported by your browser");
       return;
     }
 
@@ -205,11 +191,7 @@ const MechanicMapPage = () => {
         
         console.error("Error getting position:", error);
         const errorMessage = getLocationErrorMessage(error);
-        toast({
-          title: "Location Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
+        toast(errorMessage);
         setIsGettingLocation(false);
       },
       {
@@ -218,12 +200,11 @@ const MechanicMapPage = () => {
         maximumAge: 0
       }
     );
-  }, [toast]);
+  }, []);
 
   // Start location tracking when component mounts if in PAYMENT_AUTHORIZED state
   useEffect(() => {
     if (request?.status === "PAYMENT_AUTHORIZED") {
-      console.log("Initial location tracking for PAYMENT_AUTHORIZED");
       startLocationTracking();
     }
   }, [request?.status, startLocationTracking]);
@@ -260,13 +241,7 @@ const MechanicMapPage = () => {
   // Handle request status changes
   useEffect(() => {
     const status = request?.status;
-    console.log("Request status changed:", {
-      status,
-      showRoute,
-      isLoading,
-      arrivalCode,
-      mechanicLocation
-    });
+    
     
     if (!status) return;
     
@@ -280,14 +255,13 @@ const MechanicMapPage = () => {
       setShowMechanicLocation(true);
       
       if (status === "IN_ROUTE") {
-        console.log("Starting location tracking for IN_ROUTE status");
         startLocationTracking();
       }
     }
-  }, [request?.status, startLocationTracking, showRoute, isLoading, arrivalCode, mechanicLocation]);
+  }, [request?.status, startLocationTracking]);
 
   // Helper function to get location error message
-  const getLocationErrorMessage = (error: GeolocationPositionError | null) => {
+  const getLocationErrorMessage = useCallback((error: GeolocationPositionError | null) => {
     if (!error) return "Unknown location error";
     
     switch (error.code) {
@@ -300,23 +274,21 @@ const MechanicMapPage = () => {
       default:
         return `Error getting position: ${JSON.stringify(error)}`;
     }
-  };
+  }, []);
 
   // Location watching effect with optimized updates
   useEffect(() => {
-    if (!navigator.geolocation || request?.status !== 'IN_ROUTE') {
+    const isInRoute = request?.status === 'IN_ROUTE';
+    if (!navigator.geolocation || !isInRoute) {
       return;
     }
-
     // Clear existing watcher if any
     if (watchId.current !== null) {
       navigator.geolocation.clearWatch(watchId.current);
       watchId.current = null;
     }
-    
-    // Reset update flags
+        // Reset update flags
     pendingLocationUpdate.current = false;
-
     // First try to get current position before starting the watch
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -332,11 +304,7 @@ const MechanicMapPage = () => {
         if (!isMounted.current) return;
         const errorMessage = getLocationErrorMessage(error);
         console.error("Initial location error:", errorMessage);
-        toast({
-          title: "Location Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
+        toast(errorMessage);
       },
       {
         enableHighAccuracy: true,
@@ -381,11 +349,7 @@ const MechanicMapPage = () => {
       } catch (error) {
         if (!isMounted.current) return;
         console.error("Error updating mechanic location:", error);
-        toast({
-          title: "Update Error",
-          description: "Failed to update location in database",
-          variant: "destructive"
-        });
+        toast("Failed to update location in database");
       } finally {
         pendingLocationUpdate.current = false;
       }
@@ -398,11 +362,7 @@ const MechanicMapPage = () => {
         if (!isMounted.current) return;
         const errorMessage = getLocationErrorMessage(error);
         console.error("Location error:", errorMessage);
-        toast({
-          title: "Location Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
+        toast(errorMessage);
       },
       {
         enableHighAccuracy: true,
@@ -417,7 +377,12 @@ const MechanicMapPage = () => {
         watchId.current = null;
       }
     };
-  }, [request?.status, requestId, updateRequestStatus, toast]);
+  }, [
+    request,
+    requestId,
+    getLocationErrorMessage,
+    updateRequestStatus,
+  ]);
 
   const handleRouteCalculated = (duration: number, totalDistance: number) => {
     setEstimatedTime(duration);
@@ -429,38 +394,25 @@ const MechanicMapPage = () => {
 
     try {
       setIsLoading(true);
-      console.log("Starting route...");
       const requestIdString = requestId.toString();
       const result = await updateServiceRequestStatusAction(requestIdString, 'IN_ROUTE');
       
       if (!result.success) {
-        toast({
-          title: "Error",
-          description: `Failed to start route: ${result.error}`,
-          variant: "destructive",
-        });
+        toast("Failed to start route");
         return;
       }
 
       // Update states synchronously
       setShowRoute(true);
       setShowMechanicLocation(true);
-      console.log("Route started, initializing tracking");
       startLocationTracking();
 
-      toast({
-        title: "Success",
-        description: "Route started. Navigation will begin.",
-      });
+      toast("Route started. Navigation will begin.");
 
       // Send email notification to client
       try {
         if (!request) {
-          toast({
-            title: "Error",
-            description: "Client email not found",
-            variant: "destructive",
-          });
+          toast("Client email not found");
           return;
         }
         await sendEmail({
@@ -475,14 +427,9 @@ const MechanicMapPage = () => {
 
     } catch (error) {
       console.error("Error starting route:", error);
-      toast({
-        title: "Error",
-        description: "Failed to start route. Please try again.",
-        variant: "destructive",
-      });
+      toast('Failed to start route');
     } finally {
       setIsLoading(false);
-      console.log("Route start process completed");
     }
   };
 
@@ -515,20 +462,12 @@ const MechanicMapPage = () => {
       const result = await updateServiceRequestStatusAction(requestIdString, 'IN_PROGRESS')
       
       if (!result.success) {
-        toast({
-          title: "Error",
-          description: `Failed to update status: ${result.error || "Unknown error"}`,
-          variant: "destructive",
-        })
+        toast("Failed to update status");
         return
       }
 
       if (!result.data?.arrivalCode) {
-        toast({
-          title: "Error",
-          description: "Failed to generate arrival code",
-          variant: "destructive",
-        })
+        toast("Failed to generate arrival code");
         return
       }
       // Store the arrival code
@@ -537,17 +476,10 @@ const MechanicMapPage = () => {
       // The real-time subscription will handle the data refresh
       // No need to call fetchData here
 
-      toast({
-        title: "Success",
-        description: "Share your arrival code with the client to begin service",
-      })
+      toast("Arrival code generated");
     } catch (error) {
       console.error("Error handling arrival:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update status. Please try again.",
-        variant: "destructive",
-      })
+      toast("Failed to generate arrival code");
     } finally {
       setIsLoading(false)
     }
@@ -557,38 +489,24 @@ const MechanicMapPage = () => {
     try {
       setIsLoading(true);
       if (!requestId) {
-        toast({
-          title: "Error",
-          description: "Missing request ID",
-          variant: "destructive",
-        });
+        toast("Missing request ID");
         return;
       }
       
       // Ensure requestId is a string
       const requestIdString = requestId.toString();
       
-      console.log("Completing service for request ID:", requestIdString);
       
       const result = await updateServiceRequestStatusAction(requestIdString, 'IN_COMPLETION');
-      console.log("Service completion result:", result);
       
       if (!result.success) {
-        toast({
-          title: "Error",
-          description: `Failed to update status: ${result.error || "Unknown error"}`,
-          variant: "destructive",
-        });
+        toast("Failed to update status");
         return;
       }
       
       // Check if completion code was generated
       if (!result.data?.completionCode) {
-        toast({
-          title: "Error",
-          description: "Failed to generate completion code",
-          variant: "destructive",
-        });
+        toast("Failed to generate completion code");
         return;
       }
       
@@ -598,17 +516,10 @@ const MechanicMapPage = () => {
       // The real-time subscription will handle the data refresh
       // No need to call fetchData here
       
-      toast({
-        title: "Success",
-        description: "Service marked for completion. Please ask the client for the verification code.",
-      });
+      toast("Service marked for completion. Please ask the client for the verification code.");
     } catch (error) {
       console.error("Error completing service:", error);
-      toast({
-        title: "Error",
-        description: "Failed to complete service",
-        variant: "destructive",
-      });
+      toast("Failed to complete service");
     } finally {
       setIsLoading(false);
     }
@@ -626,43 +537,20 @@ const MechanicMapPage = () => {
       const result = await verifyCompletionCodeAction(requestIdString, code)
       
       if (!result.success) {
-        toast({
-          title: "Error",
-          description: `Verification failed: ${result.error}`,
-          variant: "destructive",
-        })
+        toast("Verification failed");
         return
       }
 
-      toast({
-        title: "Success",
-        description: "Service completed successfully",
-      })
+      toast("Service completed successfully");
       
       // The Real-time subscription will handle the data refresh
       // No need to call fetchData here
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to verify code",
-        variant: "destructive",
-      })
+      toast("Failed to verify code");
     } finally {
       setIsVerifyingCode(false)
     }
   }
-
-  // Add debug logging for arrival button conditions
-  const arrivalButtonVisible = !isLoading && !arrivalCode && showRoute && request?.status === "IN_ROUTE";
-  useEffect(() => {
-    console.log("Arrival button visibility conditions:", {
-      isLoading,
-      hasArrivalCode: !!arrivalCode,
-      showRoute,
-      status: request?.status,
-      isVisible: arrivalButtonVisible
-    });
-  }, [isLoading, arrivalCode, showRoute, request?.status, arrivalButtonVisible]);
 
   if (!customerLocation || !requestId) {
     return (
@@ -683,7 +571,7 @@ const MechanicMapPage = () => {
 
   if (request.status === "COMPLETED") {
     setTimeout(() => {
-      router.push(`/dashboard`)
+      router.push('/dashboard')
     }, 1000)
     return (
       <div className="flex items-center justify-center h-screen">
@@ -887,10 +775,7 @@ const MechanicMapPage = () => {
                         onClick={() => {
                           navigator.clipboard.writeText(arrivalCode);
                           setIsCopied(true);
-                          toast({
-                            title: "Copied!",
-                            description: "Arrival code copied to clipboard",
-                          });
+                          toast("Arrival code copied to clipboard");
                           setTimeout(() => setIsCopied(false), 1000);
                         }}
                       >

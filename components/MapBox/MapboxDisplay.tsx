@@ -12,23 +12,58 @@ interface Location {
 interface MapMarker {
   location: Location
   color: string
-  popupText: string
+  popupText?: string
+}
+
+interface RouteStep {
+  distance: number
+  duration: number
+  geometry: {
+    coordinates: [number, number][];
+    type: string;
+  };
+  maneuver: {
+    instruction: string;
+    type: string;
+  };
 }
 
 interface MapProps {
-  center: Location
-  markers: MapMarker[]
-  showRoute?: boolean
-  onRouteCalculated?: (duration: number, steps: unknown[], distance: number) => void
+  center?: {
+    latitude: number;
+    longitude: number;
+  };
+  markers?: Array<{
+    location: {
+      latitude: number;
+      longitude: number;
+    };
+    color: string;
+    popupText?: string;
+  }>;
+  showRoute?: boolean;
+  followMechanic?: boolean;
+  onRouteCalculated?: (duration: number, steps: RouteStep[], distance: number) => void;
 }
 
-const MapboxDisplay = ({ center, markers, showRoute, onRouteCalculated }: MapProps) => {
-  const [map, setMap] = useState<mapboxgl.Map | null>(null)
-  const [followMechanic, setFollowMechanic] = useState(false)
+export default function MapboxDisplay({ 
+  center = { latitude: 40, longitude: -74.5 },
+  markers = [], 
+  showRoute = false, 
+  followMechanic = false, 
+  onRouteCalculated 
+}: MapProps) {
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
+  const [isFollowingMechanic, setIsFollowingMechanic] = useState(followMechanic);
 
+  // Use ref for tracking markers
+  const existingMarkers = useRef<mapboxgl.Marker[]>([]);
+  const routeLayerRef = useRef<boolean>(false);
+
+  // Initialize map
   useEffect(() => {
     if (!map) {
-      // Set the access token for Mapbox
+      // Validate environment variables
       const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
       if (!mapboxToken) {
         throw new Error('Missing required environment variable: NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN');
@@ -39,28 +74,21 @@ const MapboxDisplay = ({ center, markers, showRoute, onRouteCalculated }: MapPro
         container: "map",
         style: "mapbox://styles/mapbox/streets-v12",
         center: [center.longitude, center.latitude],
-        zoom: 13,
-      })
-
-      // Wait for the style to load before setting the map
-      newMap.on('style.load', () => {
-        setMap(newMap)
+        zoom: 9,
       });
 
-      return () => {
-        newMap.remove()
-      }
+      setMap(newMap);
     }
-  }, [map, center])
+  }, [map, center]);
 
   useEffect(() => {
     // Enable following mechanic when route starts
     if (!showRoute) return;
-    setFollowMechanic(showRoute);
+    setIsFollowingMechanic(showRoute);
   }, [showRoute]);
 
   useEffect(() => {
-    if (!map || !followMechanic || markers.length < 2) return;
+    if (!map || !markers || markers.length < 2) return;
 
     // Get mechanic marker (last marker)
     const mechanicLocation = markers[markers.length - 1].location;
@@ -70,11 +98,20 @@ const MapboxDisplay = ({ center, markers, showRoute, onRouteCalculated }: MapPro
       duration: 1000,
       essential: true
     });
-  }, [map, markers, followMechanic]);
+  }, [map, markers]);
 
-  // Use ref for tracking markers
-  const existingMarkers = useRef<mapboxgl.Marker[]>([]);
-  const routeLayerRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!map || !markers || markers.length === 0 || !isFollowingMechanic) return;
+
+    const mechanicMarker = markers[markers.length - 1];
+    if (mechanicMarker?.location) {
+      map.flyTo({
+        center: [mechanicMarker.location.longitude, mechanicMarker.location.latitude],
+        zoom: 14,
+        duration: 2000,
+      });
+    }
+  }, [map, markers, isFollowingMechanic]);
 
   // Memoize marker cleanup function
   const removeExistingMarkers = useCallback(() => {
@@ -217,14 +254,22 @@ const MapboxDisplay = ({ center, markers, showRoute, onRouteCalculated }: MapPro
       });
 
       routeLayerRef.current = true;
+
+      if (onRouteCalculated) {
+        const steps: RouteStep[] = data.routes[0].legs[0].steps;
+        const duration = data.routes[0].duration;
+        const distance = data.routes[0].distance;
+        onRouteCalculated(duration, steps, distance);
+      }
     } catch (error) {
       console.error('Error fetching route:', error);
     }
-  }, [map, removeExistingRoute]);
+  }, [map, removeExistingRoute, onRouteCalculated]);
 
   // Handle route updates
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) {
+      console.log('Map not ready yet');
       return;
     }
 
@@ -244,9 +289,11 @@ const MapboxDisplay = ({ center, markers, showRoute, onRouteCalculated }: MapPro
     };
   }, [map, markers, showRoute, fetchRouteAndDraw, removeExistingRoute]);
 
+  useEffect(() => {
+    setIsFollowingMechanic(followMechanic);
+  }, [followMechanic]);
+
   return (
     <div id="map" className="w-full h-full" />
   )
 }
-
-export default MapboxDisplay;

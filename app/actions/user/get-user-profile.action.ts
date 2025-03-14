@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma"
 
 export async function getUserProfileAction(userId: string) {
   try {
-    console.log("Fetching user profile for ID:", userId)
     
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -20,10 +19,7 @@ export async function getUserProfileAction(userId: string) {
       },
     })
 
-    console.log("Database result:", user)
-
     if (!user) {
-      console.error("User not found:", userId)
       throw new Error("User not found")
     }
 
@@ -31,8 +27,6 @@ export async function getUserProfileAction(userId: string) {
       ...user,
       dob: user.dob ? user.dob.toISOString().split('T')[0] : '',
     }
-
-    console.log("Formatted data:", formattedData)
 
     return {
       success: true,

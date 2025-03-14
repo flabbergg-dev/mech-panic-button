@@ -1,6 +1,7 @@
 "use server"
 
 import { ServiceStatus, ServiceType } from "@prisma/client"
+import type { ServiceRequest } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { v4 as uuidv4 } from 'uuid'
 
@@ -18,7 +19,7 @@ type ServiceRequestInput = {
 
 type ServiceRequestResponse = {
   success: boolean;
-  data?: any;
+  data?: ServiceRequest;
   mechanic?: {
     name: string;
     rating: number;
@@ -60,7 +61,7 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
         status: input.status,
         serviceType,
         location: input.location,
-        description: serviceType.toLowerCase().replace(/_/g, ' ') + ' service request',
+        description: `${serviceType.toLowerCase().replace(/_/g, ' ')} service request`,
         mechanicId: input.mechanicId,
         startTime: input.startTime,
         totalAmount: 0, // Required by Prisma schema
@@ -68,7 +69,6 @@ export async function createServiceRequestAction(input: ServiceRequestInput): Pr
       }
     })
 
-    console.log('Service request created:', serviceRequest);
 
     return {
       success: true,
