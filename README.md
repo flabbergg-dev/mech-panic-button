@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
- On-demand and scheduled mechanic services at your fingertips
+ On-demand and scheduled mechanic services at your fingertips.
 </p>
 
 <p align="center">
