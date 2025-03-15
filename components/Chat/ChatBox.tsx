@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DynamicAvatar } from "@/components/DynamicAvatar/DynamicAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createMessageAction } from "@/app/actions/chats/create-message.action";
@@ -13,10 +12,10 @@ import { MessageCircle } from "lucide-react";
 import { getChatMessages } from "@/app/actions/chats/get-chat-messages.action";
 import { supabase } from "@/utils/supabase/client";
 import { getUserToken } from "@/app/actions/getUserToken";
-import useUserFirstName from "@/hooks/useUserFirstName";
-import { Message } from "@prisma/client";
+import { Message as MessageType, User, UserRole } from "@prisma/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader } from "../loader";
+import { Message } from "./Message";
 
 type ChatBoxProps = {
   userId: string;
@@ -26,14 +25,48 @@ type ChatBoxProps = {
 export const ChatBox = ({ userId, className }: ChatBoxProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [chatId, setChatId] = useState<number | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const { user: currentUser } = useUser();
+  const { user: clerkUser } = useUser();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const toast = useToast();
-  const useMechanicFirstNameHook = useUserFirstName();
-  const useUserFirstNameHook = useUserFirstName(userId);
+
+  // Convert Clerk user to Prisma User type
+  useEffect(() => {
+    if (clerkUser) {
+      // Create a User object that matches Prisma's User type
+      const prismaUser: User = {
+        id: clerkUser.id,
+        email: clerkUser.emailAddresses[0]?.emailAddress ?? '',
+        firstName: clerkUser.firstName ?? '',
+        lastName: clerkUser.lastName ?? '',
+        role: null as UserRole | null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        profileImage: clerkUser.imageUrl,
+        dob: null,
+        phoneNumber: null,
+        stripeCustomerId: null,
+        stripeConnectId: null,
+        stripeSubscriptionId: null,
+        stripeSubscriptionStatus: null,
+        stripeSubscriptionPlan: null,
+        firstTransactionId: null,
+        secondTransactionId: null,
+        // Empty object for Json type
+        currentLocation: {}, 
+        // Array of strings
+        documentsUrl: [], 
+        notificationsEmailEnabled: true,
+        stripeSubEndingDate: null
+      };
+      setCurrentUser(prismaUser);
+    } else {
+      setCurrentUser(null);
+    }
+  }, [clerkUser]);
 
   // Fetch messages for a given chat ID
   const fetchMessages = async (chatId: number) => {
@@ -41,7 +74,7 @@ export const ChatBox = ({ userId, className }: ChatBoxProps) => {
       setLoadingMessages(true);
       const messages = await getChatMessages(chatId);
       if (messages?.messages) {
-        setMessages(messages.messages as Message[]);
+        setMessages(messages.messages as MessageType[]);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -99,7 +132,7 @@ export const ChatBox = ({ userId, className }: ChatBoxProps) => {
   // Real-time subscription for new messages
   useEffect(() => {
     if (!chatId) {
-    fetchChat();
+      fetchChat();
     }
     const subscribeToRealtime = async () => {
       const token = await getUserToken();
@@ -114,7 +147,7 @@ export const ChatBox = ({ userId, className }: ChatBoxProps) => {
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "Message" },
-          (payload: { new: Message }) => {
+          (payload: { new: MessageType }) => {
             // Avoid adding duplicate messages
             if (!messages.some((msg) => msg.id === payload.new.id)) {
               setMessages((prev) => [...prev, payload.new]);
@@ -134,12 +167,12 @@ export const ChatBox = ({ userId, className }: ChatBoxProps) => {
   return (
     <div>
       {chatId && (
-      <Button
-        onClick={handleButtonClick}
-        className={"rounded-full p-2 bg-slate-600 text-white z-[990]" + (className ? ` ${className}` : "")}
-      >
-        <MessageCircle size={24} />
-      </Button>
+        <Button
+          onClick={handleButtonClick}
+          className={"rounded-full p-2 bg-slate-600 text-white z-[990]" + (className ? ` ${className}` : "")}
+        >
+          <MessageCircle size={24} />
+        </Button>
       )}
       {isOpen && (
         <div
@@ -158,38 +191,7 @@ export const ChatBox = ({ userId, className }: ChatBoxProps) => {
               <Separator />
               <div className="grid gap-4 my-4">
                 {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`h-auto gap-4 w-fit flex flex-row items-center justify-center ${
-                      msg.authorId === currentUser?.id
-                        ? "place-self-end"
-                        : "place-self-start"
-                    }`}
-                  >
-                    {msg.authorId !== currentUser?.id && (
-                      <DynamicAvatar
-                        className="border-2"
-                        fallbackText={
-                          useMechanicFirstNameHook
-                            ? useMechanicFirstNameHook.slice(0, 2)
-                            : "NA"
-                        }
-                      />
-                    )}
-                    <p className="text-white bg-slate-600 p-2 rounded-lg">
-                      {msg.content}
-                    </p>
-                    {msg.authorId === currentUser?.id && (
-                      <DynamicAvatar
-                        className="border-2"
-                        fallbackText={
-                          useUserFirstNameHook
-                            ? useUserFirstNameHook.slice(0, 2)
-                            : "NA"
-                        }
-                      />
-                    )}
-                  </div>
+                  <Message key={msg.id} msg={msg} currentUser={currentUser} />
                 ))}
                 <div className="flex gap-4 my-4">
                   <Input

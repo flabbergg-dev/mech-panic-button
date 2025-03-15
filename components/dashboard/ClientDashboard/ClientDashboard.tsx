@@ -79,6 +79,8 @@ export function ClientDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mechanicConnectIds, setMechanicConnectIds] = useState<Map<string, string>>(new Map());
+  const [refundCountdown, setRefundCountdown] = useState<Map<string, number>>(new Map());
+  const [refundedRequests, setRefundedRequests] = useState<Set<string>>(new Set());
 
   // Initialize reviewedRequestIds from localStorage
   useEffect(() => {
@@ -323,6 +325,41 @@ export function ClientDashboard() {
     }
   }, [mechanicLocation, activeRequest?.status, updateEstimatedTime]);
 
+  // Initialize countdown when a request enters IN_ROUTE status
+  useEffect(() => {
+    if (activeRequest?.status === ServiceStatus.IN_ROUTE) {
+      const requestId = activeRequest.id;
+      if (!refundCountdown.has(requestId)) {
+        setRefundCountdown(prev => new Map(prev).set(requestId, 300)); // 5 minutes
+      }
+    }
+  }, [activeRequest?.status, activeRequest?.id, refundCountdown]);
+
+  // Handle countdown timer
+  useEffect(() => {
+    const timers = new Map<string, NodeJS.Timeout>();
+    
+    refundCountdown.forEach((countdown, requestId) => {
+      if (countdown > 0) {
+        const timer = setInterval(() => {
+          setRefundCountdown(prev => {
+            const newCountdown = new Map(prev);
+            const currentCount = newCountdown.get(requestId) ?? 0;
+            if (currentCount > 0) {
+              newCountdown.set(requestId, currentCount - 1);
+            }
+            return newCountdown;
+          });
+        }, 1000);
+        timers.set(requestId, timer);
+      }
+    });
+
+    return () => {
+      timers.forEach(timer => clearInterval(timer));
+    };
+  }, []);
+
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
     if (activeRequest) {
@@ -470,8 +507,13 @@ export function ClientDashboard() {
   };
 
   const handleRefund = async () => {
-    setIsLoading(true);
+    if (!activeRequest || !activeRequest.id) return;
+    
+    const currentCountdown = refundCountdown.get(activeRequest.id) ?? 0;
+    if (currentCountdown > 0 || refundedRequests.has(activeRequest.id)) return;
+    
     try {
+      setIsLoading(true);
       // Call the server action to refund the service request
       const result = await fetch(`/api/stripe/refund`, {
         method: "POST",
@@ -479,10 +521,10 @@ export function ClientDashboard() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: activeRequest?.firstTransactionId,
-          requestId: activeRequest?.id,
-          clientId: activeRequest?.clientId,
-          mechanicId: activeRequest?.mechanicId
+          id: activeRequest.firstTransactionId,
+          requestId: activeRequest.id,
+          clientId: activeRequest.clientId,
+          mechanicId: activeRequest.mechanicId
         }),
       });
 
@@ -490,15 +532,24 @@ export function ClientDashboard() {
         throw new Error(
           `Failed to refund service request: ${result.status} ${result.statusText}`
         );
-      } else {
-        handleCancelRequest(activeRequest?.id!);
       }
 
-
-      // The UI will update automatically through real-time subscription
+      setRefundedRequests(prev => new Set([...prev, activeRequest.id]));
+      toast({
+        title: "Refund Processed",
+        description: "Your refund has been processed successfully",
+        className: "bg-green-500 text-white",
+      });
+      
+      // Cancel the request after successful refund
+      await handleCancelRequest(activeRequest.id);
     } catch (error) {
-      console.error("Error refunding service request:", error);
-      // Handle error (show toast, etc.)
+      console.error("Error processing refund:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process refund. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -612,9 +663,30 @@ export function ClientDashboard() {
                         Waiting for mechanic's location...
                       </p>
                     )}
-                    <Button onClick={handleRefund}>
-                      Refund
-                    </Button>
+                    {!refundedRequests.has(activeRequest.id) && (
+                      <div className="flex items-center space-x-2 mt-4">
+                        <Button
+                          onClick={handleRefund}
+                          disabled={
+                            (refundCountdown.get(activeRequest.id) ?? 0) > 300 ||
+                            activeRequest.createdAt && Date.now() - new Date(activeRequest.createdAt).getTime() < 300000
+                          }
+                          className={
+                            (refundCountdown.get(activeRequest.id) ?? 0) > 300 ||
+                            (activeRequest.createdAt && Date.now() - new Date(activeRequest.createdAt).getTime() < 300000)
+                              ? "opacity-50"
+                              : ""
+                          }
+                        >
+                          {isLoading ? (
+                            <Loader2Icon className="animate-spin h-4 w-4 mr-2" />
+                          ) : null}
+                          {(refundCountdown.get(activeRequest.id) ?? 0) > 300 
+                            ? `Refund (${Math.floor((refundCountdown.get(activeRequest.id) ?? 0) / 60)}:${((refundCountdown.get(activeRequest.id) ?? 0) % 60).toString().padStart(2, '0')})`
+                            : "Refund"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   {activeRequest.mechanicId && (
                     <ChatBox userId={activeRequest.clientId} />

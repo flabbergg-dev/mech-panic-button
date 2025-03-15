@@ -2,7 +2,7 @@ import { getUserProfileAction } from "@/app/actions/user/get-user-profile.action
 import { useUser } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 
-export const useUserProfileImage = (id?: string) => {
+export const useUserProfilePic = (id?: string) => {
     const [profileImage, setProfileImage] = useState<string | null>(null);
     const { user } = useUser()
 
@@ -22,4 +22,4 @@ export const useUserProfileImage = (id?: string) => {
     return profileImage;
 };
 
-export default useUserProfileImage;
+export default useUserProfilePic;
