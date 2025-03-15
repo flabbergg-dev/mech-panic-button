@@ -3,12 +3,12 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
     try {
-        const { id } = await req.json();
-        if (!id) {
+        const { accountId } = await req.json();
+        if (!accountId) {
             return new NextResponse("Account ID cannot be empty", { status: 400 })
         } else {
             const accountSession = await stripe.accountSessions.create({
-                account: id,
+                account: accountId,
                 components: {
                     account_management: {
                     enabled: true,

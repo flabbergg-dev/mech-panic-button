@@ -53,6 +53,7 @@ export function useRealtimeServiceOffers(userId: string) {
   // Use refs to track latest state without causing re-renders
   const offersRef = useRef(offers);
   const requestsRef = useRef(requests);
+  const loadingRef = useRef(loading);
 
   // Update refs when state changes
   useEffect(() => {
@@ -62,6 +63,10 @@ export function useRealtimeServiceOffers(userId: string) {
   useEffect(() => {
     requestsRef.current = requests;
   }, [requests]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
 
   const fetchOffersAndRequests = useCallback(async (force = false, isInitialLoad = false) => {
     try {
@@ -73,7 +78,8 @@ export function useRealtimeServiceOffers(userId: string) {
       }
 
       // Only set loading on initial load or forced refreshes to prevent UI flicker
-      if (isInitialLoad || force) {
+      // Use loadingRef to prevent state updates during unmounted state
+      if ((isInitialLoad || force) && !loadingRef.current) {
         setLoading(true);
       }
       
@@ -132,21 +138,27 @@ export function useRealtimeServiceOffers(userId: string) {
       console.error('Error in useRealtimeServiceOffers:', err);
       return { offers: [], requests: [] };
     } finally {
-      if (isInitialLoad || force) {
+      if ((isInitialLoad || force) && loadingRef.current) {
         setLoading(false);
       }
-      if (isInitialLoad) {
+      if (isInitialLoad && !initialLoadComplete) {
         setInitialLoadComplete(true);
       }
     }
-  }, [userId, lastFetchTime]);
+  }, [userId, lastFetchTime, initialLoadComplete]);
 
   // Initial fetch
   useEffect(() => {
-    if (userId) {
+    let isMounted = true;
+    
+    if (userId && !initialLoadComplete) {
       void fetchOffersAndRequests(true, true);
     }
-  }, [userId, fetchOffersAndRequests]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userId, fetchOffersAndRequests, initialLoadComplete]);
 
   // Set up Supabase realtime subscriptions with proper cleanup
   useEffect(() => {
@@ -211,11 +223,10 @@ export function useRealtimeServiceOffers(userId: string) {
   }, [fetchOffersAndRequests]);
 
   return {
-    requests,
     offers,
+    requests,
     loading,
     error,
-    refetch: () => fetchOffersAndRequests(true),
-    setRequests
-  }
+    refetch: () => fetchOffersAndRequests(true)
+  };
 }

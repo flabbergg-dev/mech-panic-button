@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { ServiceStatus } from "@prisma/client";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 type BookingWithService = {
   id: string;
@@ -33,6 +34,11 @@ type BookingWithService = {
   };
 };
 
+interface BalanceData {
+  available: number;
+  pending: number;
+}
+
 type MechanicHomeProps = {
   setActiveTab: (tab: string) => void;
   isApproved: boolean;
@@ -44,7 +50,11 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
-  const [currentAvailableBalance, setCurrentAvailableBalance] = useState(0);
+  const [currentAvailableBalance, setCurrentAvailableBalance] = useState<BalanceData>({
+    available: 0,
+    pending: 0
+  });
+  const [loading, setLoading] = useState(true);
   
   // Use geolocation hook with proper type handling
   const { latitude, longitude, error: locationError } = useGeolocation({
@@ -88,21 +98,21 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Error response from balance API:", errorText);
-        throw new Error(`Failed to fetch balance: ${response.status} ${errorText}`);
-      }
-
       const data = await response.json();
       
       if (isMounted.current) {
-        setCurrentAvailableBalance(data.available || 0);
+        setCurrentAvailableBalance({
+          available: data.available || 0,
+          pending: data.pending || 0
+        });
       }
     } catch (error) {
       console.error("Error fetching balance:", error);
       if (isMounted.current) {
-        setCurrentAvailableBalance(0);
+        setCurrentAvailableBalance({
+          available: 0,
+          pending: 0
+        });
       }
     }
   }, [stripeConnectId]);
@@ -135,6 +145,51 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
   }, [fetchStripeConnectId]);
 
   useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const response = await getStripeConnectId();
+        if (!response?.stripeConnectId) {
+          console.error("No Stripe Connect ID found");
+          setLoading(false);
+          return;
+        }
+
+        const balanceResponse = await fetch("/api/stripe/connect-balance-funds", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            accountId: response.stripeConnectId,
+          }),
+        });
+
+        if (!balanceResponse.ok) {
+          throw new Error("Failed to fetch balance");
+        }
+
+        const data = await balanceResponse.json();
+        console.log("Balance data:", data);
+        
+        if (isMounted.current) {
+          setCurrentAvailableBalance({
+            available: data.available || 0,
+            pending: data.pending || 0
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+      } finally {
+        if (isMounted.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchBalance();
+  }, []);
+
+  useEffect(() => {
     if (!isMounted.current) return;
 
     if (locationError) {
@@ -152,6 +207,14 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
         <div className="relative inline-block h-12 w-12">
           <div className="absolute h-full w-full animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"/>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -296,5 +359,3 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     </div>
   );
 };
-
-export default MechanicHome;

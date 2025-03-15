@@ -6,15 +6,9 @@ import {
 import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
 import { getStripeConnectId } from '@/app/actions/user/get-stripe-connect-id';
 
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-
-if (!stripePublishableKey) {
-  throw new Error("Missing Stripe publishable key. Please set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY environment variable.");
-}
-
 export const StripeAccountManagement = () => {
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
-  const stripeConnectInstanceAccount = useRef<ReturnType<typeof loadConnectAndInitialize> | null>(null);
+  const stripeConnectInstanceAccount = useRef<any>(null);
 
   useEffect(() => {
     const fetchStripeConnectId = async () => {
@@ -22,6 +16,7 @@ export const StripeAccountManagement = () => {
 
       if (response) {
         setStripeConnectId(response.stripeConnectId);
+        console.log('Stripe Connect ID: ', response.stripeConnectId);
       } else {
         console.error('Error fetching Stripe Connect ID');
       }
@@ -35,43 +30,38 @@ export const StripeAccountManagement = () => {
   useEffect(() => {
     if (!stripeConnectId) return;
 
-    const fetchClientSecret = async (): Promise<string> => {
-      const response = await fetch('/api/stripe/connect/client-secret', {
+    const fetchClientSecret = async () => {
+      const response = await fetch('/api/stripe/account/embed', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          accountId: stripeConnectId,
+          id: stripeConnectId,
         }),
       });
 
       if (!response.ok) {
         const { error } = await response.json();
-        throw new Error(error || 'Failed to fetch client secret');
+        console.log('An error occurred: ', error);
+        return undefined;
+      } else {
+        const { client_secret: clientSecret } = await response.json();
+        return clientSecret;
       }
-
-      const { clientSecret } = await response.json();
-      if (!clientSecret) {
-        throw new Error('No client secret received');
-      }
-
-      return clientSecret;
     };
 
     // Initialize the Stripe instance
-    if (!stripeConnectInstanceAccount.current) {
-      stripeConnectInstanceAccount.current = loadConnectAndInitialize({
-        publishableKey: stripePublishableKey,
-        fetchClientSecret,
-        appearance: {
-          overlays: 'dialog',
-          variables: {
-            colorPrimary: '#625afa',
-          },
+    stripeConnectInstanceAccount.current = loadConnectAndInitialize({
+      publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      fetchClientSecret: fetchClientSecret,
+      appearance: {
+        overlays: 'dialog',
+        variables: {
+          colorPrimary: '#625afa',
         },
-      });
-    }
+      },
+    });
   }, [stripeConnectId]);
 
   if (!stripeConnectId || !stripeConnectInstanceAccount.current) {
@@ -79,8 +69,8 @@ export const StripeAccountManagement = () => {
   }
 
   return (
-    <div className="pt-4 flex md:flex-row flex-col">
-      <div className="bg-background w-[100%] h-fit p-2 rounded-md border-2 border-primary items-center flex justify-center">
+    <div className="pt-4 flex md:flex-row flex-col gap-10">
+      <div className="bg-white w-[100%] h-fit p-10 rounded-md border-2 border-primary">
         <ConnectComponentsProvider connectInstance={stripeConnectInstanceAccount.current}>
           <ConnectAccountManagement
             // Optional:

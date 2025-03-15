@@ -1,31 +1,27 @@
-'use client';
-
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { ServiceRequest, ServiceStatus } from '@prisma/client';
 import { useUser } from '@clerk/nextjs';
-import type { ServiceRequest } from '@prisma/client';
-import { supabase } from '@/utils/supabase/client';
-import type { RealtimePostgresChangesPayload } from '@/types/supabase';
 import { getServiceRequestsAction } from '@/app/actions/service/request/getServiceRequestsAction';
 
-interface ServiceRequestClient {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string | null;
-}
-
-interface ServiceRequestWithClient extends Omit<ServiceRequest, 'client'> {
-  client: ServiceRequestClient;
+// Define service request with client info
+interface ServiceRequestWithClient extends ServiceRequest {
+  client?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string | null;
+  };
 }
 
 interface UseMechanicServiceRequestsReturn {
   serviceRequests: ServiceRequestWithClient[];
   isLoading: boolean;
   error: Error | null;
-  refetch: () => void;
+  refetch: (force?: boolean) => Promise<void>;
 }
 
-const FETCH_THROTTLE_MS = 5000; // 5 seconds between fetches
+// Minimum time between fetches in milliseconds
+const FETCH_THROTTLE_MS = 5000;
 
 export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
   const { user } = useUser();
@@ -37,6 +33,7 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
   const isFetching = useRef<boolean>(false);
 
   const fetchRequests = useCallback(async (force = false) => {
+    // Skip if already fetching or if not enough time has passed since last fetch
     if (isFetching.current || (!force && Date.now() - lastFetchTime.current < FETCH_THROTTLE_MS)) {
       return;
     }
@@ -54,109 +51,82 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
         throw new Error('Failed to fetch service requests');
       }
 
-      if (response.error) {
-        throw new Error(response.error);
-      }
-
+      // Only update state if component is still mounted
       if (isMounted.current) {
-        // Transform the response to match our expected type
-        const transformedRequests = response.serviceRequests.map(request => ({
+        // Transform response to match our expected type
+        const transformedRequests: ServiceRequestWithClient[] = (response.serviceRequests || []).map(request => ({
           ...request,
-          client: {
-            ...request.client,
-            name: `${request.client.firstName} ${request.client.lastName}`.trim()
-          }
+          client: request.client ? {
+            firstName: request.client.firstName,
+            lastName: request.client.lastName,
+            email: request.client.email,
+            phoneNumber: request.client.phoneNumber
+          } : undefined
         }));
+        
         setServiceRequests(transformedRequests);
         setError(null);
-        lastFetchTime.current = Date.now();
       }
+
+      lastFetchTime.current = Date.now();
     } catch (err) {
       console.error('Error fetching service requests:', err);
       if (isMounted.current) {
         setError(err instanceof Error ? err : new Error('Failed to fetch service requests'));
       }
     } finally {
+      isFetching.current = false;
       if (isMounted.current) {
         setIsLoading(false);
       }
-      isFetching.current = false;
     }
   }, [serviceRequests.length]);
 
+  // Initial fetch
   useEffect(() => {
-    isMounted.current = true;
-    let pollingInterval: NodeJS.Timeout | null = null;
-
-    if (user?.id) {
-      fetchRequests(true);
+    if (user) {
+      void fetchRequests(true);
     }
+  }, [user, fetchRequests]);
 
-    pollingInterval = setInterval(() => {
-      fetchRequests(false);
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Refresh data when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchRequests(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchRequests]);
+
+  // Periodic refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isMounted.current) {
+        void fetchRequests();
+      }
     }, FETCH_THROTTLE_MS);
 
     return () => {
-      isMounted.current = false;
-      clearInterval(pollingInterval);
+      clearInterval(interval);
     };
-  }, [user?.id, fetchRequests]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-
-    let pollingInterval: NodeJS.Timeout | null = null;
-
-
-    const handleUpdate = () => {
-      if (isFetching.current) return;
-      fetchRequests(true);
-    };
-
-    try {
-      const channel = supabase
-        .channel(`service_requests_${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'ServiceRequest',
-            filter: 'status=eq.REQUESTED'
-          },
-          (payload: RealtimePostgresChangesPayload) => {
-            handleUpdate();
-          }
-        )
-        .subscribe((status: string) => {
-
-          if (status !== 'SUBSCRIBED' && !pollingInterval) {
-            pollingInterval = setInterval(() => fetchRequests(false), FETCH_THROTTLE_MS);
-          }
-        });
-
-      return () => {
-        channel.unsubscribe();
-        if (pollingInterval) clearInterval(pollingInterval);
-      };
-    } catch (error) {
-      console.error('Error setting up Supabase realtime for service requests:', error);
-      pollingInterval = setInterval(() => fetchRequests(false), FETCH_THROTTLE_MS);
-
-      return () => {
-        if (pollingInterval) clearInterval(pollingInterval);
-      };
-    }
-  }, [user?.id, fetchRequests]);
-
-  const refetch = useCallback(() => {
-    fetchRequests(true);
   }, [fetchRequests]);
 
   return {
     serviceRequests,
     isLoading,
     error,
-    refetch
+    refetch: fetchRequests
   };
 }

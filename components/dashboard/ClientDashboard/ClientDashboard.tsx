@@ -31,7 +31,6 @@ import { calculateEstimatedTime } from '@/utils/location';
 import { Booking } from '@/components/cards/Booking'
 import { ReviewModal } from '@/components/reviews/ReviewModal'
 import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
-import { loadStripe } from '@stripe/stripe-js';
 import { getStripeConnectId } from '@/app/actions/user/get-stripe-connect-id'
 
 interface Location {
@@ -470,6 +469,41 @@ export function ClientDashboard() {
     }
   };
 
+  const handleRefund = async () => {
+    setIsLoading(true);
+    try {
+      // Call the server action to refund the service request
+      const result = await fetch(`/api/stripe/refund`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: activeRequest?.firstTransactionId,
+          requestId: activeRequest?.id,
+          clientId: activeRequest?.clientId,
+          mechanicId: activeRequest?.mechanicId
+        }),
+      });
+
+      if (!result.ok) {
+        throw new Error(
+          `Failed to refund service request: ${result.status} ${result.statusText}`
+        );
+      } else {
+        handleCancelRequest(activeRequest?.id!);
+      }
+
+
+      // The UI will update automatically through real-time subscription
+    } catch (error) {
+      console.error("Error refunding service request:", error);
+      // Handle error (show toast, etc.)
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Add a periodic refresh to check for new offers when on the requests tab
   useEffect(() => {
     // Only set up the interval if we're on the requests tab and have an active request
@@ -538,7 +572,6 @@ export function ClientDashboard() {
           </div>
         );
       case "map":
-        console.log("Rendering map tab");
         return (
           <div className="relative min-h-screen">
             {/* Underlay Map */}
@@ -579,6 +612,9 @@ export function ClientDashboard() {
                         Waiting for mechanic's location...
                       </p>
                     )}
+                    <Button onClick={handleRefund}>
+                      Refund
+                    </Button>
                   </div>
                   {activeRequest.mechanicId && (
                     <ChatBox userId={activeRequest.clientId} />

@@ -187,7 +187,7 @@ const SettingsPage = () => {
                       </p>
                     </div>
                     <div className="pt-4 flex md:flex-row flex-col gap-10">
-                      <div className="flex flex-col justify-between items-center border-2 rounded-md p-4">
+                      <div className="flex flex-col justify-between items-center border-2 rounded-md p-4 bg-card">
                         <div className="flex flex-col gap-4">
                           <div className="flex justify-between items-center">
                             <p>subscription:</p>
@@ -213,8 +213,8 @@ const SettingsPage = () => {
                           </Button>
                         </div>
                       </div>
+                      <StripeAccountBalance />
                     </div>
-                    <StripeAccountBalance />
                   </motion.div>
                 ) : (
                   <motion.div

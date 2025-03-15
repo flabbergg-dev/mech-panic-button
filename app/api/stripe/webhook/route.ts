@@ -98,8 +98,8 @@ export async function POST(req: Request) {
             throw new Error('Service request has no client ID')
           }
 
-          const latestCharge = paymentIntent.latest_charge as string
-          if (!latestCharge) {
+          const id = paymentIntent.id as string
+          if (!id) {
             throw new Error('No charge ID found in payment intent')
           }
 
@@ -109,27 +109,24 @@ export async function POST(req: Request) {
               data: {
                 status: ServiceStatus.PAYMENT_AUTHORIZED,
                 totalAmount: serviceOffer?.price,
-                firstTransactionId: latestCharge
+                firstTransactionId: id
               }
             })
           } else {
-            await prisma.$transaction(async (prisma) => {
-              if (serviceOffer?.id) {
+
                 await prisma.serviceOffer.update({
-                  where: { id: serviceOffer.id },
-                  data: { status: 'ACCEPTED' }
+                  where: { id: serviceOffer?.id },
+                  data: { status: 'EXPIRED' }
                 })
-              }
 
               await prisma.serviceRequest.update({
                 where: { id: serviceRequest.id },
                 data: {
                   status: ServiceStatus.SERVICING,
-                  totalAmount: serviceOffer?.price,
-                  secondTransactionId: latestCharge
+                  totalAmount: serviceRequest.totalAmount + (serviceOffer?.price || 0),
+                  secondTransactionId: id
                 }
               })
-            })
           }
 
           const user = await prisma.user.findUnique({
@@ -140,7 +137,7 @@ export async function POST(req: Request) {
             await prisma.user.update({
               where: { id: serviceRequest.clientId },
               data: {
-                [user.firstTransactionId ? 'secondTransactionId' : 'firstTransactionId']: latestCharge
+                [user.firstTransactionId ? 'secondTransactionId' : 'firstTransactionId']: id
               }
             })
           }

@@ -22,10 +22,18 @@ const getEmailTemplate = (content: string) => `
 
 export async function POST(req: Request) {
   try {
-    const { id, requestId, userEmail, mechanicId } = await req.json();
+    const { id, requestId, clientId, mechanicId } = await req.json();
 
-    if (!id || !requestId || !userEmail) {
+    if (!id || !requestId || !clientId) {
       return new NextResponse("Missing required fields", { status: 400 });
+    }
+
+    const client = await prisma.user.findUnique({
+      where: { id: clientId }
+    });
+
+    if (!client) {
+      return new NextResponse("Client not found", { status: 404 });
     }
 
     // Process refund through Stripe
@@ -40,7 +48,7 @@ export async function POST(req: Request) {
     // Send email notification to customer
     await resend.emails.send({
       from: 'notifications@mech-panicbutton.com',
-      to: userEmail,
+      to: client.email,
       subject: 'Your Refund Has Been Processed',
       html: getEmailTemplate(`
         <h2 style="color: #333; margin-bottom: 20px;">Refund Confirmation</h2>
