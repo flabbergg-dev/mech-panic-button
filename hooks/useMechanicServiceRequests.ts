@@ -4,7 +4,7 @@ import { useUser } from '@clerk/nextjs';
 import { getServiceRequestsAction } from '@/app/actions/service/request/getServiceRequestsAction';
 
 // Define service request with client info
-interface ServiceRequestWithClient extends ServiceRequest {
+export interface ServiceRequestWithClient extends ServiceRequest {
   client?: {
     firstName: string;
     lastName: string;
@@ -35,17 +35,20 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
   const fetchRequests = useCallback(async (force = false) => {
     // Skip if already fetching or if not enough time has passed since last fetch
     if (isFetching.current || (!force && Date.now() - lastFetchTime.current < FETCH_THROTTLE_MS)) {
+      console.log('Skipping fetch - already fetching or throttled');
       return;
     }
 
     try {
       isFetching.current = true;
+      console.log('Fetching service requests...');
       
       if (serviceRequests.length === 0) {
         setIsLoading(true);
       }
 
       const response = await getServiceRequestsAction();
+      console.log('Service requests response:', response);
       
       if (!response) {
         throw new Error('Failed to fetch service requests');
@@ -64,6 +67,7 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
           } : undefined
         }));
         
+        console.log('Transformed requests:', transformedRequests);
         setServiceRequests(transformedRequests);
         setError(null);
       }
@@ -85,7 +89,7 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
   // Initial fetch
   useEffect(() => {
     if (user) {
-      void fetchRequests(true);
+       fetchRequests(true);
     }
   }, [user, fetchRequests]);
 

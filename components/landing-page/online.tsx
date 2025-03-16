@@ -57,8 +57,7 @@ export default function Online() {
                 description="Get quick responses through our in-app chat feature."
               />
             </div>
-            <PwaInstall
-            />
+            <PwaInstall description="Download Mech-Panic Button"/>
           </motion.div>
 
           <motion.div

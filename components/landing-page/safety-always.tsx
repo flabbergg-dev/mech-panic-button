@@ -68,7 +68,7 @@ export default function SafetyAlways() {
                 description="Service where and when you need it"
               />
             </div>
-            <PwaInstall/>
+            <PwaInstall description="Request Your Mechanic Now!"/>
               
           </motion.div>
 

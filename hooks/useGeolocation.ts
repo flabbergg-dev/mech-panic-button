@@ -1,24 +1,32 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface GeolocationState {
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   error: string | null;
 }
 
 interface UseGeolocationOptions {
   minDistance?: number;  // Minimum distance in meters before updating
   updateInterval?: number;  // Update interval in milliseconds
+  timeout?: number; // Timeout in milliseconds
 }
 
 export function useGeolocation(options: UseGeolocationOptions = {}) {
   const [state, setState] = useState<GeolocationState>({
-    latitude: 0,
-    longitude: 0,
+    latitude: null,
+    longitude: null,
     error: null
   });
 
-  const { minDistance = 30, updateInterval = 60000 } = options;
+  const { 
+    minDistance = 30,
+    updateInterval = 60000,
+    timeout = 10000 
+  } = options;
+
+  const lastUpdateTime = useRef<number>(0);
+  const isMounted = useRef(true);
 
   const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371e3; // Earth's radius in meters
@@ -33,36 +41,56 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
-  }, [])
+  }, []);
+
+  const shouldUpdatePosition = useCallback((newLat: number, newLng: number): boolean => {
+    const now = Date.now();
+    
+    // Always update if this is the first position or if there was an error
+    if (!state.latitude || !state.longitude || state.error) {
+      lastUpdateTime.current = now;
+      return true;
+    }
+
+    // Check time threshold
+    if (now - lastUpdateTime.current < updateInterval) {
+      return false;
+    }
+
+    // Check distance threshold
+    const distance = calculateDistance(
+      state.latitude,
+      state.longitude,
+      newLat,
+      newLng
+    );
+
+    if (distance < minDistance) {
+      return false;
+    }
+
+    lastUpdateTime.current = now;
+    return true;
+  }, [state.latitude, state.longitude, state.error, minDistance, updateInterval, calculateDistance]);
 
   const handlePositionUpdate = useCallback((position: GeolocationPosition) => {
-    setState(prevState => {
-      const newLat = position.coords.latitude;
-      const newLng = position.coords.longitude;
+    if (!isMounted.current) return;
 
-      // Check if the distance moved is greater than minDistance
-      if (prevState.latitude && prevState.longitude) {
-        const distance = calculateDistance(
-          prevState.latitude,
-          prevState.longitude,
-          newLat,
-          newLng
-        );
+    const newLat = position.coords.latitude;
+    const newLng = position.coords.longitude;
 
-        if (distance < minDistance) {
-          return prevState;
-        }
-      }
-
-      return {
+    if (shouldUpdatePosition(newLat, newLng)) {
+      setState({
         latitude: newLat,
         longitude: newLng,
         error: null
-      };
-    });
-  }, [calculateDistance, minDistance]);
+      });
+    }
+  }, [shouldUpdatePosition]);
 
   const handleError = useCallback((error: GeolocationPositionError) => {
+    if (!isMounted.current) return;
+
     setState(prevState => ({
       ...prevState,
       error: error.message
@@ -70,6 +98,8 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
   }, []);
 
   useEffect(() => {
+    isMounted.current = true;
+
     if (!navigator.geolocation) {
       setState(prevState => ({
         ...prevState,
@@ -79,23 +109,32 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
     }
 
     // Get initial position
-    navigator.geolocation.getCurrentPosition(handlePositionUpdate, handleError);
+    const initialPositionId = navigator.geolocation.getCurrentPosition(
+      handlePositionUpdate,
+      handleError,
+      {
+        enableHighAccuracy: true,
+        timeout,
+        maximumAge: 0 // Force fresh position
+      }
+    );
 
-    // Set up watching position with throttling
+    // Set up watching position
     const watchId = navigator.geolocation.watchPosition(
       handlePositionUpdate,
       handleError,
       {
         enableHighAccuracy: true,
-        timeout: 5000,
+        timeout,
         maximumAge: updateInterval
       }
     );
 
     return () => {
+      isMounted.current = false;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [handlePositionUpdate, handleError, updateInterval]);
+  }, [handlePositionUpdate, handleError, updateInterval, timeout]);
 
   return state;
 }

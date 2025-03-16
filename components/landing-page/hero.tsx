@@ -42,7 +42,7 @@ export default function Header() {
 
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
            
-              <PwaInstall />
+              <PwaInstall description="Get Started - It's Free!" />
 
                 
               

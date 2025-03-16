@@ -47,7 +47,7 @@ export default function BookingInfo() {
               variant="ghost"
               asChild
             ><div className="flex items-center">
-              <PwaInstall / >
+              <PwaInstall description="Book a Mechanic" />
              
             </div>
             </Button>

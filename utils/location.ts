@@ -61,6 +61,10 @@ export async function calculateEstimatedTime(
     }
 
     const data = await response.json();
+    if (data.routes?.[0]?.distance === 0) {
+      return '0 min';
+    }
+    
     if (!data.routes?.[0]?.duration) {
       throw new Error('Invalid response format from Mapbox API');
     }

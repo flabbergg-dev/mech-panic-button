@@ -76,7 +76,7 @@ export default function KnowMore() {
                 24/7 availability for emergencies
               </li>
             </ul>
-          <PwaInstall />
+          <PwaInstall description="Book Your Mechanic Now"/>
           </div>
         </div>
       </div>

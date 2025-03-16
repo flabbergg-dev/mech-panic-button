@@ -68,7 +68,7 @@ export default function SecondKnowMore() {
                 description="We respect your time and strive for efficient, punctual service."
               />
             </div>
-            <PwaInstall/>
+            <PwaInstall description="Request Your Mechanic Now!"/>
           </motion.div>
 
           <motion.div
