@@ -19,10 +19,11 @@ import { Message } from "./Message";
 
 type ChatBoxProps = {
   userId: string;
-  className?: string;
+  divClassName: string;
+  buttonClassName?: string;
 };
 
-export const ChatBox = ({ userId, className }: ChatBoxProps) => {
+export const ChatBox = ({ userId, divClassName, buttonClassName }: ChatBoxProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [chatId, setChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<MessageType[]>([]);
@@ -165,11 +166,11 @@ export const ChatBox = ({ userId, className }: ChatBoxProps) => {
   }, [chatId, messages]);
 
   return (
-    <div>
+    <div className={divClassName}>
       {chatId && (
         <Button
           onClick={handleButtonClick}
-          className={"rounded-full p-2 bg-slate-600 text-white z-[990]" + (className ? ` ${className}` : "")}
+          className={"rounded-full p-3 bg-slate-600 text-white z-[990]" + (buttonClassName ? ` ${buttonClassName}` : "")}
         >
           <MessageCircle size={24} />
         </Button>

@@ -4,10 +4,14 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@clerk/nextjs/server"
 export async function getMechanicByIdAction() {
     const { userId } = await auth()
+
     try {
+        if (!userId) {
+            throw new Error("Unauthorized")
+        }
         const mechanic = await prisma.mechanic.findFirst({
             where: {
-                userId: userId! ,
+                userId ,
             },
             select: {
             id: true,
