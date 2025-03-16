@@ -607,7 +607,8 @@ const MechanicMapPage = () => {
         {request.status === "IN_ROUTE" && (
           <ChatBox
             userId={request.clientId}
-            className={"flex place-self-end m-4"}
+            divClassName="absolute right-0 top-0 z-50"
+            buttonClassName={"flex place-self-end m-4"}
           />
         )}
         <ServiceCardLayout>

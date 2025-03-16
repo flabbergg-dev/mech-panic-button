@@ -81,6 +81,7 @@ export function ClientDashboard() {
   const [mechanicConnectIds, setMechanicConnectIds] = useState<Map<string, string>>(new Map());
   const [refundCountdown, setRefundCountdown] = useState<Map<string, number>>(new Map());
   const [refundedRequests, setRefundedRequests] = useState<Set<string>>(new Set());
+  const [activeMechanicUserId, setActiveMechanicUserId] = useState<string | null>(null);
 
   // Initialize reviewedRequestIds from localStorage
   useEffect(() => {
@@ -187,9 +188,23 @@ export function ClientDashboard() {
   }
 
   // Check if there's an active request
-  const activeRequest =
+  const activeRequestFound =
     serviceRequest ||
     requests.find((request: ServiceRequest) => isActiveStatus(request.status));
+
+  useEffect(() => {
+    if (activeRequestFound?.mechanicId) {
+      const fetchMechanicName = async() => {
+      const response = await getMechanicByIdAction();
+      if(response.mechanic?.id) {
+        setActiveMechanicUserId(response.mechanic?.id);
+      }
+    }
+
+      fetchMechanicName();
+    }
+
+  }, [activeRequestFound]);
 
   // Fetch mechanic connect IDs with throttling
   const fetchMechanicConnectId = useCallback(async (mechanicId: string) => {
@@ -243,15 +258,15 @@ export function ClientDashboard() {
   useEffect(() => {
     if (!loading) {
       console.log("Active request detection:", {
-        activeRequestFound: !!activeRequest,
-        activeRequestId: activeRequest?.id,
-        activeRequestStatus: activeRequest?.status,
+        activeRequestFound: !!activeRequestFound,
+        activeRequestId: activeRequestFound?.id,
+        activeRequestStatus: activeRequestFound?.status,
         serviceRequestFromHook: serviceRequest?.status,
       });
     }
   }, [
-    activeRequest?.id,
-    activeRequest,
+    activeRequestFound?.id,
+    activeRequestFound,
     loading,
     serviceRequest?.status,
   ]);
@@ -313,69 +328,151 @@ export function ClientDashboard() {
 
   // Get mechanic's location updates when in route
   const { mechanicLocation } = useRealtimeMechanicLocation(
-    activeRequest?.status === ServiceStatus.IN_ROUTE
-      ? activeRequest.id
+    activeRequestFound?.status === ServiceStatus.IN_ROUTE
+      ? activeRequestFound.id
       : undefined
   );
 
   // Update ETA when mechanic location changes
   useEffect(() => {
-    if (activeRequest?.status === ServiceStatus.IN_ROUTE && mechanicLocation) {
+    if (activeRequestFound?.status === ServiceStatus.IN_ROUTE && mechanicLocation) {
       updateEstimatedTime(mechanicLocation);
     }
-  }, [mechanicLocation, activeRequest?.status, updateEstimatedTime]);
+  }, [mechanicLocation, activeRequestFound?.status, updateEstimatedTime]);
 
   // Initialize countdown when a request enters IN_ROUTE status
   useEffect(() => {
-    if (activeRequest?.status === ServiceStatus.IN_ROUTE) {
-      const requestId = activeRequest.id;
-      if (!refundCountdown.has(requestId)) {
-        setRefundCountdown(prev => new Map(prev).set(requestId, 300)); // 5 minutes
+    if (activeRequestFound?.status === ServiceStatus.IN_ROUTE) {
+      const requestId = activeRequestFound.id;
+      
+      try {
+        // Check if we already have a stored countdown for this request
+        const storedCountdownKey = `refund_countdown_${requestId}`;
+        const storedStartTimeKey = `refund_start_time_${requestId}`;
+        
+        // Get stored start time if exists
+        const storedStartTime = localStorage.getItem(storedStartTimeKey);
+        
+        if (storedStartTime) {
+          // Calculate remaining time based on stored start time
+          const startTimeMs = parseInt(storedStartTime, 10);
+          const elapsedSeconds = Math.floor((Date.now() - startTimeMs) / 1000);
+          const totalCountdownSeconds = 60; // 1 minute
+          
+          console.log(`Request ${requestId} - elapsed time: ${elapsedSeconds}s of ${totalCountdownSeconds}s`);
+          
+          if (elapsedSeconds < totalCountdownSeconds) {
+            // Countdown still ongoing
+            const remainingSeconds = totalCountdownSeconds - elapsedSeconds;
+            setRefundCountdown(prev => new Map(prev).set(requestId, remainingSeconds));
+            console.log(`Resuming countdown for request ${requestId}: ${remainingSeconds}s remaining`);
+          } else {
+            // Countdown already completed
+            setRefundCountdown(prev => new Map(prev).set(requestId, 0));
+            console.log(`Countdown for request ${requestId} already completed`);
+          }
+        } else if (!refundCountdown.has(requestId)) {
+          // No stored countdown, start new one
+          const startTime = Date.now();
+          localStorage.setItem(storedStartTimeKey, startTime.toString());
+          localStorage.setItem(storedCountdownKey, "60"); // 1 minute
+          
+          setRefundCountdown(prev => new Map(prev).set(requestId, 60));
+          console.log(`Setting new countdown for request ${requestId} to 60 seconds`);
+        }
+      } catch (error) {
+        console.error("Error managing countdown persistence:", error);
+        // Fallback to in-memory only
+        if (!refundCountdown.has(requestId)) {
+          setRefundCountdown(prev => new Map(prev).set(requestId, 60));
+        }
       }
     }
-  }, [activeRequest?.status, activeRequest?.id, refundCountdown]);
+  }, [activeRequestFound?.status, activeRequestFound?.id]);
 
-  // Handle countdown timer
+  // Persist refunded requests to localStorage
   useEffect(() => {
-    const timers = new Map<string, NodeJS.Timeout>();
-    
-    refundCountdown.forEach((countdown, requestId) => {
-      if (countdown > 0) {
-        const timer = setInterval(() => {
-          setRefundCountdown(prev => {
-            const newCountdown = new Map(prev);
-            const currentCount = newCountdown.get(requestId) ?? 0;
-            if (currentCount > 0) {
-              newCountdown.set(requestId, currentCount - 1);
-            }
-            return newCountdown;
-          });
-        }, 1000);
-        timers.set(requestId, timer);
+    if (refundedRequests.size > 0) {
+      try {
+        localStorage.setItem('refunded_requests', JSON.stringify(Array.from(refundedRequests)));
+      } catch (error) {
+        console.error("Error saving refunded requests to localStorage:", error);
       }
-    });
+    }
+  }, [refundedRequests]);
 
+  // Load refunded requests from localStorage on mount
+  useEffect(() => {
+    try {
+      const storedRefundedRequests = localStorage.getItem('refunded_requests');
+      if (storedRefundedRequests) {
+        setRefundedRequests(new Set(JSON.parse(storedRefundedRequests)));
+      }
+    } catch (error) {
+      console.error("Error loading refunded requests from localStorage:", error);
+    }
+  }, []);
+
+  // Handle countdown timer - using a more reliable approach with persistence
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setRefundCountdown(prev => {
+        // Create new Map to ensure state update
+        const newCountdown = new Map(prev);
+        
+        // Process each countdown
+        let hasChanges = false;
+        newCountdown.forEach((value, key) => {
+          if (value > 0) {
+            const newValue = value - 1;
+            newCountdown.set(key, newValue);
+            hasChanges = true;
+            
+            // Update localStorage as well to ensure persistence
+            try {
+              const countdownKey = `refund_countdown_${key}`;
+              localStorage.setItem(countdownKey, newValue.toString());
+              console.log(`Countdown for ${key}: ${newValue}s remaining (persisted)`);
+            } catch (error) {
+              console.error("Error updating countdown in localStorage:", error);
+              console.log(`Countdown for ${key}: ${newValue}s remaining (memory only)`);
+            }
+            
+            // If countdown just reached zero, log it
+            if (newValue === 0) {
+              console.log(`Countdown for ${key} completed!`);
+            }
+          }
+        });
+        
+        // Only return new map if something changed
+        return hasChanges ? newCountdown : prev;
+      });
+    }, 1000);
+
+    // Cleanup interval on unmount
     return () => {
-      timers.forEach(timer => clearInterval(timer));
+      console.log("Clearing countdown interval");
+      clearInterval(intervalId);
     };
   }, []);
 
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
-    if (activeRequest) {
+    if (activeRequestFound) {
       if (
-        activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED ||
-        activeRequest.status === ServiceStatus.IN_PROGRESS ||
-        activeRequest.status === ServiceStatus.SERVICING ||
-        activeRequest.status === ServiceStatus.IN_ROUTE ||
-        activeRequest.status === ServiceStatus.IN_COMPLETION
+        activeRequestFound.status === ServiceStatus.PAYMENT_AUTHORIZED ||
+        activeRequestFound.status === ServiceStatus.IN_PROGRESS ||
+        activeRequestFound.status === ServiceStatus.SERVICING ||
+        activeRequestFound.status === ServiceStatus.IN_ROUTE ||
+        activeRequestFound.status === ServiceStatus.IN_COMPLETION
       ) {
         setActiveTab("map");
-      } else if (activeRequest.status !== ServiceStatus.COMPLETED) {
+      } else if (activeRequestFound.status !== ServiceStatus.COMPLETED) {
         setActiveTab("requests");
       }
     }
-  }, [activeRequest]);
+  }, [activeRequestFound]);
 
   const handleRequestCreated = () => {
     setActiveTab("requests");
@@ -407,11 +504,11 @@ export function ClientDashboard() {
   };
 
   const handleVerifyCode = async (code: string) => {
-    if (!activeRequest) return;
+    if (!activeRequestFound) return;
 
     try {
       setIsVerifyingCode(true);
-      const result = await verifyArrivalCodeAction(activeRequest.id, code);
+      const result = await verifyArrivalCodeAction(activeRequestFound.id, code);
 
       if (!result.success) {
         toast({
@@ -460,14 +557,14 @@ export function ClientDashboard() {
     Promise.all([refetch(), refetchServiceRequest()])
       .then(() => {
         // After refreshing, check if we need to update the active tab
-        if (activeRequest?.status === ServiceStatus.ACCEPTED) {
+        if (activeRequestFound?.status === ServiceStatus.ACCEPTED) {
           setActiveTab("requests");
         }
       })
       .catch((error) => {
         console.error("Error refreshing after offer accepted:", error);
       });
-  }, [refetch, refetchServiceRequest, activeRequest?.status]);
+  }, [refetch, refetchServiceRequest, activeRequestFound?.status]);
 
   const refreshOffers = async () => {
     setIsLoading(true);
@@ -507,10 +604,10 @@ export function ClientDashboard() {
   };
 
   const handleRefund = async () => {
-    if (!activeRequest || !activeRequest.id) return;
+    if (!activeRequestFound || !activeRequestFound.id) return;
     
-    const currentCountdown = refundCountdown.get(activeRequest.id) ?? 0;
-    if (currentCountdown > 0 || refundedRequests.has(activeRequest.id)) return;
+    const currentCountdown = refundCountdown.get(activeRequestFound.id) ?? 0;
+    if (currentCountdown > 0 || refundedRequests.has(activeRequestFound.id)) return;
     
     try {
       setIsLoading(true);
@@ -521,10 +618,10 @@ export function ClientDashboard() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: activeRequest.firstTransactionId,
-          requestId: activeRequest.id,
-          clientId: activeRequest.clientId,
-          mechanicId: activeRequest.mechanicId
+          id: activeRequestFound.firstTransactionId,
+          requestId: activeRequestFound.id,
+          clientId: activeRequestFound.clientId,
+          mechanicId: activeRequestFound.mechanicId
         }),
       });
 
@@ -534,7 +631,7 @@ export function ClientDashboard() {
         );
       }
 
-      setRefundedRequests(prev => new Set([...prev, activeRequest.id]));
+      setRefundedRequests(prev => new Set([...prev, activeRequestFound.id]));
       toast({
         title: "Refund Processed",
         description: "Your refund has been processed successfully",
@@ -542,7 +639,7 @@ export function ClientDashboard() {
       });
       
       // Cancel the request after successful refund
-      await handleCancelRequest(activeRequest.id);
+      await handleCancelRequest(activeRequestFound.id);
     } catch (error) {
       console.error("Error processing refund:", error);
       toast({
@@ -560,8 +657,8 @@ export function ClientDashboard() {
     // Only set up the interval if we're on the requests tab and have an active request
     if (
       activeTab === "requests" &&
-      activeRequest &&
-      activeRequest.status === ServiceStatus.REQUESTED
+      activeRequestFound &&
+      activeRequestFound.status === ServiceStatus.REQUESTED
     ) {
       console.log("Setting up periodic refresh for offers");
 
@@ -576,7 +673,7 @@ export function ClientDashboard() {
         clearInterval(intervalId);
       };
     }
-  }, [activeTab, activeRequest, refetch, refetchServiceRequest]);
+  }, [activeTab, activeRequestFound, refetch, refetchServiceRequest]);
 
   if (!user) {
     return <Loader title="Loading Your Dashboard..." />;
@@ -631,7 +728,7 @@ export function ClientDashboard() {
             </div>
 
             {/* Content Overlay */}
-            {activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED && (
+            {activeRequestFound?.status === ServiceStatus.PAYMENT_AUTHORIZED && (
               <HalfSheet>
                 <ServiceCardLayout>
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-t-xl">
@@ -646,55 +743,70 @@ export function ClientDashboard() {
                 </ServiceCardLayout>
               </HalfSheet>
             )}
-            {activeRequest?.status === ServiceStatus.IN_ROUTE && (
+            {activeRequestFound?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
-                <ServiceCardLayout className="flex justify-between items-center gap-2">
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg w-full">
-                    <h2 className="text-xl font-semibold mb-2">
-                      Mechanic on their way
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {estimatedTime
-                        ? `Mechanic will be there in ${estimatedTime}`
-                        : "Calculating arrival time..."}
-                    </p>
-                    {!mechanicLocation && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Waiting for mechanic's location...
-                      </p>
-                    )}
-                    {!refundedRequests.has(activeRequest.id) && (
-                      <div className="flex items-center space-x-2 mt-4">
-                        <Button
-                          onClick={handleRefund}
-                          disabled={
-                            (refundCountdown.get(activeRequest.id) ?? 0) > 300 ||
-                            activeRequest.createdAt && Date.now() - new Date(activeRequest.createdAt).getTime() < 300000
-                          }
-                          className={
-                            (refundCountdown.get(activeRequest.id) ?? 0) > 300 ||
-                            (activeRequest.createdAt && Date.now() - new Date(activeRequest.createdAt).getTime() < 300000)
-                              ? "opacity-50"
-                              : ""
-                          }
-                        >
-                          {isLoading ? (
-                            <Loader2Icon className="animate-spin h-4 w-4 mr-2" />
-                          ) : null}
-                          {(refundCountdown.get(activeRequest.id) ?? 0) > 300 
-                            ? `Refund (${Math.floor((refundCountdown.get(activeRequest.id) ?? 0) / 60)}:${((refundCountdown.get(activeRequest.id) ?? 0) % 60).toString().padStart(2, '0')})`
-                            : "Refund"}
-                        </Button>
+                <ServiceCardLayout className="flex justify-between items-start relative gap-2">
+                  <div className="flex justify-between items-start bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg w-full">
+                      <div className="flex flex-col justify-between items-start gap-2">
+                          <h2 className="text-xl font-semibold mb-2">
+                            Mechanic on their way
+                          </h2>
+                          <p className="text-muted-foreground">
+                            {estimatedTime
+                              ? `Mechanic will be there in ${estimatedTime}`
+                              : "Calculating arrival time..."}
+                          </p>
+
+                        {!mechanicLocation && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Waiting for mechanic's location...
+                          </p>
+                        )}
                       </div>
-                    )}
+                      <div className="mt-4 space-y-2 flex flex-col items-center self-center">
+                        {/* Dynamically render based on countdown state */}
+                        {(() => {
+                          const countdownValue = refundCountdown.get(activeRequestFound.id) ?? 0;
+                          console.log(`Rendering refund UI, countdown: ${countdownValue}`);
+                          
+                          if (countdownValue > 0) {
+                            // During countdown, show wait message
+                            return (
+                              <div className="text-sm text-amber-600 font-medium rounded p-2 bg-amber-50 border border-amber-200">
+                                You'll be eligible for a refund in {Math.floor(countdownValue / 60)}:{(countdownValue % 60).toString().padStart(2, '0')} if mechanic does not arrive in time
+                              </div>
+                            );
+                          } else if (!refundedRequests.has(activeRequestFound.id)) {
+                            // After countdown, show button if not already refunded
+                            return (
+                              <div className="space-y-2">
+                                <div className="text-sm text-amber-600 font-medium rounded p-2 bg-amber-50 border border-amber-200">
+                                  You're now eligible for a refund if mechanic does not arrive in time
+                                </div>
+                                <Button
+                                  onClick={handleRefund}
+                                  disabled={isLoading}
+                                  className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                  {isLoading ? (
+                                    <Loader2Icon className="animate-spin h-4 w-4 mr-2" />
+                                  ) : null}
+                                  Request Refund
+                                </Button>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                   </div>
-                  {activeRequest.mechanicId && (
-                    <ChatBox userId={activeRequest.clientId} />
+                  {activeRequestFound.mechanicId && (
+                    <ChatBox divClassName="absolute right-[0.75rem] top-0" userId={activeRequestFound.clientId} />
                   )}
                 </ServiceCardLayout>
               </HalfSheet>
             )}
-            {activeRequest?.status === ServiceStatus.IN_PROGRESS && (
+            {activeRequestFound?.status === ServiceStatus.IN_PROGRESS && (
               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
                 <div className="flex flex-col h-full p-6">
                   <div className="flex-1 flex flex-col items-center justify-center space-y-6">
@@ -720,7 +832,7 @@ export function ClientDashboard() {
                 </div>
               </div>
             )}
-            {activeRequest?.status === ServiceStatus.SERVICING && (
+            {activeRequestFound?.status === ServiceStatus.SERVICING && (
               <HalfSheet>
                 <ServiceCardLayout>
                   <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
@@ -763,7 +875,7 @@ export function ClientDashboard() {
                 </ServiceCardLayout>
               </HalfSheet>
             )}
-            {activeRequest?.status === ServiceStatus.IN_COMPLETION && (
+            {activeRequestFound?.status === ServiceStatus.IN_COMPLETION && (
               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
                 <div className="flex flex-col h-full p-6">
                   <div className="flex-1 flex flex-col items-center justify-center space-y-6">
@@ -778,7 +890,7 @@ export function ClientDashboard() {
                       <div className="mt-8">
                         <div className="text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
                           {/* TODO: Replace with Loading... */}
-                          {activeRequest?.completionCode}
+                          {activeRequestFound?.completionCode}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">
@@ -791,7 +903,7 @@ export function ClientDashboard() {
               </div>
             )}
 
-            {activeRequest?.status === ServiceStatus.COMPLETED && (
+            {activeRequestFound?.status === ServiceStatus.COMPLETED && (
               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">
                 <div className="flex flex-col h-full p-6">
                   <div className="flex-1 flex flex-col items-center justify-center space-y-6">
@@ -869,9 +981,9 @@ export function ClientDashboard() {
                   </div>
                 </div>
               )}
-              {activeRequest &&
-                activeRequest.status !== ServiceStatus.ACCEPTED &&
-                activeRequest.status !== ServiceStatus.PAYMENT_AUTHORIZED && (
+              {activeRequestFound &&
+                activeRequestFound.status !== ServiceStatus.ACCEPTED &&
+                activeRequestFound.status !== ServiceStatus.PAYMENT_AUTHORIZED && (
                   <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4">
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-xl font-semibold">Active Request</h2>
@@ -907,7 +1019,7 @@ export function ClientDashboard() {
                             <Button
                               variant="destructive"
                               onClick={() =>
-                                handleCancelRequest(activeRequest.id)
+                                handleCancelRequest(activeRequestFound.id)
                               }
                               className="transition-transform"
                             >
@@ -920,7 +1032,7 @@ export function ClientDashboard() {
                   </div>
                 )}
 
-              {activeRequest && (
+              {activeRequestFound && (
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold text-primary">
@@ -1006,7 +1118,7 @@ export function ClientDashboard() {
                 </div>
               )}
 
-              {!activeRequest && offers.length === 0 && (
+              {!activeRequestFound && offers.length === 0 && (
                 <div className="text-center p-4 bg-background/80 backdrop-blur-sm rounded-lg text-muted-foreground">
                   No active requests or offers
                 </div>
@@ -1062,27 +1174,27 @@ export function ClientDashboard() {
           // 2. Switching to requests tab
           // 3. Switching to map tab when payment is authorized
           if (
-            !activeRequest ||
+            !activeRequestFound ||
             tab === "requests" ||
             (tab === "map" &&
-              activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED)
+              activeRequestFound?.status === ServiceStatus.PAYMENT_AUTHORIZED)
           ) {
             setActiveTab(tab);
           }
         }}
         disabledTabs={
-          activeRequest
-            ? activeRequest.status === ServiceStatus.PAYMENT_AUTHORIZED
+          activeRequestFound
+            ? activeRequestFound.status === ServiceStatus.PAYMENT_AUTHORIZED
               ? ["home"] // Only disable home when payment authorized
               : ["map"] // Disable both when in other active states
             : [] // No disabled tabs when no active request
         }
         hiddenNavigation={
-          activeRequest?.status === ServiceStatus.PAYMENT_AUTHORIZED ||
-          activeRequest?.status === ServiceStatus.IN_ROUTE ||
-          activeRequest?.status === ServiceStatus.IN_PROGRESS ||
-          activeRequest?.status === ServiceStatus.SERVICING ||
-          activeRequest?.status === ServiceStatus.IN_COMPLETION
+          activeRequestFound?.status === ServiceStatus.PAYMENT_AUTHORIZED ||
+          activeRequestFound?.status === ServiceStatus.IN_ROUTE ||
+          activeRequestFound?.status === ServiceStatus.IN_PROGRESS ||
+          activeRequestFound?.status === ServiceStatus.SERVICING ||
+          activeRequestFound?.status === ServiceStatus.IN_COMPLETION
         }
       />
       {showReviewModal && completedRequest && completedRequest.mechanicId && (
