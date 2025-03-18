@@ -78,16 +78,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     : null;
   const locationLoading = !location && !locationError;
 
-  // Location change effect
-  useEffect(() => {
-    if (locationError) {
-      console.log('Location error:', locationError);
-    } else if (location) {
-      console.log('Location updated:', location);
-    }
-  }, [location, locationError]);
-
-  const {
+    const {
     serviceRequests,
     isLoading: requestsLoading,
     error: requestsError,
@@ -190,7 +181,6 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
         }
 
         const data = await balanceResponse.json();
-        console.log("Balance data:", data);
         
         if (isMounted.current) {
           setCurrentAvailableBalance({

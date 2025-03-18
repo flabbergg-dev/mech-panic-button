@@ -250,16 +250,14 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       if (result.success) {
         // Fetch the updated offer to get the full details
         const offerResult = await getMechanicServiceOfferAction(mechanicId, requestId);
-        console.log("Offer result:", offerResult);
 
         if (!offerResult) {
-          console.log("No offer result received");
+          toast.error("No offer result received");
           return;
         }
 
         if (offerResult.success && offerResult.data) {
           setServiceOffer(offerResult.data)
-          console.log("Setting offer data:", offerResult.data)
           // If there's an existing offer, set the form values
           if (offerResult.data.price) {
             setPrice(offerResult.data.price.toString())
@@ -276,9 +274,6 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
           latitude: mechanicLocation.latitude,
           longitude: mechanicLocation.longitude
         } })
-
-        console.log('response', response)
-        console.log('userResponse', userResponse)
 
         toast.success('Service offer submitted successfully')
         try {
@@ -315,7 +310,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
       setTimeout(() => {
         window.history.back();
       }, 1000)
-      console.log('response', response)
+      toast.success('Service offer cancelled successfully')
     } catch (error) {
       console.error("Error cancelling service offer:", error)
       toast.error('Failed to cancel offer')

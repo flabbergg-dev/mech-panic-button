@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
+import { toast } from "sonner"
 
 interface Location {
   latitude: number
@@ -269,7 +270,7 @@ export default function MapboxDisplay({
   // Handle route updates
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) {
-      console.log('Map not ready yet');
+      toast('Map loading...');
       return;
     }
 

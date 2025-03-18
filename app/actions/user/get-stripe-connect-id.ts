@@ -62,6 +62,5 @@ export async function getStripeConnectId(mechanicId?: string) {
     }
   }
 
-  console.log('Successfully retrieved Stripe Connect ID for user:', userId);
   return { stripeConnectId: user.stripeConnectId };
 }

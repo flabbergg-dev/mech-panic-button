@@ -34,7 +34,6 @@ export const StripeAccountBalance = () => {
     const fetchStripeConnectId = async () => {
       try {
         const response = await getStripeConnectId();
-        console.log('Stripe Connect ID response:', response);
 
         if (response?.stripeConnectId) {
           setStripeConnectId(response.stripeConnectId);
@@ -57,7 +56,6 @@ export const StripeAccountBalance = () => {
       if (!stripeConnectId) return;
 
       try {
-        console.log('Fetching balance with accountId:', stripeConnectId);
         const response = await fetch('/api/stripe/connect-balance-funds', {
           method: 'POST',
           headers: {
@@ -75,7 +73,6 @@ export const StripeAccountBalance = () => {
         }
 
         const data = await response.json();
-        console.log('Received balance data:', data);
         
         if (typeof data.available === 'undefined' || typeof data.pending === 'undefined') {
           throw new Error('Invalid balance data received');

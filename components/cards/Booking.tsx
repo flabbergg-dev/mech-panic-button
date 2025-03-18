@@ -80,7 +80,6 @@ export const Booking = () => {
       if (!user?.id) {
         throw new Error("Please sign in to make a booking");
       }
-      console.log("Form Data:", formData);  
       if (!formData.mechanic || !formData.email || !formData.name || !formData.selectedDate) {
         throw new Error("Please fill in all required booking information");
       }
@@ -95,15 +94,6 @@ export const Booking = () => {
       if (!selectedService) {
         throw new Error("Please select a service");
       }
-
-      console.log("Creating service request with:", {
-        userId: user.id,
-        location: mechanicLocation,
-        serviceType: selectedService,
-        status: ServiceStatus.BOOKED,
-        mechanicId: formData.mechanic.id,
-        startTime: formData.selectedDate
-      });
 
       const serviceRequest = await createServiceRequestAction({
         userId: user.id,
@@ -199,9 +189,6 @@ export const Booking = () => {
         const userResponse = await getAllUsersAction();
         const response = await getAvailableMechanicsListAction();
 
-        console.log('All Users:', userResponse?.data);
-        console.log('All Mechanics:', response?.mechanic);
-
         if (userResponse?.data && response?.mechanic) {
           // First, create a map of user data for quick lookup
           const userDataMap = new Map<string, UserData>(
@@ -225,25 +212,16 @@ export const Booking = () => {
           const filteredMechanics = response.mechanic
             .filter((m: any) => {
               const userData = userDataMap.get(m.userId);
-              console.log('Mechanic User Data:', {
-                mechanicId: m.id,
-                userId: m.userId,
-                userData: userData,
-                isAvailable: m.isAvailable,
-                role: userData?.role,
-                subscriptionPlan: userData?.subscriptionPlan || 'none'
-              });
+            
               // Include mechanics who are either PRO subscribers or have the Mechanic role
               const isPro = userData?.subscriptionPlan?.toLowerCase() === 'pro';
               const isMechanic = userData?.role === 'Mechanic';
               
               if (!m.isAvailable) {
-                console.log(`Mechanic ${m.id} is not available`);
                 return false;
               }
               
               if (!isPro && !isMechanic) {
-                console.log(`Mechanic ${m.id} is neither PRO nor has Mechanic role`);
                 return false;
               }
 
@@ -252,13 +230,7 @@ export const Booking = () => {
             .map((m: any) => {
               const userData = userDataMap.get(m.userId);
               const isPro = userData?.subscriptionPlan?.toLowerCase() === 'pro';
-              console.log('Mapping Mechanic:', {
-                mechanicId: m.id,
-                userData: userData,
-                firstName: userData?.firstName,
-                isPro: isPro,
-                role: userData?.role
-              });
+              
               
               return {
                 ...m,
@@ -272,7 +244,6 @@ export const Booking = () => {
               };
             });
 
-          console.log('Final Filtered Mechanics:', filteredMechanics);
           setMechanicList(filteredMechanics);
         }
       } catch (error) {

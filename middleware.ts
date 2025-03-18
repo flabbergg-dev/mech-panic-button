@@ -27,12 +27,9 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const path = req.nextUrl.pathname
-  // console.log('Middleware - Path:', path)
-  // console.log('Middleware - User ID:', userId)
 
   // If it's a protected route and user is not authenticated, redirect to sign in
   if (isProtectedRoute(req) && !userId) {
-    // console.log('Middleware - Redirecting to sign in')
     return redirectToSignIn()
   }
   // Handle protected routes and dashboard redirection for authenticated users
@@ -43,12 +40,8 @@ export default clerkMiddleware(async (auth, req) => {
       const user = await clerk.users.getUser(userId)
       const role = user.publicMetadata.role as string | undefined
 
-      // console.log('Middleware - User Role:', role)
-      // console.log('Middleware - Full Metadata:', user.publicMetadata)
-
       // If no role is set and not on onboarding page, redirect to onboarding
       if (!role && !path.includes('/onboarding')) {
-    //  console.log('Middleware - No role, redirecting to onboarding')
         return NextResponse.redirect(new URL('/onboarding', req.url))
       }
 
@@ -103,7 +96,6 @@ export default clerkMiddleware(async (auth, req) => {
         }
 
         if (dashboardUserId && dashboardUserId !== userId) {
-          // console.log('Middleware - User attempting to access another users dashboard')
           if (role === 'Mechanic') {
             return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
           } else if (role === 'Customer') {

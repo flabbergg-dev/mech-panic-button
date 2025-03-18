@@ -104,7 +104,6 @@ export function PushNotificationButton({ className }: { className?: string }) {
           message: "This is a test email",
           userName: "Fernando Aponte"
         });
-        console.log('Email sent successfully');
       } catch (emailError) {
         console.error('Error sending email:', emailError);
       }
