@@ -14,15 +14,15 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(request: Request) {
   try {
-    const { serviceRequestId, amount, userId, mechanicConnectId } = await request.json()
+    const { serviceRequestId, amount, userId, mechanicConnectId, isAdditionalService, offerId } = await request.json()
     const headersList = await headers()
     const origin = headersList.get('origin')
 
     const data = [
       {
       price: amount,
-      name: 'Service Offer',
-      smallDescription: 'Service Offer',
+      name: isAdditionalService ? 'Additional Service' : 'Service Offer',
+      smallDescription: isAdditionalService ? 'Additional Service during repair' : 'Initial Service Offer',
       images: ['https://via.placeholder.com/150'],
       }
     ]
@@ -52,10 +52,12 @@ export async function POST(request: Request) {
         metadata: {
           serviceRequestId,
           userId,
+          offerId,
         },
       },
       metadata: {
         serviceRequestId, // Add metadata to the session itself
+        offerId,
       },
       return_url: `${origin}/dashboard/customer/${userId}?session_id={CHECKOUT_SESSION_ID}`,
       ui_mode: 'embedded',

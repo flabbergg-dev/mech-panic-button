@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
-import { ServiceStatus, type SubscriptionPlan, type SubscriptionStatus } from '@prisma/client'
+import { ServiceStatus, type SubscriptionPlan, type SubscriptionStatus, OfferStatus } from '@prisma/client'
 import { sendInvoiceEmail } from '@/utils/emailNotifications'
 
 /**
@@ -104,6 +104,7 @@ export async function POST(req: Request) {
           }
 
           if (serviceRequest.firstTransactionId === null) {
+            // This is the first transaction - change status to PAYMENT_AUTHORIZED
             await prisma.serviceRequest.update({
               where: { id: serviceRequest.id },
               data: {
@@ -113,20 +114,62 @@ export async function POST(req: Request) {
               }
             })
           } else {
-
+            // Find and update the specific offer that was paid for
+            const offerId = paymentIntent.metadata.serviceRequestId
+            let offerToUpdate = null;
+            
+            if (offerId) {
+              // Get the offer by its ID from metadata
+              offerToUpdate = await prisma.serviceOffer.findUnique({
+                where: { id: offerId }
+              });
+              
+              // If found, update its status
+              if (offerToUpdate) {
                 await prisma.serviceOffer.update({
-                  where: { id: serviceOffer?.id },
-                  data: { status: 'EXPIRED' }
-                })
+                  where: { id: offerId },
+                  data: { status: OfferStatus.ACCEPTED }
+                });
+                console.log(`Updated offer ${offerId} to ACCEPTED`);
+              }
+            } 
+            
+            // If no offer was found by ID, try to find one by service request ID
+            if (!offerToUpdate) {
+              // Fallback to find the most recent pending offer for this request
+              const pendingOffer = await prisma.serviceOffer.findFirst({
+                where: { 
+                  serviceRequestId: serviceRequestId,
+                  status: OfferStatus.PENDING
+                },
+                orderBy: { createdAt: 'desc' }
+              });
+              
+              if (pendingOffer) {
+                await prisma.serviceOffer.update({
+                  where: { id: pendingOffer.id },
+                  data: { status: OfferStatus.ACCEPTED }
+                });
+                console.log(`Updated fallback offer ${pendingOffer.id} to ACCEPTED`);
+              } else {
+                console.log(`No pending offers found for service request ${serviceRequestId}`);
+              }
+            }
 
-              await prisma.serviceRequest.update({
-                where: { id: serviceRequest.id },
-                data: {
-                  status: ServiceStatus.SERVICING,
-                  totalAmount: serviceRequest.totalAmount + (serviceOffer?.price || 0),
-                  secondTransactionId: id
-                }
-              })
+            // For second transaction, keep the service request in SERVICING status
+            await prisma.serviceRequest.update({
+              where: { id: serviceRequest.id },
+              data: {
+                // Only update status if not already in SERVICING or further state
+                ...(serviceRequest.status !== ServiceStatus.SERVICING && 
+                   serviceRequest.status !== ServiceStatus.IN_PROGRESS && 
+                   serviceRequest.status !== ServiceStatus.COMPLETED && {
+                  status: ServiceStatus.SERVICING
+                }),
+                totalAmount: serviceRequest.totalAmount + (serviceOffer?.price || 0),
+                secondTransactionId: id
+              }
+            })
           }
 
           const user = await prisma.user.findUnique({

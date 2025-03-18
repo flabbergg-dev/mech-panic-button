@@ -332,7 +332,7 @@ export const Booking = () => {
   }
 
   return (
-    <div className="md:h-full flex items-end justify-center w-full z-20 p-4 pb-24">
+    <div className="md:h-full hidden md:flex items-end justify-center w-full z-20 p-4 pb-24">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         version="1.1"
