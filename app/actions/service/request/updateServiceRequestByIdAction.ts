@@ -21,8 +21,8 @@ export async function updateServiceRequestByIdAction(
 
     if (!currentRequest) {
       return { 
-        success: false, 
-        error: "Service request not found" 
+        success: false,
+        error: "Service request not found"
       };
     }
 
@@ -30,7 +30,8 @@ export async function updateServiceRequestByIdAction(
     const validTransitions: Record<ServiceStatus, ServiceStatus[]> = {
       [ServiceStatus.REQUESTED]: [ServiceStatus.ACCEPTED],
       [ServiceStatus.ACCEPTED]: [ServiceStatus.PAYMENT_AUTHORIZED],
-      [ServiceStatus.PAYMENT_AUTHORIZED]: [ServiceStatus.IN_ROUTE],
+      // [ServiceStatus.PAYMENT_AUTHORIZED]: [ServiceStatus.SERVICING],
+      [ServiceStatus.PAYMENT_AUTHORIZED]: [ServiceStatus.IN_ROUTE, ServiceStatus.SERVICING],
       [ServiceStatus.IN_ROUTE]: [ServiceStatus.IN_PROGRESS],
       [ServiceStatus.IN_PROGRESS]: [ServiceStatus.SERVICING],
       [ServiceStatus.SERVICING]: [ServiceStatus.IN_COMPLETION],
@@ -42,8 +43,8 @@ export async function updateServiceRequestByIdAction(
     const allowedNextStates = validTransitions[currentRequest.status];
     if (!allowedNextStates.includes(status)) {
       return { 
-        success: false, 
-        error: `Invalid status transition from ${currentRequest.status} to ${status}` 
+        success: false,
+        error: `Invalid status transition from ${currentRequest.status} to ${status}`
       };
     }
 

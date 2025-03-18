@@ -17,7 +17,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { ServiceStatus } from "@prisma/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 
 interface ServiceRequestWithClient extends PrismaServiceRequest {
   client?: {
@@ -57,7 +56,6 @@ type MechanicHomeProps = {
 export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) => {
   const { user } = useUser();
   const { isSubscribed, subscriptionPlan } = useIsUserSubscribed();
-  const [isLoading, setIsLoading] = useState(false);
   const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
   const [currentAvailableBalance, setCurrentAvailableBalance] = useState<BalanceData>({
     available: 0,
@@ -161,8 +159,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
       try {
         const response = await getStripeConnectId();
         if (!response?.stripeConnectId) {
-          console.error("No Stripe Connect ID found");
-          setLoading(false);
+          toast.error("fetching Stripe Connect ID failed");
           return;
         }
 
@@ -177,7 +174,8 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
         });
 
         if (!balanceResponse.ok) {
-          throw new Error("Failed to fetch balance");
+          toast.error("fetching balance failed");
+          return;
         }
 
         const data = await balanceResponse.json();
@@ -212,10 +210,8 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     ServiceStatus.PAYMENT_AUTHORIZED,
     ServiceStatus.IN_ROUTE,
     ServiceStatus.SERVICING,
-    ServiceStatus.IN_PROGRESS,
-    ServiceStatus.IN_COMPLETION
-  ] as const;
-  
+  ];
+
   type ActiveServiceStatus = typeof ACTIVE_SERVICE_STATUSES[number];
 
   // Helper function to check if a request has an active status
@@ -227,7 +223,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     return <Loader title="Searching on the toolbox..." />;
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-[50vh]">
         <div className="relative inline-block h-12 w-12">
@@ -285,6 +281,11 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
 
       <BalanceCard currentAvailableBalance={currentAvailableBalance} />
 
+      {/* if mechanic is not approved */}
+      <div className={isApproved ? "hidden" : "p-4 rounded-lg bg-red-50 mb-4 text-red-500"}>
+        You must wait for approval from admin before you can receive service requests.
+      </div>
+
       {/* Service Requests Section */}
       {requestsLoading && serviceRequests.length === 0 ? (
         <div className="flex justify-center items-center h-[50vh]">
@@ -295,40 +296,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
           Error loading service requests: {requestsError.message}
         </div>
       ) : (
-        <>
-          {/* Active/In Progress Requests */}
-          {serviceRequests.filter(isActiveRequest).length > 0 && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Active Requests ({serviceRequests.filter(isActiveRequest).length})</h3>
-                <ScrollArea className="h-[40dvh] w-full rounded-md">
-                  <div className="space-y-4 pr-4">
-                    <AnimatePresence mode="popLayout">
-                      {serviceRequests
-                        .filter(isActiveRequest)
-                        .map((request) => (
-                          <motion.div
-                            key={request.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.3 }}
-                            className="mb-4"
-                            layout
-                          >
-                            <ServiceRequest
-                              request={request}
-                              isScheduled={false}
-                            />
-                          </motion.div>
-                        ))}
-                    </AnimatePresence>
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
-          )}
-
+        <div className={isApproved ? "" : "hidden"}>
           {/* Available/New Requests */}
           {serviceRequests.filter(req => req.status === ServiceStatus.REQUESTED).length > 0 ? (
             <div className="space-y-6">
@@ -375,7 +343,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

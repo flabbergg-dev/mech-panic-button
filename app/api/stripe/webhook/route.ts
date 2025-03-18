@@ -113,7 +113,7 @@ export async function POST(req: Request) {
                 firstTransactionId: id
               }
             })
-          } else {
+          } else if (serviceRequest.firstTransactionId !== null) {
             // Find and update the specific offer that was paid for
             const offerId = paymentIntent.metadata.serviceRequestId
             let offerToUpdate = null;
@@ -160,12 +160,7 @@ export async function POST(req: Request) {
             await prisma.serviceRequest.update({
               where: { id: serviceRequest.id },
               data: {
-                // Only update status if not already in SERVICING or further state
-                ...(serviceRequest.status !== ServiceStatus.SERVICING && 
-                   serviceRequest.status !== ServiceStatus.IN_PROGRESS && 
-                   serviceRequest.status !== ServiceStatus.COMPLETED && {
-                  status: ServiceStatus.SERVICING
-                }),
+                status: ServiceStatus.SERVICING,
                 totalAmount: serviceRequest.totalAmount + (serviceOffer?.price || 0),
                 secondTransactionId: id
               }

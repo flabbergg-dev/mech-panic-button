@@ -81,8 +81,6 @@ export function ClientDashboard() {
   const [mechanicConnectIds, setMechanicConnectIds] = useState<Map<string, string>>(new Map());
   const [refundCountdown, setRefundCountdown] = useState<Map<string, number>>(new Map());
   const [refundedRequests, setRefundedRequests] = useState<Set<string>>(new Set());
-  const [activeMechanicUserId, setActiveMechanicUserId] = useState<string | null>(null);
-
   // Initialize reviewedRequestIds from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -192,22 +190,6 @@ export function ClientDashboard() {
     serviceRequest ||
     requests.find((request: ServiceRequest) => isActiveStatus(request.status));
 
-  useEffect(() => {
-    if (activeRequestFound?.mechanicId) {
-      const fetchMechanicName = async() => {
-      const response = await getMechanicByIdAction();
-      if(response.mechanic?.id) {
-        setActiveMechanicUserId(response.mechanic?.id);
-      }
-    }
-
-      fetchMechanicName();
-    }
-     else {
-      setActiveMechanicUserId(null);
-    }
-  }, [activeRequestFound]);
-
   // Fetch mechanic connect IDs with throttling
   const fetchMechanicConnectId = useCallback(async (mechanicId: string) => {
     if (!mechanicId || mechanicConnectIds.has(mechanicId)) return;
@@ -300,35 +282,42 @@ export function ClientDashboard() {
     }
   }, [mechanicLocation, activeRequestFound?.status, updateEstimatedTime]);
 
-  // Initialize countdown when a request enters IN_ROUTE status
+  // Initialize or update refund countdown when status changes to IN_ROUTE
   useEffect(() => {
-    if (activeRequestFound?.status === ServiceStatus.IN_ROUTE) {
+    if (
+      activeRequestFound?.status === ServiceStatus.IN_ROUTE &&
+      activeRequestFound?.id
+    ) {
       const requestId = activeRequestFound.id;
+      console.log("Debug - Starting/checking countdown for request:", requestId);
       
       try {
-        // Check if we already have a stored countdown for this request
         const storedCountdownKey = `refund_countdown_${requestId}`;
         const storedStartTimeKey = `refund_start_time_${requestId}`;
         
-        // Get stored start time if exists
+        const storedCountdown = localStorage.getItem(storedCountdownKey);
         const storedStartTime = localStorage.getItem(storedStartTimeKey);
         
-        if (storedStartTime) {
-          // Calculate remaining time based on stored start time
+        if (storedCountdown && storedStartTime) {
+          // Resume existing countdown
+          console.log("Debug - Resuming existing countdown");
           const startTimeMs = parseInt(storedStartTime, 10);
           const elapsedSeconds = Math.floor((Date.now() - startTimeMs) / 1000);
-          const totalCountdownSeconds = 60; // 1 minute
-          
+          const totalCountdownSeconds = 7200; // 2 hours
+
           if (elapsedSeconds < totalCountdownSeconds) {
             // Countdown still ongoing
             const remainingSeconds = totalCountdownSeconds - elapsedSeconds;
+            console.log("Debug - Countdown ongoing, remaining seconds:", remainingSeconds);
             setRefundCountdown(prev => new Map(prev).set(requestId, remainingSeconds));
           } else {
             // Countdown already completed
+            console.log("Debug - Countdown already completed");
             setRefundCountdown(prev => new Map(prev).set(requestId, 0));
           }
         } else if (!refundCountdown.has(requestId)) {
           // No stored countdown, start new one
+          console.log("Debug - Starting new countdown");
           const startTime = Date.now();
           localStorage.setItem(storedStartTimeKey, startTime.toString());
           localStorage.setItem(storedCountdownKey, "60"); // 1 minute
@@ -370,6 +359,8 @@ export function ClientDashboard() {
 
   // Handle countdown timer - using a more reliable approach with persistence
   useEffect(() => {
+    console.log("Debug - Setting up countdown timer interval");
+    
     const intervalId = setInterval(() => {
       setRefundCountdown(prev => {
         // Create new Map to ensure state update
@@ -387,13 +378,20 @@ export function ClientDashboard() {
             try {
               const countdownKey = `refund_countdown_${key}`;
               localStorage.setItem(countdownKey, newValue.toString());
+              
+              // Log every 10 seconds for debugging
+              if (newValue % 10 === 0 || newValue < 5) {
+                console.log(`Debug - Countdown for ${key}: ${newValue} seconds remaining`);
+              }
             } catch (error) {
               console.error("Error updating countdown in localStorage:", error);
             }
             
             // If countdown just reached zero, log it
             if (newValue === 0) {
-              setRefundedRequests(prev => new Set([...prev, key]));
+              console.log(`Debug - Countdown reached zero for request ${key}`);
+              // Do NOT automatically add to refundedRequests here
+              // Only add to refundedRequests when the user actually requests a refund
             }
           }
         });
@@ -405,6 +403,7 @@ export function ClientDashboard() {
 
     // Cleanup interval on unmount
     return () => {
+      console.log("Debug - Cleaning up countdown timer interval");
       clearInterval(intervalId);
     };
   }, []);
@@ -554,13 +553,30 @@ export function ClientDashboard() {
   };
 
   const handleRefund = async () => {
-    if (!activeRequestFound || !activeRequestFound.id) return;
-    
-    const currentCountdown = refundCountdown.get(activeRequestFound.id) ?? 0;
-    if (currentCountdown > 0 || refundedRequests.has(activeRequestFound.id)) return;
-    
+    if (!activeRequestFound || !activeRequestFound.id) {
+      console.error("No active request found for refund");
+      return;
+    }
+
+
+    if (refundedRequests.has(activeRequestFound.id)) {
+      toast({
+        title: "Request Already Refunded",
+        description: "This request has already been refunded.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
+      console.log("Debug - Sending refund request with data:", {
+        id: activeRequestFound.firstTransactionId,
+        requestId: activeRequestFound.id,
+        clientId: activeRequestFound.clientId,
+        mechanicId: activeRequestFound.mechanicId
+      });
+      
       // Call the server action to refund the service request
       const result = await fetch(`/api/stripe/refund`, {
         method: "POST",
@@ -576,11 +592,14 @@ export function ClientDashboard() {
       });
 
       if (!result.ok) {
+        const errorText = await result.text();
+        console.error("Refund API error:", errorText);
         throw new Error(
           `Failed to refund service request: ${result.status} ${result.statusText}`
         );
       }
 
+      console.log("Debug - Refund successful, adding to refunded requests set");
       setRefundedRequests(prev => new Set([...prev, activeRequestFound.id]));
       toast({
         title: "Refund Processed",
@@ -713,8 +732,12 @@ export function ClientDashboard() {
                       <div className="mt-4 space-y-2 flex flex-col items-center self-center">
                         {/* Dynamically render based on countdown state */}
                         {(() => {
+                          // Only show refund UI for IN_ROUTE status
+                          if (activeRequestFound.status !== ServiceStatus.IN_ROUTE) {
+                            return null;
+                          }
+
                           const countdownValue = refundCountdown.get(activeRequestFound.id) ?? 0;
-                          
                           if (countdownValue > 0) {
                             // During countdown, show wait message
                             return (
@@ -722,8 +745,8 @@ export function ClientDashboard() {
                                 You'll be eligible for a refund in {Math.floor(countdownValue / 60)}:{(countdownValue % 60).toString().padStart(2, '0')} if mechanic does not arrive in time
                               </div>
                             );
-                          } else if (!refundedRequests.has(activeRequestFound.id)) {
-                            // After countdown, show button if not already refunded
+                          } else {
+                            // After countdown or if countdown is 0, show button if not already refunded
                             return (
                               <div className="space-y-2">
                                 <div className="text-sm text-amber-600 font-medium rounded p-2 bg-amber-50 border border-amber-200">
@@ -742,7 +765,6 @@ export function ClientDashboard() {
                               </div>
                             );
                           }
-                          return null;
                         })()}
                       </div>
                   </div>

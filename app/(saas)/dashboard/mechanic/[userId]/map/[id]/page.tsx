@@ -659,12 +659,12 @@ const MechanicMapPage = () => {
               )}
 
               {/* Status Information */}
-
-              <div className="rounded-lg border p-4">
-                <div className="flex items-center gap-2">
-                  {request?.status === "ACCEPTED" && (
-                    <span className="text-yellow-500">Payment Pending</span>
-                  )}
+              {request.status !== "SERVICING" && (
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2">
+                    {request?.status === "ACCEPTED" && (
+                      <span className="text-yellow-500">Payment Pending</span>
+                    )}
                   {request?.status === "PAYMENT_AUTHORIZED" && (
                     <span className="text-blue-500">
                       Waiting for you to start the service...
@@ -686,9 +686,6 @@ const MechanicMapPage = () => {
                       </span>
                     </div>
                   )}
-                  {request?.status === "SERVICING" && (
-                    <span className="text-yellow-500">Service in progress</span>
-                  )}
                   {request?.status === "IN_PROGRESS" && (
                     <div className="flex items-center gap-2">
                       <MapPin className="text-green-600" />
@@ -698,7 +695,8 @@ const MechanicMapPage = () => {
                     </div>
                   )}
                 </div>
-              </div>
+                </div>
+              )}
 
               <div className="space-y-4">
                 {request.status === "PAYMENT_AUTHORIZED" && (
@@ -794,7 +792,8 @@ const MechanicMapPage = () => {
                 )}
 
                 {request.status === "SERVICING" && (
-                  <>
+                  <div>
+                    <span className="text-yellow-500">Service in progress</span>
                     <Button
                       onClick={handleEndService}
                       className={cn(
@@ -815,7 +814,7 @@ const MechanicMapPage = () => {
                       serviceRequestId={request.id}
                       isLoading={isLoading}
                     />
-                  </>
+                  </div>
                 )}
               </div>
             </div>

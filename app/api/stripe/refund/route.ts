@@ -2,7 +2,7 @@ import {stripe} from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
-import { ServiceStatus } from '@prisma/client';
+import { OfferStatus, ServiceStatus } from '@prisma/client';
 
 const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_API_KEY);
 
@@ -39,11 +39,26 @@ export async function POST(req: Request) {
     // Process refund through Stripe
     const refund = await stripe.refunds.create({ payment_intent: id });
 
-    // Update service request status
+    // Update service request status || reset
     await prisma.serviceRequest.update({
       where: { id: requestId },
-      data: { status: ServiceStatus.REQUESTED }  // Reset to REQUESTED state
+      data: {
+        mechanicId: null,
+        status: ServiceStatus.REQUESTED 
+      }
     });
+
+    // Find and update the service offer
+    const serviceOffer = await prisma.serviceOffer.findFirst({
+      where: { serviceRequestId: requestId }
+    });
+
+    if (serviceOffer) {
+      await prisma.serviceOffer.update({
+        where: { id: serviceOffer.id },
+        data: { status: OfferStatus.REJECTED }
+      });
+    }
 
     // Send email notification to customer
     await resend.emails.send({
