@@ -16,7 +16,6 @@ export const StripeAccountTxHistory = () => {
 
       if (response) {
         setStripeConnectId(response.stripeConnectId);
-        console.log("Stripe Connect ID: ", response.stripeConnectId);
       } else {
         console.error("Error fetching Stripe Connect ID");
       }
@@ -43,7 +42,6 @@ export const StripeAccountTxHistory = () => {
 
       if (!response.ok) {
         const { error } = await response.json();
-        console.log("An error occurred: ", error);
         return undefined;
       } else {
         const { client_secret: clientSecret } = await response.json();

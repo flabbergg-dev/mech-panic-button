@@ -12,12 +12,10 @@ interface Location {
 
 export async function getServiceRequestsAction() {
   try {
-    console.log('Starting getServiceRequestsAction');
     
     // Get the current mechanic's location from their profile
     const { userId } = await auth();
     if (!userId) {
-      console.log('No authenticated user found');
       throw new Error("No authenticated user found");
     }
 
@@ -29,10 +27,7 @@ export async function getServiceRequestsAction() {
       }
     });
 
-    console.log('Found mechanic:', mechanic);
-
     if (!mechanic) {
-      console.log('Mechanic not found');
       return {
         serviceRequests: [],
         error: "Mechanic not found"
@@ -40,7 +35,6 @@ export async function getServiceRequestsAction() {
     }
 
     if (!mechanic.location || typeof mechanic.location !== 'object') {
-      console.log('Mechanic location not set');
       return {
         serviceRequests: [],
         error: "Mechanic location not set"
@@ -53,14 +47,11 @@ export async function getServiceRequestsAction() {
         typeof mechanicLocation.longitude !== 'number' ||
         Number.isNaN(mechanicLocation.latitude) || 
         Number.isNaN(mechanicLocation.longitude)) {
-      console.log('Invalid mechanic location coordinates');
       return {
         serviceRequests: [],
         error: "Invalid mechanic location coordinates"
       };
     }
-
-    console.log('Mechanic location:', mechanicLocation);
 
     // Get all service requests with appropriate statuses
     const serviceRequests = await prisma.serviceRequest.findMany({
@@ -96,19 +87,9 @@ export async function getServiceRequestsAction() {
       }
     });
 
-    console.log('Raw service requests from DB:', JSON.stringify({
-      total: serviceRequests.length,
-      byStatus: serviceRequests.reduce((acc, req) => {
-        acc[req.status] = (acc[req.status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      requests: serviceRequests
-    }, null, 2));
-
     // Filter requests by distance
     const nearbyRequests = serviceRequests.filter(request => {
       if (!request.location || typeof request.location !== 'object') {
-        console.log('Request has no location:', request.id);
         return true; // Temporarily return true to see if location is the issue
       }
 
@@ -118,7 +99,6 @@ export async function getServiceRequestsAction() {
           typeof requestLocation.longitude !== 'number' ||
           Number.isNaN(requestLocation.latitude) || 
           Number.isNaN(requestLocation.longitude)) {
-        console.log('Invalid request location coordinates:', request.id);
         return true; // Temporarily return true to see if location is the issue
       }
 
@@ -128,11 +108,8 @@ export async function getServiceRequestsAction() {
       );
 
       const isNearby = distance <= 50; // 50 mile radius
-      console.log(`Request ${request.id} distance: ${distance} miles, isNearby: ${isNearby}`);
-      return true; // Temporarily return true to see if distance is the issue
+      return isNearby;
     });
-
-    console.log('Filtered nearby requests:', nearbyRequests);
 
     return {
       serviceRequests: nearbyRequests,

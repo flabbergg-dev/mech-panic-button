@@ -104,12 +104,6 @@ export function ServiceOfferCard({
   useEffect(() => {
     const getEstimatedTime = async () => {
       try {
-        console.log("Debug: Location data in ServiceOfferCard:", {
-          mechanicLocation,
-          customerLocation,
-          hasValidMechanicLocation: mechanicLocation && 'latitude' in mechanicLocation && 'longitude' in mechanicLocation,
-          hasValidCustomerLocation: customerLocation && 'latitude' in customerLocation && 'longitude' in customerLocation
-        });
 
         if (!mechanicLocation || !customerLocation) {
           console.error("Debug: Missing location data");

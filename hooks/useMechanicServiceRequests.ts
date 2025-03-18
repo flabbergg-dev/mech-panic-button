@@ -33,22 +33,16 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
   const isFetching = useRef<boolean>(false);
 
   const fetchRequests = useCallback(async (force = false) => {
-    // Skip if already fetching or if not enough time has passed since last fetch
-    if (isFetching.current || (!force && Date.now() - lastFetchTime.current < FETCH_THROTTLE_MS)) {
-      console.log('Skipping fetch - already fetching or throttled');
-      return;
-    }
+
 
     try {
       isFetching.current = true;
-      console.log('Fetching service requests...');
       
       if (serviceRequests.length === 0) {
         setIsLoading(true);
       }
 
       const response = await getServiceRequestsAction();
-      console.log('Service requests response:', response);
       
       if (!response) {
         throw new Error('Failed to fetch service requests');
@@ -67,7 +61,6 @@ export function useMechanicServiceRequests(): UseMechanicServiceRequestsReturn {
           } : undefined
         }));
         
-        console.log('Transformed requests:', transformedRequests);
         setServiceRequests(transformedRequests);
         setError(null);
       }

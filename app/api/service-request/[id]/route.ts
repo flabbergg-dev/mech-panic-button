@@ -11,10 +11,8 @@ export async function GET(
   try {
     const { id } = await params
     const { userId } = await auth()
-    console.log('Fetching service request details:', id, 'for user:', userId)
     
     if (!userId) {
-      console.log('Unauthorized: No userId found')
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
@@ -62,13 +60,6 @@ export async function GET(
         return new NextResponse('Unauthorized to view this service request', { status: 403 })
       }
     }
-
-    console.log('Found service request:', {
-      id: serviceRequest.id,
-      status: serviceRequest.status,
-      mechanicId: serviceRequest.mechanicId,
-      clientId: serviceRequest.clientId
-    })
 
     return NextResponse.json(serviceRequest)
   } catch (error) {

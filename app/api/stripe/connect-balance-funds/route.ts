@@ -17,7 +17,6 @@ export async function POST(req: Request) {
 
         // Get account ID from request
         const { accountId } = await req.json();
-        console.log('Received request for account:', accountId);
 
         if (!accountId) {
             console.error('No accountId provided in request');
@@ -49,15 +48,12 @@ export async function POST(req: Request) {
         }
 
         // Get balance for the account
-        console.log('Fetching balance for account:', accountId);
         const balance = await stripe.balance.retrieve({
             stripeAccount: accountId,
         });
 
         const available = balance.available[0]?.amount || 0;
         const pending = balance.pending[0]?.amount || 0;
-
-        console.log('Balance retrieved:', { available, pending });
 
         return NextResponse.json({
             available,

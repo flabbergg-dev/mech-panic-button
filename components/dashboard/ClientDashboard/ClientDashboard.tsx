@@ -203,7 +203,9 @@ export function ClientDashboard() {
 
       fetchMechanicName();
     }
-
+     else {
+      setActiveMechanicUserId(null);
+    }
   }, [activeRequestFound]);
 
   // Fetch mechanic connect IDs with throttling
@@ -233,43 +235,6 @@ export function ClientDashboard() {
     }
   }, [offers, fetchMechanicConnectId]);
 
-  // Add debugging for requests and offers
-  useEffect(() => {
-    // Only log when data actually changes
-    if (!loading) {
-      console.log("ClientDashboard data:", {
-        userId: user?.id,
-        requestsCount: requests.length,
-        offersCount: offers.length,
-        serviceRequestFromHook: serviceRequest?.status,
-        error,
-      });
-    }
-  }, [
-    requests.length,
-    offers.length,
-    loading,
-    error,
-    user?.id,
-    serviceRequest?.status,
-  ]);
-
-  // Add debugging for active request
-  useEffect(() => {
-    if (!loading) {
-      console.log("Active request detection:", {
-        activeRequestFound: !!activeRequestFound,
-        activeRequestId: activeRequestFound?.id,
-        activeRequestStatus: activeRequestFound?.status,
-        serviceRequestFromHook: serviceRequest?.status,
-      });
-    }
-  }, [
-    activeRequestFound?.id,
-    activeRequestFound,
-    loading,
-    serviceRequest?.status,
-  ]);
 
   // Check for recently completed requests that need a review
   useEffect(() => {
@@ -285,10 +250,7 @@ export function ClientDashboard() {
 
     if (recentlyCompleted  ) {
       if (!recentlyCompleted.mechanicId) return;
-      console.log(
-        "Found completed request needing review:",
-        recentlyCompleted.id
-      );
+    
 
       // Check if this request already has a review
       const checkForExistingReview = async () => {
@@ -300,7 +262,6 @@ export function ClientDashboard() {
 
           if (!data.hasReview) {
             // Only show the review modal if there's no existing review
-            console.log("No existing review found, showing review modal");
 
             // Mark this request as having shown the review modal
             setReviewedRequestIds(
@@ -311,7 +272,6 @@ export function ClientDashboard() {
             setShowReviewModal(true);
             fetchMechanicName(recentlyCompleted.mechanicId);
           } else {
-            console.log("Existing review found, not showing review modal");
             // Still mark as reviewed to avoid checking again
             setReviewedRequestIds(
               (prev) => new Set([...Array.from(prev), recentlyCompleted.id])
@@ -359,17 +319,13 @@ export function ClientDashboard() {
           const elapsedSeconds = Math.floor((Date.now() - startTimeMs) / 1000);
           const totalCountdownSeconds = 60; // 1 minute
           
-          console.log(`Request ${requestId} - elapsed time: ${elapsedSeconds}s of ${totalCountdownSeconds}s`);
-          
           if (elapsedSeconds < totalCountdownSeconds) {
             // Countdown still ongoing
             const remainingSeconds = totalCountdownSeconds - elapsedSeconds;
             setRefundCountdown(prev => new Map(prev).set(requestId, remainingSeconds));
-            console.log(`Resuming countdown for request ${requestId}: ${remainingSeconds}s remaining`);
           } else {
             // Countdown already completed
             setRefundCountdown(prev => new Map(prev).set(requestId, 0));
-            console.log(`Countdown for request ${requestId} already completed`);
           }
         } else if (!refundCountdown.has(requestId)) {
           // No stored countdown, start new one
@@ -378,7 +334,6 @@ export function ClientDashboard() {
           localStorage.setItem(storedCountdownKey, "60"); // 1 minute
           
           setRefundCountdown(prev => new Map(prev).set(requestId, 60));
-          console.log(`Setting new countdown for request ${requestId} to 60 seconds`);
         }
       } catch (error) {
         console.error("Error managing countdown persistence:", error);
@@ -432,15 +387,13 @@ export function ClientDashboard() {
             try {
               const countdownKey = `refund_countdown_${key}`;
               localStorage.setItem(countdownKey, newValue.toString());
-              console.log(`Countdown for ${key}: ${newValue}s remaining (persisted)`);
             } catch (error) {
               console.error("Error updating countdown in localStorage:", error);
-              console.log(`Countdown for ${key}: ${newValue}s remaining (memory only)`);
             }
             
             // If countdown just reached zero, log it
             if (newValue === 0) {
-              console.log(`Countdown for ${key} completed!`);
+              setRefundedRequests(prev => new Set([...prev, key]));
             }
           }
         });
@@ -452,7 +405,6 @@ export function ClientDashboard() {
 
     // Cleanup interval on unmount
     return () => {
-      console.log("Clearing countdown interval");
       clearInterval(intervalId);
     };
   }, []);
@@ -536,7 +488,6 @@ export function ClientDashboard() {
   };
 
   const handleRefresh = () => {
-    console.log("Manual refresh triggered");
     setIsRefreshing(true);
     // Show loading indicator for at least 500ms to provide feedback
     const startTime = Date.now();
@@ -552,7 +503,6 @@ export function ClientDashboard() {
 
   // Function to handle when an offer is accepted
   const handleOfferAccepted = useCallback(() => {
-    console.log("Offer accepted, refreshing dashboard data");
     // Refresh both service offers and service request
     Promise.all([refetch(), refetchServiceRequest()])
       .then(() => {
@@ -660,11 +610,8 @@ export function ClientDashboard() {
       activeRequestFound &&
       activeRequestFound.status === ServiceStatus.REQUESTED
     ) {
-      console.log("Setting up periodic refresh for offers");
-
       // Refresh every 15 seconds to check for new offers
       const intervalId = setInterval(() => {
-        console.log("Periodic refresh for offers triggered");
         refetch();
         refetchServiceRequest();
       }, 15000);
@@ -767,7 +714,6 @@ export function ClientDashboard() {
                         {/* Dynamically render based on countdown state */}
                         {(() => {
                           const countdownValue = refundCountdown.get(activeRequestFound.id) ?? 0;
-                          console.log(`Rendering refund UI, countdown: ${countdownValue}`);
                           
                           if (countdownValue > 0) {
                             // During countdown, show wait message
@@ -963,7 +909,6 @@ export function ClientDashboard() {
                             "/api/debug/service-requests"
                           );
                           const data = await response.json();
-                          console.log("Debug service requests:", data);
                           alert(
                             `Found ${data.requestCount} requests. Check console for details.`
                           );
