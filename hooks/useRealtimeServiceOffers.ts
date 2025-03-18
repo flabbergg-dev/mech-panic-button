@@ -5,7 +5,6 @@ import { type ServiceRequest, ServiceStatus, type ServiceOffer } from '@prisma/c
 import { supabase } from '@/utils/supabase/client'
 import { getServiceOffersForClient } from '@/app/actions/service/offer/getServiceOffersAction'
 import { getServiceRequestsForClient } from '@/app/actions/getServiceRequestAction'
-import type { RealtimePostgresChangesPayload } from '@/types/supabase'
 import { isEqual } from 'lodash';
 
 // Define all service statuses for type safety

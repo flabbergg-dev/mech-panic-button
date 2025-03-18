@@ -203,7 +203,9 @@ export function ClientDashboard() {
 
       fetchMechanicName();
     }
-
+     else {
+      setActiveMechanicUserId(null);
+    }
   }, [activeRequestFound]);
 
   // Fetch mechanic connect IDs with throttling
