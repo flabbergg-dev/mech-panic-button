@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react'
 import { useRealtimeServiceOffers } from '@/hooks/useRealtimeServiceOffers'
 import { useRealtimeMechanicLocation } from '@/hooks/useRealtimeMechanicLocation'
 import { useRealtimeServiceRequest } from '@/hooks/useRealtimeServiceRequest'
@@ -10,7 +10,7 @@ import { MechPanicButton } from "@/components/Buttons/MechPanicButton"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Home, Loader2, Loader2Icon } from "lucide-react"
+import { Home, Loader2, Loader2Icon, Pin } from "lucide-react"
 import { useUser } from '@clerk/nextjs'
 import { cancelServiceRequest } from '@/app/actions/cancelServiceRequestAction'
 import { verifyArrivalCodeAction } from '@/app/actions/verifyArrivalCodeAction'
@@ -28,10 +28,12 @@ import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { PinInput } from '@/components/ui/PinInput'
 import { ChatBox } from '@/components/Chat/ChatBox'
 import { calculateEstimatedTime } from '@/utils/location';
-import { Booking } from '@/components/cards/Booking'
 import { ReviewModal } from '@/components/reviews/ReviewModal'
 import { getMechanicByIdAction } from '@/app/actions/mechanic/get-mechanic-by-id.action'
 import { getStripeConnectId } from '@/app/actions/user/get-stripe-connect-id'
+import { updateServiceRequestLocationAction } from '@/app/actions/service/request/updateServiceRequestLocationAction'
+import { LocationModal } from '@/components/Modal/LocationModal'
+import { ClientHistory } from './ClientHistory'
 
 interface Location {
   latitude: number;
@@ -61,14 +63,21 @@ export function ClientDashboard() {
     useRealtimeServiceOffers(user?.id || "");
   const {
     serviceRequest,
-    serviceRequestLoading,
-    serviceRequestError,
+    // serviceRequestLoading,
+    // serviceRequestError,
     refetchServiceRequest,
+    // resetLocationChanged,
+    // locationChanged
   } = useRealtimeServiceRequest(user?.id || "");
   const [activeTab, setActiveTab] = useState<string>(tab || "home");
   const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
+  const [adjustedLocation, setAdjustedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null)
   const [estimatedTime, setEstimatedTime] = useState<string | null>(null);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [shouldAutoReload, setShouldAutoReload] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [completedRequest, setCompletedRequest] =
     useState<ServiceRequest | null>(null);
@@ -76,6 +85,9 @@ export function ClientDashboard() {
   const [reviewedRequestIds, setReviewedRequestIds] = useState<Set<string>>(
     new Set()
   );
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mechanicConnectIds, setMechanicConnectIds] = useState<Map<string, string>>(new Map());
@@ -151,6 +163,10 @@ export function ClientDashboard() {
     }
   }, []);
 
+  const handleLocationUpdate = (newLocation: { latitude: number; longitude: number }) => {
+    setAdjustedLocation(newLocation)
+  }
+
   const updateEstimatedTime = useCallback(
     async (
       mechanicLocation: Location | null
@@ -165,6 +181,49 @@ export function ClientDashboard() {
     },
     [customerLocation]
   );
+
+  const handleLocationConfirm = async () => {
+    setIsLocationModalOpen(false)
+    
+    // Use the adjusted location if available, otherwise use the current location
+    const locationToUse = adjustedLocation || customerLocation
+    
+    if (locationToUse && activeRequestFound) {
+      try {
+        // Update the location in the database
+        const result = await updateServiceRequestLocationAction(
+          activeRequestFound.id,
+          locationToUse
+        )
+        
+        if (result.success) {
+          toast({
+            title: "Location updated",
+            description: "Your location has been updated successfully.",
+          })
+          
+          // Reset the adjusted location
+          setAdjustedLocation(null)
+          
+          // Refresh the service request
+          refetchServiceRequest()
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to update location.",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Error updating location:", error)
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred.",
+          variant: "destructive",
+        })
+      }
+    }
+  }
 
   // Helper function to check if a status is considered "active"
   const ACTIVE_STATUSES = [
@@ -203,6 +262,11 @@ export function ClientDashboard() {
       console.error("Error fetching mechanic connect ID:", error);
     }
   }, [mechanicConnectIds]);
+
+  const refreshLocation = () => {
+    if (!serviceRequest || !customerLocation) return;
+    updateServiceRequestLocationAction(serviceRequest.id, customerLocation);
+  }
 
   // Fetch connect IDs for all mechanics in offers
   useEffect(() => {
@@ -303,7 +367,9 @@ export function ClientDashboard() {
           console.log("Debug - Resuming existing countdown");
           const startTimeMs = parseInt(storedStartTime, 10);
           const elapsedSeconds = Math.floor((Date.now() - startTimeMs) / 1000);
-          const totalCountdownSeconds = 7200; // 2 hours
+          // 2 hours in seconds (60 seconds * 60 minutes * 2 hours)
+          const totalCountdownSeconds = 7200; 
+          console.log("Debug - Total countdown seconds:", totalCountdownSeconds);
 
           if (elapsedSeconds < totalCountdownSeconds) {
             // Countdown still ongoing
@@ -320,15 +386,15 @@ export function ClientDashboard() {
           console.log("Debug - Starting new countdown");
           const startTime = Date.now();
           localStorage.setItem(storedStartTimeKey, startTime.toString());
-          localStorage.setItem(storedCountdownKey, "60"); // 1 minute
+          localStorage.setItem(storedCountdownKey, "7200"); // 2 hours (60 seconds * 60 minutes * 2 hours)
           
-          setRefundCountdown(prev => new Map(prev).set(requestId, 60));
+          setRefundCountdown(prev => new Map(prev).set(requestId, 7200));
         }
       } catch (error) {
         console.error("Error managing countdown persistence:", error);
         // Fallback to in-memory only
         if (!refundCountdown.has(requestId)) {
-          setRefundCountdown(prev => new Map(prev).set(requestId, 60));
+          setRefundCountdown(prev => new Map(prev).set(requestId, 7200));
         }
       }
     }
@@ -407,6 +473,16 @@ export function ClientDashboard() {
       clearInterval(intervalId);
     };
   }, []);
+
+  // Auto-reload effect for completed services
+  useEffect(() => {
+    if (shouldAutoReload) {
+      const timer = setTimeout(() => {
+        window.location.reload();
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAutoReload]);
 
   // Force requests tab if there's an active request, or map tab if payment authorized
   useEffect(() => {
@@ -598,8 +674,6 @@ export function ClientDashboard() {
           `Failed to refund service request: ${result.status} ${result.statusText}`
         );
       }
-
-      console.log("Debug - Refund successful, adding to refunded requests set");
       setRefundedRequests(prev => new Set([...prev, activeRequestFound.id]));
       toast({
         title: "Refund Processed",
@@ -610,7 +684,6 @@ export function ClientDashboard() {
       // Cancel the request after successful refund
       await handleCancelRequest(activeRequestFound.id);
     } catch (error) {
-      console.error("Error processing refund:", error);
       toast({
         title: "Error",
         description: "Failed to process refund. Please try again.",
@@ -674,7 +747,7 @@ export function ClientDashboard() {
                 </p>
               </Card>
             </div>
-            <div className="hidden md:flex items-center justify-center w-full">
+            <div className="flex items-center justify-center w-full">
               <RippleComp>
                 <MechPanicButton
                   onRequestCreated={handleRequestCreated}
@@ -682,7 +755,6 @@ export function ClientDashboard() {
                 {/* <MechPanicButtonLogo/> */}
               </RippleComp>
             </div>
-            <Booking />
           </div>
         );
       case "map":
@@ -728,6 +800,22 @@ export function ClientDashboard() {
                             Waiting for mechanic's location...
                           </p>
                         )}
+                        <Button 
+                          onClick={() => setIsLocationModalOpen(true)} 
+                          disabled={!customerLocation}
+                          className="mt-2"
+                        >
+                          Update Location <Pin className="ml-2 h-4 w-4" />
+                        </Button>
+                        <LocationModal
+                          isOpen={isLocationModalOpen}
+                          onOpenChange={setIsLocationModalOpen}
+                          userCords={customerLocation || { latitude: 0, longitude: 0 }}
+                          onLocationUpdate={handleLocationUpdate}
+                          modalRef={modalRef as any}
+                          adjustedLocation={adjustedLocation}
+                          handleLocationConfirm={handleLocationConfirm}
+                        />
                       </div>
                       <div className="mt-4 space-y-2 flex flex-col items-center self-center">
                         {/* Dynamically render based on countdown state */}
@@ -750,7 +838,7 @@ export function ClientDashboard() {
                             return (
                               <div className="space-y-2">
                                 <div className="text-sm text-amber-600 font-medium rounded p-2 bg-amber-50 border border-amber-200">
-                                  You're now eligible for a refund if mechanic does not arrive in time
+                                  You're now eligible for a refund
                                 </div>
                                 <Button
                                   onClick={handleRefund}
@@ -810,36 +898,52 @@ export function ClientDashboard() {
                     <p className="text-muted-foreground mb-2 pb-4">
                       Wait for the mechanic to complete their service
                     </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refreshOffers()}
+                      className="flex items-center gap-1"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="animate-spin"/>
+                      ) : (
+                        <span>Refresh</span>
+                      )}
+                    </Button>
                     {offers.filter((offers) => offers.status === 'PENDING').map((offer) => (
-                    <ServiceOfferCard
-                      key={offer.id}
-                      serviceRequestId={offer.serviceRequestId}
-                      mechanicId={offer.mechanicId || ""}
-                      mechanicConnectId={offer.mechanicId ? mechanicConnectIds.get(offer.mechanicId) || "" : ""}
-                      mechanicName={
-                        offer.mechanic
-                          ? `${offer.mechanic.firstName} ${offer.mechanic.lastName}`
-                          : "Unknown Mechanic"
-                      }
-                      mechanicRating={offer.mechanic?.rating || undefined}
-                      price={offer.price}
-                      note={offer.note || undefined}
-                      expiresAt={offer.expiresAt || undefined}
-                      onOfferHandled={async () => {
-                        try {
-                          await acceptOffer(offer.id);
-                          // The UI will update automatically through real-time subscription
-                        } catch (error) {
-                          console.error("Error accepting offer:", error);
-                          // Handle error (show toast, etc.)
+                      <ServiceOfferCard
+                        key={offer.id}
+                        serviceRequestId={offer.serviceRequestId}
+                        mechanicId={offer.mechanicId || ""}
+                        mechanicConnectId={offer.mechanicId ? mechanicConnectIds.get(offer.mechanicId) || "" : ""}
+                        mechanicName={
+                          offer.mechanic
+                            ? `${offer.mechanic.firstName} ${offer.mechanic.lastName}`
+                            : "Unknown Mechanic"
                         }
-                      }}
-                      userId={user.id}
-                      mechanicLocation={mechanicLocation}
-                      customerLocation={customerLocation}
-                    />
+                        mechanicRating={offer.mechanic?.rating || undefined}
+                        price={offer.price}
+                        note={offer.note || undefined}
+                        expiresAt={offer.expiresAt || undefined}
+                        onOfferHandled={async () => {
+                          try {
+                            await acceptOffer(offer.id);
+                            // The UI will update automatically through real-time subscription
+                          } catch (error) {
+                            console.error("Error accepting offer:", error);
+                            // Handle error (show toast, etc.)
+                          }
+                        }}
+                        userId={user.id}
+                        mechanicLocation={mechanicLocation}
+                        customerLocation={customerLocation}
+                      />
                     ))}
                   </div>
+                  {activeRequestFound.mechanicId && (
+                    <ChatBox divClassName="absolute right-[0.75rem] top-0" userId={activeRequestFound.clientId} />
+                  )}
                 </ServiceCardLayout>
               </HalfSheet>
             )}
@@ -883,19 +987,18 @@ export function ClientDashboard() {
                         Your service has been completed and the payment has been sent to mechanic
                       </p>
                     </div>
-                  <button
-                    className="bg-blue-500 text-white text-xs px-2 py-1 rounded"
-                    onClick={() => {
-                      setTimeout(() => {
-                        window.location.reload();
-                      }, 3000);
-                    }}
-                  >
-                    Go home <Home className='h-4 w-4'/>
-                  </button>
+                    <button
+                      className="bg-blue-500 text-white px-4 py-2 rounded flex items-center gap-2"
+                      onClick={() => {
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 1000);
+                      }}
+                    >
+                      Go home <Home className='h-4 w-4'/>
+                    </button>
                   </div>
                 </div>
-
               </div>
             )}
           </div>
@@ -1094,7 +1197,7 @@ export function ClientDashboard() {
           </div>
         );
       case "history":
-        return <div>History Component (Coming Soon)</div>;
+        return <ClientHistory />
       case "settings":
         return (
           <Suspense fallback={<SkeletonBasic />}>

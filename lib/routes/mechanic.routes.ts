@@ -5,6 +5,8 @@ export const MECHANIC_ROUTES = {
   // Service Flow
   SERVICE_REQUEST: (userId: string, id: string) =>
     `/dashboard/mechanic/${userId}/service-request/${id}`,
+  BOOKING_REQUEST: (userId: string, id: string) =>
+    `/dashboard/mechanic/${userId}/booking-request/${id}`,
   ROAD_ASSISTANCE: (userId: string) =>
     `/dashboard/mechanic/${userId}/road-assistance`,
   MAP: (userId: string) => `/dashboard/mechanic/${userId}/map`,

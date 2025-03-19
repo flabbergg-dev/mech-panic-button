@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react"
-import { ApproveButton } from "@/components/ui/approveButton"
 import { Button } from "@/components/ui/button"
-import { ModalMapComp } from "@/components/MapBox/ModalMapComp"
 import { Modal } from "@/components/Modal/Modal"
-import { CheckIcon, ChevronRightIcon, Loader2, WrenchIcon } from "lucide-react"
+import { Loader2, WrenchIcon } from "lucide-react"
 import { ServiceStatus, ServiceType } from "@prisma/client"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { createServiceRequestAction } from "@/app/actions/serviceRequestAction"
 import { toast } from "@/hooks/use-toast"
 import { useUser } from "@clerk/clerk-react"
+import { LocationModal } from "../Modal/LocationModal"
 
 
 const getUserLocation = (
@@ -43,6 +42,7 @@ export const MechPanicButton = ({ onRequestCreated, setActiveTab }: MechPanicBut
   const { user } = useUser()
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
   const [isServiceTypeModalOpen, setIsServiceTypeModalOpen] = useState(false)
+  // Use MutableRefObject instead of RefObject to match the expected type
   const modalRef = useRef<HTMLDivElement>(null)
 
   const [userCords, setUserCords] = useState<{
@@ -206,51 +206,15 @@ export const MechPanicButton = ({ onRequestCreated, setActiveTab }: MechPanicBut
       </style>
      
       {/* Location Modal */}
-      <Modal
-        dialogText="Confirm Your Location"
-        buttonText=""
-        buttonActive={false}
+      <LocationModal
         isOpen={isLocationModalOpen}
         onOpenChange={setIsLocationModalOpen}
-        variant="default"
-        className="sm:max-w-[500px] mx-auto lg:mx-0"
-        side="bottom"
-      >
-        <div className="flex flex-col gap-4" ref={modalRef}>
-          <div className="w-[-webkit-fill-available] h-[300px] border-2 rounded-md border-slate-300 mb-4">
-            <ModalMapComp 
-              userCords={userCords} 
-              onLocationUpdate={handleLocationUpdate}
-            />
-          </div>
-        </div>
-        <div className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsLocationModalOpen(false)}
-          >
-            Cancel
-          </Button>
-          <ApproveButton
-            buttonColor="#000000"
-            subscribeStatus={false}
-            initialText={
-              <span className="group inline-flex items-center">
-                {adjustedLocation ? "Location adjusted" : "This is my location"}{" "}
-                <ChevronRightIcon className="ml-1 size-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </span>
-            }
-            changeText={
-              <span className="group inline-flex items-center">
-                {adjustedLocation ? "Using adjusted location" : "Using current location"}{" "}
-                <CheckIcon className="ml-1 size-4" />
-              </span>
-            }
-            onClick={handleLocationConfirm}
-          />
-        </div>
-      </Modal>
+        userCords={userCords}
+        onLocationUpdate={handleLocationUpdate}
+        modalRef={modalRef as any}
+        adjustedLocation={adjustedLocation}
+        handleLocationConfirm={handleLocationConfirm}
+      />
 
       {/* Service Type Selection Modal */}
       <Modal

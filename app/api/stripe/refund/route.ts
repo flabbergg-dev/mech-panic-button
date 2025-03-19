@@ -87,28 +87,35 @@ export async function POST(req: Request) {
     });
 
     // Also notify mechanic if available
-    if (mechanicId) {
-      const mechanic = await prisma.user.findUnique({
-        where: { id: mechanicId }
+
+      const mechanic = await prisma.mechanic.findUnique({
+        where: { id: mechanicId },
+        include: {
+          user: true
+        }
+      });
+
+      if (!mechanic || !mechanic.user.email) {
+        return new NextResponse("Mechanic not found", { status: 404 });
+      }
+      
+
+      await resend.emails.send({
+        from: 'notifications@mech-panicbutton.com',
+        to: mechanic.user.email,
+        subject: 'Service Request Cancelled',
+        html: getEmailTemplate(`
+          <h2 style="color: #333; margin-bottom: 20px;">Service Request Cancelled</h2>
+          <p>A service request has been cancelled by the customer.</p>
+          <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Request ID:</strong> ${requestId}</p>
+            <p>The payment has been refunded to the customer.</p>
+          </div>
+          <p style="color: #666; font-size: 14px;">The service request has been cancelled and removed from your active requests.</p>
+        `)
       });
       
-      if (mechanic?.email) {
-        await resend.emails.send({
-          from: 'notifications@mech-panicbutton.com',
-          to: mechanic.email,
-          subject: 'Service Request Cancelled',
-          html: getEmailTemplate(`
-            <h2 style="color: #333; margin-bottom: 20px;">Service Request Cancelled</h2>
-            <p>A service request has been cancelled by the customer.</p>
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Request ID:</strong> ${requestId}</p>
-              <p>The payment has been refunded to the customer.</p>
-            </div>
-            <p style="color: #666; font-size: 14px;">The service request has been cancelled and removed from your active requests.</p>
-          `)
-        });
-      }
-    }
+    
 
     return NextResponse.json({
       refund: refund,

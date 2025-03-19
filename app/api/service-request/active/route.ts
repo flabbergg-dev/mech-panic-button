@@ -51,6 +51,8 @@ export async function GET() {
         createdAt: true,
         updatedAt: true,
         firstTransactionId: true,
+        secondTransactionId: true,
+        location: true,
         mechanic: {
           select: {
             user: {

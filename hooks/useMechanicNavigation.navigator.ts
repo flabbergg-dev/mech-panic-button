@@ -13,6 +13,8 @@ export const useMechanicNavigation = () => {
     goToDashboard: () => router.push(MECHANIC_ROUTES.DASHBOARD),
     goToServiceRequest: (serviceRequestId: string) =>
       router.push(MECHANIC_ROUTES.SERVICE_REQUEST(userId, serviceRequestId)),
+    goToBookingRequest: (serviceRequestId: string) =>
+      router.push(MECHANIC_ROUTES.BOOKING_REQUEST(userId, serviceRequestId)),
     goToRoadAssistance: () =>
       router.push(MECHANIC_ROUTES.ROAD_ASSISTANCE(userId)),
     goToStartDrive: (serviceRequestId: string) =>

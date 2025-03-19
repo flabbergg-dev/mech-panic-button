@@ -7,7 +7,7 @@ import { ServiceCardLayout } from '@/components/layouts/ServiceCard.Card.Layout'
 import { Button } from '@/components/ui/button'
 import { useEmailNotification } from '@/hooks/useEmailNotification'
 import { updateServiceRequestStatusAction } from '@/app/actions/updateServiceRequestStatusAction'
-import { Loader2Icon, Copy, Check, Navigation, MapPin } from 'lucide-react'
+import { Loader2Icon, Copy, Check, Navigation, MapPin, Pin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { getUserToken } from '@/app/actions/getUserToken'
@@ -21,18 +21,26 @@ import { updateMechanicLocation } from '@/app/actions/updateMechanicLocation'
 import { ChatBox } from '@/components/Chat/ChatBox'
 import ServiceRequestMap from '@/components/MapBox/ServiceRequestMap'
 import type { JsonValue } from '@prisma/client/runtime/library'
+import { useRealtimeServiceRequest } from '@/hooks/useRealtimeServiceRequest'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import useMechanicId from '@/hooks/useMechanicId'
 import { AdditionalServicesModal } from '@/components/Modal/AdditionalServicesModal'
 import { toast } from 'sonner'
+import { deleteServiceOfferAction } from '@/app/actions/service/offer/deleteServiceOfferAction'
+import { useUser } from '@clerk/clerk-react'
 
+// Define the Location type for consistency
 interface Location {
-  latitude: number
-  longitude: number
+  latitude: number;
+  longitude: number;
 }
 
+// Define a type for the JSON location field
+type LocationJson = Location | string | any;
+
 type ServiceRequestWithClient = ServiceRequest & {
-  client: User
+  client: User;
+  // Override the location type from Json to our specific type
+  location: LocationJson;
 }
 
 const FETCH_THROTTLE_MS = 5000; // Minimum time between fetches (5 seconds)
@@ -44,6 +52,7 @@ const MAX_LOCATION_AGE = 30000; // 30 seconds maximum age for cached positions
 const MechanicMapPage = () => {
   // Refs for managing data fetching and cleanup
   const isMounted = useRef(true);
+  const { user } = useUser();
   const lastFetchTime = useRef(0);
   const isFetching = useRef(false);
   const watchId = useRef<number | null>(null);
@@ -60,7 +69,6 @@ const MechanicMapPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [showRoute, setShowRoute] = useState(false)
   const [showMechanicLocation, setShowMechanicLocation] = useState(false)
-  const [key, setKey] = useState(0)
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
   const [distance, setDistance] = useState<number | null>(null)
   const [mechanicLocation, setMechanicLocation] = useState<Location | null>(null)
@@ -70,8 +78,9 @@ const MechanicMapPage = () => {
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [request, setRequest] = useState<ServiceRequestWithClient | null>(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
+  const [locationChanged, setLocationChanged] = useState(false)
   const router = useRouter()
-  const mechanicId = useMechanicId()
+  
   // Cleanup effect
   useEffect(() => {
     return () => {
@@ -154,6 +163,10 @@ const MechanicMapPage = () => {
           }, 
           (payload: RealtimePostgresChangesPayload<ServiceRequest>) => {
             fetchData(true); // Force fetch on real-time update
+            
+            if (payload.new && 'location' in payload.new && payload.new.location) {
+              setLocationChanged(true);
+            }
           }
         )
         .subscribe();
@@ -293,6 +306,7 @@ const MechanicMapPage = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         if (!isMounted.current) return;
+        
         const initialLocation = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -302,8 +316,9 @@ const MechanicMapPage = () => {
       },
       (error) => {
         if (!isMounted.current) return;
+        
+        console.error("Initial location error:", error);
         const errorMessage = getLocationErrorMessage(error);
-        console.error("Initial location error:", errorMessage);
         toast(errorMessage);
       },
       {
@@ -449,7 +464,7 @@ const MechanicMapPage = () => {
   };
 
   const isNearCustomer = mechanicLocation && customerLocation && 
-    calculateDistance(mechanicLocation, customerLocation) <= 100; // Within 100 meters
+    calculateDistance(mechanicLocation, customerLocation) <= 3000; // Within 100 meters
 
   const handleArrival = async () => {
     if (!requestId) return
@@ -535,21 +550,57 @@ const MechanicMapPage = () => {
       setIsVerifyingCode(true)
 
       const result = await verifyCompletionCodeAction(requestIdString, code)
-      
+
       if (!result.success) {
         toast("Verification failed");
         return
       }
 
       toast("Service completed successfully");
-      
       // The Real-time subscription will handle the data refresh
       // No need to call fetchData here
     } catch (error) {
       toast("Failed to verify code");
     } finally {
       setIsVerifyingCode(false)
+
+      await deleteServiceOfferAction(requestIdString)
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000)
     }
+  }
+
+  const handleLocationChange = async () => {
+    setLocationChanged(false);
+    startLocationTracking();
+    
+    // Parse the location from JSON if needed
+    let destLatitude, destLongitude;
+    
+    if (request?.location) {
+      try {
+        // If location is already an object with latitude/longitude
+        if (typeof request.location === 'object' && request.location !== null) {
+          const locationObj = request.location as any;
+          destLatitude = locationObj.latitude;
+          destLongitude = locationObj.longitude;
+        }
+        // If location is a string (JSON), parse it
+        else if (typeof request.location === 'string') {
+          const locationObj = JSON.parse(request.location);
+          destLatitude = locationObj.latitude;
+          destLongitude = locationObj.longitude;
+        }
+        router.push(`/dashboard/mechanic/${user?.id}/map/${requestId}?destLat=${destLatitude || ''}&destLng=${destLongitude || ''}`);
+        setTimeout(() => {
+          console.log("Reloading page after location update...");
+          window.location.reload();
+        }, 5000);
+      } catch (error) {
+        console.error("Error parsing location:", error);
+      }
+    } 
   }
 
   if (!customerLocation || !requestId) {
@@ -588,7 +639,7 @@ const MechanicMapPage = () => {
       {/* Map */}
       <div className="fixed inset-0 z-0">
         <ServiceRequestMap
-          key={key}
+          key={request.id}
           serviceRequest={{
             id: request.id,
             status: request.status,
@@ -604,7 +655,7 @@ const MechanicMapPage = () => {
 
       {/* Controls */}
       <HalfSheet>
-        {request.status === "IN_ROUTE" && (
+        {(request.status === "IN_ROUTE" || request.status === "SERVICING" || request.status === "IN_PROGRESS") && (
           <ChatBox
             userId={request.clientId}
             divClassName="absolute right-0 top-0 z-50"
@@ -613,12 +664,26 @@ const MechanicMapPage = () => {
         )}
         <ServiceCardLayout>
           <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-lg border border-border/50 transform transition-all duration-300 ease-in-out">
-            <h2 className="text-xl font-semibold mb-2">
-              {request.status === "SERVICING"
-                ? "Service in Progress"
-                : "Navigation"}
-            </h2>
-
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold mb-2">
+                {request.status === "SERVICING"
+                  ? "Service in Progress"
+                  : "Navigation"}
+              </h2>
+              {locationChanged === true && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      onClick={handleLocationChange}
+                    >
+                      Refresh location <Pin className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
             {/* Service Request Details */}
             <div className="space-y-4">
               {/* Route Information */}

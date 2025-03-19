@@ -163,9 +163,9 @@ const SettingsPage = () => {
                   <ServiceSelector />
                 </div>
                 <MechanicInfoForm />
+                <StripeAccountManagement />
               </motion.div>
             )}
-            <StripeAccountManagement />
           </motion.div>
         );
       case "billing":

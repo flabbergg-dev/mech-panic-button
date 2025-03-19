@@ -12,6 +12,18 @@ export async function getServiceRequestsForClient(userId: string) {
         clientId: userId,
         // Include all requests, including completed ones
       },
+      include: {
+        client: true,
+        offers: {
+          include: {
+            mechanic: {
+              include: {
+                user: true
+              }
+            }
+          }
+        }
+      },
       orderBy: {
         createdAt: 'desc'
       }
