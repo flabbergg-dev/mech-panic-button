@@ -7,6 +7,9 @@ import { ServiceStatus } from '@prisma/client'
 export interface MechanicProfile {
   id: string
   bannerImage?: string | null
+  bio: string | null
+  isAvailable: boolean
+  servicesOffered: string[]
   cars: {
     make: string
     model: string
@@ -50,7 +53,7 @@ export async function getMechanicProfile() {
             }
           }
         }
-      },
+      }
     }
   })
 
@@ -75,6 +78,9 @@ export async function getMechanicProfile() {
   return {
     id: mechanic.id,
     bannerImage: mechanic.bannerImage,
+    bio: mechanic.bio,
+    isAvailable: mechanic.isAvailable,
+    servicesOffered: mechanic.servicesOffered,
     cars: mechanic.user.Vehicle.map(car => ({
       make: car.make,
       model: car.model,
@@ -84,7 +90,7 @@ export async function getMechanicProfile() {
       id: review.id,
       rating: review.rating,
       comment: review.comment,
-      customerName: review.client.firstName + " " + review.client.lastName,
+      customerName: `${review.client.firstName} ${review.client.lastName}`,
       createdAt: review.createdAt
     })),
     stats

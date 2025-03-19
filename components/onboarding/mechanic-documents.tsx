@@ -3,13 +3,12 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
-import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { onboardUserAction } from "@/app/actions/user/onboard-user.action"
-import { updateMechanicDocumentsAction } from "@/app/actions/mechanic/update-mechanic-documents.action"
 import { X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
 
 interface MechanicDocumentsProps {
   formData: {
@@ -21,7 +20,7 @@ interface MechanicDocumentsProps {
     year: number;
     license: string;
   };
-  stripeConnectId: any;
+  stripeConnectId: string | null;
 }
 
 interface MechanicDocuments {
@@ -35,7 +34,6 @@ export const MechanicDocuments = ({
 }: MechanicDocumentsProps) => {
   const router = useRouter();
   const { user } = useUser();
-  const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [driversLicense, setDriversLicense] = useState<File | null>(null);
   const [merchantDocument, setMerchantDocument] = useState<File | null>(null);
@@ -50,11 +48,7 @@ export const MechanicDocuments = ({
     type: "driversLicense" | "merchantDocument"
   ) => {
     if (!file || !user) {
-      toast({
-        title: "Error",
-        description: "Please select a file to upload",
-        variant: "destructive",
-      });
+      toast.error("Please select a file to upload");
       return;
     }
 
@@ -82,46 +76,21 @@ export const MechanicDocuments = ({
       }
       documentFormData.append("userId", user.id);
 
-      // const uploadResponse = await fetch("/api/upload/mechanic-documents", {
-      //   method: "POST",
-      //   body: documentFormData,
-      // });
-
-      // if (!uploadResponse.ok) {
-      //   const errorData = await uploadResponse.json();
-      //   throw new Error(errorData.error || "Failed to upload document");
-      // }
-
-      // const result = await uploadResponse.json();
-
-      // if (result.driversLicenseId) {
-      //   setHasDriversLicense(true);
-      // }
-      // if (result.merchantDocumentUrl) {
-      //   setHasMerchantDocument(true);
-      // }
-
-      toast({
-        title: "Success",
-        description: `${type === "driversLicense" ? "Driver's License" : "Merchant Document"} uploaded successfully`,
-      });
+      toast.success(`${type === "driversLicense" ? "Driver's License" : "Merchant Document"} uploaded successfully`);
 
       // Only redirect if both documents are uploaded
-      if(stripeConnectId) {
-      // if (result.hasAllDocuments) {
+      if(stripeConnectId && hasDriversLicense && country === "United States") {
         router.push("/dashboard");
-      } else if (hasDriversLicense && country === "United States") {
+
+      } else if (stripeConnectId && hasDriversLicense && hasMerchantDocument&& country === "Puerto Rico") {
         router.push("/dashboard");
-      } else {
+      }
+      else {
         router.refresh();
       }
     } catch (error) {
       console.error("Error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to upload document",
-        variant: "destructive",
-      });
+      toast.error("Failed to upload document");
     } finally {
       setIsUploading(false);
     }

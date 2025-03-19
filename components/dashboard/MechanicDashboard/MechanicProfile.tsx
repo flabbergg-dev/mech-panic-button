@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { Camera, Car, Star, UserCircle } from "lucide-react"
 
@@ -19,18 +19,18 @@ export const MechanicProfileView = () => {
   const [profile, setProfile] = useState<MechanicProfile | null>(null)
   const [isUpdatingBanner, setIsUpdatingBanner] = useState(false)
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const data = await getMechanicProfile()
       setProfile(data)
     } catch (error) {
       console.error('Error fetching profile:', error)
     }
-  }
-  useEffect(() => {
-
-    fetchProfile()
   }, [])
+
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
 
   const handleBannerUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -120,12 +120,30 @@ export const MechanicProfileView = () => {
       </div>
 
       {/* Profile Info */}
-      <Card className="p-6">
-        <div className="flex items-center space-x-4">
-          <Avatar className="h-20 w-20">
-            <AvatarImage
-              src={(user!.publicMetadata["avatar"] as string) ?? ""}
-              alt={user!.firstName ?? "User"}
+      {!user && 
+        <Card className="p-6">
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-20 w-20">
+             
+            <AvatarFallback>
+              <UserCircle className="h-12 w-12" />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="text-2xl font-semibold w-20 h-10 animate-pulse bg-muted"/>
+             
+            <div className="text-muted-foreground w-20 h-10 animate-pulse bg-muted">Loading...</div>
+          </div>
+        </div>
+      </Card>
+      }
+      {user && (
+        <Card className="p-6">
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage
+                src={(user.publicMetadata.avatar as string) ?? ""}
+              alt={user.firstName ?? "User"}
             />
             <AvatarFallback>
               <UserCircle className="h-12 w-12" />
@@ -133,12 +151,13 @@ export const MechanicProfileView = () => {
           </Avatar>
           <div>
             <h3 className="text-2xl font-semibold">
-              {user!.firstName} {user!.lastName}
+              {user.firstName} {user.lastName}
             </h3>
-            <p className="text-muted-foreground">{user!.emailAddresses[0].emailAddress}</p>
+            <p className="text-muted-foreground">{user.emailAddresses[0].emailAddress}</p>
           </div>
         </div>
-      </Card>
+      </Card>)}
+
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -170,8 +189,8 @@ export const MechanicProfileView = () => {
           Cars Owned
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {profile?.cars.map((car, index) => (
-            <Card key={index} className="p-4">
+          {profile?.cars.map((car) => (
+            <Card key={car.make + car.model + car.year} className="p-4">
               <p className="font-semibold">{car.make} {car.model}</p>
               <p className="text-sm text-muted-foreground">Year: {car.year}</p>
             </Card>

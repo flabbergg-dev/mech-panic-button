@@ -15,7 +15,7 @@ export async function updateMechanicBannerAction(userId: string, imageUrl: strin
     })
 
     revalidatePath(`/dashboard/mechanic/${userId}`)
-    revalidatePath(`/dashboard/settings`)
+    revalidatePath(`/dashboard/mechanic/${userId}/settings`)
 
     return {
       success: true,

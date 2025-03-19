@@ -1,45 +1,39 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import  { type UpdateUserDTO, updateUserSchema } from "@/lib/domain/dtos/user.dto"
-import { updateUserProfileAction } from "@/app/actions/user/update-user-profile.action"
-import { getUserProfileAction } from "@/app/actions/user/get-user-profile.action"
-import { ProfileImageUpload } from "@/components/dashboard/settings/ProfileImageUpload"
-import { toast } from "sonner"
+import { getUserProfileAction } from "@/app/actions/user/get-user-profile.action";
+import { updateUserAction } from "@/app/actions/user/update-user";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { type UpdateUserProfile, updateUserSchema } from "@/schemas/users/userProfileSchema";
+import { useUser } from "@clerk/nextjs";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { ProfileImageUpload } from "./ProfileImageUpload";
 
 export function PersonalInfoForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const { user, isLoaded: isUserLoaded } = useUser()
-  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const router = useRouter();
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, dirtyFields },
     watch,
-  } = useForm<UpdateUserDTO>({
+  } = useForm<UpdateUserProfile>({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
       email: "",
       phoneNumber: "",
-      dob: "",
-      currentLocation: null,
-      documentsUrl: [],
     }
-  })
+  });
 
-  // Watch form values for debugging
   const formValues = watch();
 
   useEffect(() => {
@@ -52,8 +46,6 @@ export function PersonalInfoForm() {
       }
 
       try {
-        
-        // First, try to get the user profile
         const result = await getUserProfileAction(user.id);
 
         if (result.success && result.data) {
@@ -62,8 +54,6 @@ export function PersonalInfoForm() {
             lastName: result.data.lastName || "",
             email: result.data.email || "",
             phoneNumber: result.data.phoneNumber || "",
-            dob: result.data.dob || "",
-            currentLocation: result.data.currentLocation || null,
             documentsUrl: result.data.documentsUrl || [],
           }, { keepDefaultValues: false });
         } else {
@@ -79,7 +69,7 @@ export function PersonalInfoForm() {
     loadUserProfile();
   }, [isUserLoaded, reset, user?.id]);
 
-  const onSubmit = async (data: UpdateUserDTO) => {
+  const onSubmit = async (data: UpdateUserProfile) => {
     if (!user?.id) {
       console.error("No user ID available for submission");
       return;
@@ -87,19 +77,13 @@ export function PersonalInfoForm() {
 
     try {
       setIsSubmitting(true);
-      
-      const formData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phoneNumber: data.phoneNumber || "",
-        dob: data.dob || "",
-        currentLocation: data.currentLocation || null,
-       
-        documentsUrl: data.documentsUrl || [],
-      };
 
-      const result = await updateUserProfileAction(formData, false);
+      const updatePayload = { ...data };
+
+      const result = await updateUserAction({
+        id: user.id,
+        data: updatePayload,
+      });
 
       if (!result.success) {
         toast('Failed to update profile');
@@ -107,7 +91,6 @@ export function PersonalInfoForm() {
       }
 
       toast('Profile Updated Successfully');
-
       router.refresh();
     } catch (error) {
       console.error("Error in onSubmit:", error);
@@ -176,18 +159,7 @@ export function PersonalInfoForm() {
             )}
           </div>
 
-          <div>
-            <Label htmlFor="dob">Date of Birth</Label>
-            <Input 
-              id="dob"
-              {...register("dob")}
-              type="date"
-              max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
-            />
-            {errors.dob && (
-              <p className="text-sm text-red-500">{errors.dob.message}</p>
-            )}
-          </div>
+        
         </div>
       </div>
 

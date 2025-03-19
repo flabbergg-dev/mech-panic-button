@@ -1,7 +1,20 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@clerk/nextjs/server"
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error("Missing Supabase environment variables")
+}
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_JWT_TEMPLATE) {
+  throw new Error("Missing Supabase JWT template")
+}
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseJwtTemplate = process.env.NEXT_PUBLIC_SUPABASE_JWT_TEMPLATE
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +23,7 @@ export async function POST(request: NextRequest) {
     const merchantDocument = formData.get("merchantDocument") as File | null
     const userId = formData.get("userId") as string
     const { getToken } = await auth()
-    const token = await getToken({ template: process.env.NEXT_PUBLIC_SUPABASE_JWT_TEMPLATE! })
+    const token = await getToken({ template: supabaseJwtTemplate })
 
     if (!userId || (!driversLicense && !merchantDocument)) {
       return NextResponse.json(
@@ -20,8 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: {

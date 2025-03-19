@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { UserRole, SubscriptionPlan, SubscriptionStatus, ServiceType } from "@prisma/client"
+import {type UserRole,type SubscriptionPlan,type SubscriptionStatus, ServiceType } from "@prisma/client"
 
 // Base user schema without mechanic-specific fields
 export const updateUserSchema = z.object({
@@ -11,7 +11,7 @@ export const updateUserSchema = z.object({
     .refine((str) => {
       if (!str) return true; // Allow empty string
       const date = new Date(str);
-      if (isNaN(date.getTime())) return false; // Invalid date
+      if (Number.isNaN(date.getTime())) return false; // Invalid date
       const today = new Date();
       let age = today.getFullYear() - date.getFullYear();
       const m = today.getMonth() - date.getMonth();
@@ -57,7 +57,7 @@ export interface UserProfileEntity {
   stripeCustomerId: string | null
   stripeConnectId: string | null
   stripeSubscriptionId: string | null
-  currentLocation: any | null // Json in Prisma
+  currentLocation: {latitude: number, longitude: number} | null // Json in Prisma
   stripeSubscriptionPlan: SubscriptionPlan | null
   stripeSubscriptionStatus: SubscriptionStatus | null
   documentsUrl: string[]

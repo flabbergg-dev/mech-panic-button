@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole, Prisma } from '@prisma/client';
+import type { UserRole, Prisma } from '@prisma/client';
 
 export interface UserData {
   id: string;

@@ -7,16 +7,13 @@ export const useMechanicId = () => {
 
     useEffect(() => {
         const fetchMechanicId = async () => {
-
-        const response = await getMechanicByIdAction();
-        if (!response) {
-            throw new Error("Mechanic not found");
-        } else {
-            setMechanicUserId(response.mechanic?.userId!);
-            setMechanicId(response.mechanic?.id!);
-        }
-
-    };
+            const response = await getMechanicByIdAction();
+            if (!response || !response.mechanic) {
+                throw new Error("Mechanic not found");
+            }
+            setMechanicUserId(response.mechanic?.userId ?? null);
+            setMechanicId(response.mechanic?.id ?? null);
+        };
 
         fetchMechanicId();
 

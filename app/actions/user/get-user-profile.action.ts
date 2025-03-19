@@ -12,7 +12,6 @@ export async function getUserProfileAction(userId: string) {
         lastName: true,
         email: true,
         phoneNumber: true,
-        dob: true,
         currentLocation: true,
         documentsUrl: true,
         profileImage: true,
@@ -23,14 +22,9 @@ export async function getUserProfileAction(userId: string) {
       throw new Error("User not found")
     }
 
-    const formattedData = {
-      ...user,
-      dob: user.dob ? user.dob.toISOString().split('T')[0] : '',
-    }
-
     return {
       success: true,
-      data: formattedData,
+      data: user,
     }
   } catch (error) {
     console.error("Error in getUserProfileAction:", error)

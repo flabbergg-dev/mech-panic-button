@@ -2,27 +2,22 @@
 
 import { auth } from "@clerk/nextjs/server"
 import { revalidatePath } from "next/cache"
-import {
-  UpdateUserDTO,
-  UpdateMechanicDTO,
-  updateUserSchema,
-  updateMechanicProfileSchema,
-} from "@/lib/domain/dtos/user.dto"
-import { UpdateUserProfileUseCase } from "@/lib/domain/usecases/update-user-profile.usecase"
-import { PrismaUserRepository } from "@/lib/infrastructure/repositories/prisma-user.repository"
 import { prisma } from "@/lib/prisma"
+import { type UpdateUserProfile, updateUserSchema } from "@/schemas/users/userProfileSchema"
+import  { type UpdateMechanicProfile, updateMechanicProfileSchema } from "@/schemas/mechanics/mechanicProfileSchema"
+import { uploadDocuments } from "../mechanic/upload-documents"
 
 export async function updateUserProfileAction(
-  data: UpdateUserDTO | UpdateMechanicDTO,
-  isMechanic: boolean
+  data: UpdateUserProfile | UpdateMechanicProfile,
+  isMechanic: boolean,
+  driversLicense: File | null,
+  merchantDocument: File | null
 ) {
   try {
-    // Validate the input data
     const validatedData = isMechanic
       ? updateMechanicProfileSchema.parse(data)
       : updateUserSchema.parse(data)
 
-    // Get the authenticated user
     const session = await auth()
     if (!session || !session.userId) {
       throw new Error("Unauthorized")
@@ -30,7 +25,6 @@ export async function updateUserProfileAction(
 
     const userId = session.userId
 
-    // Check if user exists and has the correct role
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { mechanic: true },
@@ -44,20 +38,31 @@ export async function updateUserProfileAction(
       throw new Error("User is not a mechanic")
     }
 
-    // Initialize the repository and use case
-    const userRepository = new PrismaUserRepository()
-    const updateUserProfileUseCase = new UpdateUserProfileUseCase(userRepository)
+    if (isMechanic) {
+      await uploadDocuments(userId, driversLicense, merchantDocument)
+    }
 
-    // Execute the use case
-    const updatedProfile = await updateUserProfileUseCase.execute(
-      userId,
-      validatedData,
-      isMechanic
-    )
+    const updatedProfile = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: validatedData.email,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        documentsUrl: validatedData.documentsUrl,
+        mechanic: isMechanic ? {
+          update: {
+            bio: (validatedData as UpdateMechanicProfile).bio,
+            isAvailable: (validatedData as UpdateMechanicProfile).isAvailable,
+          }
+        } : undefined,
+      },
+    })
 
-    // Revalidate the profile pages
-    revalidatePath(`/dashboard/mechanic/${userId}`)
-    revalidatePath(`/dashboard/customer/${userId}`)
+    if (isMechanic) {
+      revalidatePath(`/dashboard/mechanic/${userId}`)
+    } else {
+      revalidatePath(`/dashboard/customer/${userId}`)
+    }
 
     return { success: true, data: updatedProfile }
   } catch (error) {
