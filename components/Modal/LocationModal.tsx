@@ -18,6 +18,7 @@ export const LocationModal = ({
   onOpenChange: (open: boolean) => void;
   userCords: { latitude: number; longitude: number };
   onLocationUpdate: (newLocation: { latitude: number; longitude: number }) => void;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   modalRef: any;
   adjustedLocation: { latitude: number; longitude: number } | null;
   handleLocationConfirm: () => void;

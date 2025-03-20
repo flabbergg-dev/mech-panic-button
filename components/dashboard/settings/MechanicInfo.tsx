@@ -14,18 +14,54 @@ import { updateMechanicProfileSchema } from "@/schemas/mechanics/mechanicProfile
 import { useUser } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ServiceType } from "@prisma/client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import ProgressBar from "@ramonak/react-progress-bar"
-
+import { LocationModal } from "@/components/Modal/LocationModal";
+const getUserLocation = (
+  setUserCords: React.Dispatch<
+    React.SetStateAction<{ latitude: number; longitude: number }>
+  >
+) => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserCords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+      },
+      (error) => {
+        console.error("Error getting location: ", error)
+      }
+    )
+  } else {
+    console.error("Geolocation is not supported by this browser.")
+  }
+}
 export function MechanicInfoForm() {
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)  
   const [uploadProgress, setUploadProgress] = useState(0);
   const { user } = useUser()
   const { mechanicId, mechanicUserId } = useMechanicId()
-  
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [adjustedLocation, setAdjustedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null)
+  const [userCords, setUserCords] = useState<{
+    latitude: number;
+    longitude: number;
+  }>({
+    latitude: 0,
+    longitude: 0,
+  })  
+  const modalRef = useRef<HTMLDivElement>(null)
+
+
   const {
     register,
     handleSubmit,
@@ -77,6 +113,10 @@ export function MechanicInfoForm() {
     
     loadMechanicProfile()
   }, [user?.id, reset])
+
+  useEffect(() => {
+    getUserLocation(setUserCords)
+  }, [])
 
   const handleBioUpdate = async (bio: string) => {
     try {
@@ -205,6 +245,33 @@ export function MechanicInfoForm() {
     }
   };
 
+  const handleLocationUpdate = (newLocation: { latitude: number; longitude: number }) => {
+    setAdjustedLocation(newLocation)
+  }
+
+  const handleLocationConfirm = async () => {
+    try {
+      if (!mechanicId || !adjustedLocation) return;
+      
+      const { success } = await updateMechanicAction({
+        id: mechanicId,
+        data: { serviceArea: adjustedLocation }
+      })
+      
+      if (!success) {
+        throw new Error("Failed to update Garage Location")
+      }
+      
+      toast.success("Garage Location updated successfully")
+    } catch (error) {
+      console.error("Error updating Garage Location:", error)
+      toast.error("Failed to update bio")
+    } finally {
+    setIsLocationModalOpen(false)
+    setIsSubmitting(false)
+  }}
+
+
   if (isLoading) {
     return <div>Loading mechanic information...</div>
   }
@@ -269,9 +336,30 @@ export function MechanicInfoForm() {
             </div>
           </div>
 
+          {/* Serive Area */}
+          <div className="space-y-3">
+                {/* Location Modal */}
+          <Button 
+        type="button"
+        className="btn-class-name" 
+        onClick={() => {setIsLocationModalOpen(true); setIsSubmitting(true)}}
+        disabled={isSubmitting}
+      >
+        <span className="front">Garage Location</span></Button>
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onOpenChange={setIsLocationModalOpen}
+        userCords={userCords}
+        onLocationUpdate={handleLocationUpdate}
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        modalRef={modalRef as any}
+        adjustedLocation={adjustedLocation}
+        handleLocationConfirm={handleLocationConfirm}
+      />
+          </div>
+
           {/* Document Upload Section */}
           <div className="space-y-4 pt-4 border-t">
-            <h3 className="text-lg font-medium">Documents</h3>
             
             {/* Driver's License Upload */}
             <div className="space-y-2">
@@ -308,7 +396,7 @@ export function MechanicInfoForm() {
                 <p className="text-sm text-red-500">{errors.driversLicenseId.message?.toString()}</p>
               )}
             </div>
-            
+          
             {/* Merchant Document Upload */}
             <div className="space-y-2">
               <Label htmlFor="merchantDocument">Merchant Document</Label>

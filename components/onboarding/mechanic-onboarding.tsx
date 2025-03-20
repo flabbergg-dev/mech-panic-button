@@ -23,7 +23,7 @@ export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, strip
 
     const renderedContent = React.useMemo(
       () => (
-        <HalfSheet className="bg-background border-t rounded-t-xl p-6">
+        <HalfSheet className="bg-background border-t rounded-t-xl p-6" showToggle={true}>
           {currentStep === "StripeAccountSetup" && (
             <StripeOnboarding
               setCurrentStep={setCurrentStep}

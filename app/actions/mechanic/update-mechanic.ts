@@ -11,6 +11,10 @@ type UpdateMechanicProps = {
     bio?: string
     isAvailable?: boolean
     servicesOffered?: ServiceType[]
+    serviceArea?: {
+      latitude: number
+      longitude: number
+    }
     bannerImage?: string
     driversLicenseId?: string
     merchantDocumentUrl?: string
@@ -33,6 +37,7 @@ export async function updateMechanicAction({ id, userId, data }: UpdateMechanicP
         bio: true,
         isAvailable: true,
         servicesOffered: true,
+        serviceArea: true,
         bannerImage: true,
         driversLicenseId: true,
         merchantDocumentUrl: true,

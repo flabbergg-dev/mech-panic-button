@@ -27,7 +27,7 @@ import { StripeSubscribe } from "@/components/StripeComponents/StripeSubscribe"
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed"
 import { StripeAccountManagement } from "@/components/StripeComponents/StripeAccountManagement"
 import { StripeAccountBalance } from "@/components/StripeComponents/StripeAccountBalance"
-import { ServiceSelector } from "./ServiceSelector"
+// import { ServiceSelector } from "./ServiceSelector"
 
 const sections: { id: "personal" | "professional" | "notifications" | "security" | "billing" | "preferences"; icon: React.ElementType; label: string; description: string; badge?: string }[] = [
   { 
@@ -160,7 +160,7 @@ const SettingsPage = () => {
                       Showcase your expertise and services to potential customers
                     </p>
                   </div>
-                  <ServiceSelector />
+                  {/* <ServiceSelector /> */}
                 </div>
                 <MechanicInfoForm />
                 <StripeAccountManagement />

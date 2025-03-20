@@ -211,6 +211,7 @@ export const MechPanicButton = ({ onRequestCreated, setActiveTab }: MechPanicBut
         onOpenChange={setIsLocationModalOpen}
         userCords={userCords}
         onLocationUpdate={handleLocationUpdate}
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
         modalRef={modalRef as any}
         adjustedLocation={adjustedLocation}
         handleLocationConfirm={handleLocationConfirm}

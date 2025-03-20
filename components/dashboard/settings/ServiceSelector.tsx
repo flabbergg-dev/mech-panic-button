@@ -14,7 +14,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/Modal/Modal";
-import { ServiceType } from "@prisma/client";
+import type { ServiceType } from "@prisma/client";
 import { updateMechanicServices } from "@/app/actions/mechanic/update-mechanic-services";
 import useMechanicId from "@/hooks/useMechanicId";
 
@@ -54,6 +54,8 @@ export function ServiceSelector() {
   const handleSubmit = async () => {
     try {
       // Map selected service IDs to their corresponding ServiceType values
+      if (!useMechanic.mechanicId) return;
+
       const servicesOffered = selectedServices
         .map((serviceId) => {
           const service = serviceCategories.find((s) => s.id === serviceId);
@@ -62,7 +64,7 @@ export function ServiceSelector() {
         .filter((service): service is ServiceType => service !== null); // Filter out null values
 
       await updateMechanicServices({
-        mechanicId: useMechanic.mechanicId!,
+        mechanicId: useMechanic.mechanicId,
         servicesOffered, // Pass the mapped ServiceType array
       });
     } catch (error) {
@@ -73,6 +75,7 @@ export function ServiceSelector() {
   };
 
   return (
+    
     <Modal dialogText="" buttonText="Pick your services" buttonActive={true}>
       <div className="flex flex-col items-center justify-center min-h-[600px] p-4">
         <div className="w-full mb-4 flex items-center justify-between">
