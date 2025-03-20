@@ -107,6 +107,7 @@ export default function OnboardingPage() {
           ...formData,
           year: Number.parseInt(formData.year.toString(), 10),
           role: selectedRole,
+          country: "Other",
         })
 
         if (result.redirect) {

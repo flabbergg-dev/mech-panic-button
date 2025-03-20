@@ -79,7 +79,7 @@ export const StripeOnboarding = ({
           </div>
         )}
         {stripeConnectInstance && (
-          <div className="absolute top-0 left-0 right-0 bottom-0 h-[35dvh]">
+          <div className="absolute inset-x-0 bottom-0 md:mb-6 max-h-[70svh]">
             <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
               <ConnectAccountOnboarding onExit={() => handleExit()} />
             </ConnectComponentsProvider>

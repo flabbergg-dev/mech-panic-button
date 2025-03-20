@@ -1,4 +1,4 @@
-import { type Metadata } from "next"
+import type { Metadata } from "next"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { Navbar } from "@/components/navigation/client-navbar.navigation"

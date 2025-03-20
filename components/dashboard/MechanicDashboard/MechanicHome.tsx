@@ -224,10 +224,12 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
   }
 
   if (loading) {
+    toast.loading("Loading...")
     return (
       <div className="flex justify-center items-center h-[50vh]">
         <div className="relative inline-block h-12 w-12">
-          <div className="absolute h-full w-full animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"/>
+          <Loader title="Loading..." />
+          <Button onClick={() => window.location.reload()}>Refresh</Button>
         </div>
       </div>
     );
@@ -260,7 +262,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
       ) : locationError ? (
         <div className="text-red-500 p-4 rounded-lg bg-red-50 mb-4">
           Location error: {locationError}. Please enable location services to receive service requests.
-          <span 
+          <Button 
             className="text-blue-500 cursor-pointer ml-2" 
             onClick={() => {
               navigator.geolocation.getCurrentPosition(
@@ -271,7 +273,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
             }}
           >
             Enable location
-          </span>
+          </Button>
         </div>
       ) : location && (
         <div className="text-green-500 p-4 rounded-lg bg-green-50 mb-4">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicHome"
 import { MechanicProfileView } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { MechanicHistory } from "@/components/dashboard/MechanicDashboard/MechanicHistory"
@@ -16,17 +16,17 @@ export const MechanicDashboard = () => {
   const [activeTab, setActiveTab] = useState(tab)
   const [isApproved, setIsApproved] = useState(false)
 
-  const fetchMechanic = async () => {
+  const fetchMechanic = useCallback(async () => {
     const { mechanic } = await getMechanicByIdAction()
     if (mechanic) {
-      setIsApproved(mechanic!.isApproved)
+      setIsApproved(mechanic.isApproved)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchMechanic()
     setActiveTab(tab)
-  }, [tab, isApproved])
+  }, [tab, fetchMechanic])
 
   const renderContent = () => {
     switch (activeTab) {

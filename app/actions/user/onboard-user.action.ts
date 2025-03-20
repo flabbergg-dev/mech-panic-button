@@ -17,6 +17,8 @@ const onboardingSchema = z.object({
   model: z.string().min(2, "Car model must be at least 2 characters"),
   year: z.number().int().min(1886, "Car year must be a valid year"),
   license: z.string().min(2, "Car license must be at least 2 characters"),
+  stripeConnectId: z.string().optional(),
+  country: z.enum(["Puerto Rico", "United States", "Other"]),
 })
 
 type OnboardingData = z.infer<typeof onboardingSchema>
@@ -31,6 +33,7 @@ interface OnboardingResponse {
 export async function onboardUserAction(data: OnboardingData): Promise<OnboardingResponse> {
   try {
     const client = await clerkClient()
+
     const {userId} = await auth()
     if (!userId) {
       return {
@@ -72,6 +75,7 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
         profileImage: clerkUser.imageUrl,
         documentsUrl: [],
         currentLocation: undefined,
+        stripeConnectId: validatedData.stripeConnectId,
       },
       })
 
@@ -120,6 +124,7 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
     revalidatePath('/dashboard')
     revalidatePath(`/dashboard/${validatedData.role.toLowerCase()}`)
 
+   
     return {
       success: true,
       redirect: '/dashboard'

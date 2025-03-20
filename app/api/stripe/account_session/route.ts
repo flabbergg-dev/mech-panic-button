@@ -18,6 +18,8 @@ export async function POST(request: Request) {
         }
       });
 
+      console.info("Account Info:", accountSession, account);
+
       if (!accountSession.client_secret) {
         throw new Error('No client secret found in account session');
       }

@@ -1,4 +1,4 @@
-import { type Metadata } from "next"
+import type{  Metadata } from "next"
 import { Suspense } from "react"
 import { MechanicDashboard } from "./MechanicDashboard"
 import { Navbar } from "@/components/navigation/mechanic-navbar.navigation"
