@@ -6,6 +6,8 @@ import {
 } from "@stripe/react-connect-js";
 import { Button } from "../ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+import { ScrollArea } from "../ui/scroll-area";
 
 type StripeOnboardingProps = {
   stripeConnectId: string | null;
@@ -62,7 +64,7 @@ export const StripeOnboarding = ({
   };
 
   return (
-    <div className="container h-[35dvh]">
+    <div className="container">
       <div className="content">
         {stripeConnectId && !stripeConnectInstance && (
           <h2>Add information to start accepting money</h2>
@@ -79,7 +81,7 @@ export const StripeOnboarding = ({
           </div>
         )}
         {stripeConnectInstance && (
-          <div className="absolute inset-x-0 bottom-0 md:mb-6 max-h-[70svh]">
+          <div className="absolute inset-x-2 bottom-4 md:mb-6 min-h-[50svh] overflow-y-scroll">
             <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
               <ConnectAccountOnboarding onExit={() => handleExit()} />
             </ConnectComponentsProvider>
@@ -94,7 +96,7 @@ export const StripeOnboarding = ({
                 <code className="bold">{stripeConnectId}</code>
               </p>
             )} */}
-            {accountCreatePending && <p>Creating a connected account...</p>}
+            {accountCreatePending && <p className="text-black flex items-center gap-2"> <span className="animate-spin"><Loader2/></span>Creating a connected account...</p>}
             {/* {onboardingExited && (
               <p>The Account Onboarding component has exited</p>
             )} */}

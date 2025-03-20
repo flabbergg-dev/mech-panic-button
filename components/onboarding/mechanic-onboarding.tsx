@@ -2,6 +2,9 @@ import React, { useEffect } from 'react'
 import { HalfSheet } from "../ui/HalfSheet";
 import { MechanicDocuments } from './mechanic-documents';
 import { StripeOnboarding } from '../StripeComponents/StripeOnboarding';
+import { Button } from '../ui/button';
+import { X } from 'lucide-react';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface MechanicOnboardingProps {
   formData: {
@@ -23,19 +26,25 @@ export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, strip
 
     const renderedContent = React.useMemo(
       () => (
-        <HalfSheet className="bg-background border-t rounded-t-xl p-6" showToggle={true}>
+        <HalfSheet className="bg-white border-t rounded-t-xl " >
           {currentStep === "StripeAccountSetup" && (
+            <div className="min-h-[90svh] overflow-hidden">
+            <Button variant="ghost" className="absolute top-4 right-4 z-50" onClick={() => window.location.reload()}><X className="h-4 w-4 text-black" /></Button>
             <StripeOnboarding
               setCurrentStep={setCurrentStep}
               stripeConnectId={stripeConnectId}
               setStripeConnectId={setStripeConnectId}
-            />
+              />
+              </div>
           )}
           {currentStep === "documents" && (
+            <>
+            <Button onClick={() => setCurrentStep("StripeAccountSetup")}>Back</Button>
             <MechanicDocuments
               formData={formData}
               stripeConnectId={stripeConnectId}
-            />
+              />
+              </>
           )}
         </HalfSheet>
       ),

@@ -300,7 +300,7 @@ export default function OnboardingPage() {
               will determine your experience on our platform.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex justify-between gap-2">
             <Button variant="outline" onClick={cancelRoleSelection}>
               Cancel
             </Button>
