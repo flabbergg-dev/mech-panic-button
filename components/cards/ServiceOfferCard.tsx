@@ -253,7 +253,7 @@ export function ServiceOfferCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="w-full overflow-y-scroll"
+      className="w-full"
     >
       <Card className="p-4">
         <div className="flex flex-col space-y-4">

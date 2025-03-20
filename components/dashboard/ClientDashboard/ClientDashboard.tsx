@@ -783,7 +783,7 @@ export function ClientDashboard() {
             {activeRequestFound?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
                 <ServiceCardLayout className="flex justify-between items-start relative gap-2">
-                  <div className="flex justify-between items-start bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg w-full">
+                  <div className="flex md:flex-row flex-col justify-between items-start bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg w-full">
                       <div className="flex flex-col justify-between items-start gap-2">
                           <h2 className="text-xl font-semibold mb-2">
                             Mechanic on their way
@@ -830,16 +830,6 @@ export function ClientDashboard() {
                             return (
                               <div className="text-sm text-amber-600 font-medium rounded p-2 bg-amber-50 border border-amber-200">
                                 You'll be eligible for a refund in {Math.floor(countdownValue / 60)}:{(countdownValue % 60).toString().padStart(2, '0')} if mechanic does not arrive in time
-                                <Button
-                                  onClick={handleRefund}
-                                  disabled={isLoading}
-                                  className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                                >
-                                  {isLoading ? (
-                                    <Loader2Icon className="animate-spin h-4 w-4 mr-2" />
-                                  ) : null}
-                                  Request Refund
-                                </Button>
                               </div>
                             );
                           } else {
@@ -900,7 +890,7 @@ export function ClientDashboard() {
             {activeRequestFound?.status === ServiceStatus.SERVICING && (
               <HalfSheet>
                 <ServiceCardLayout>
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border rounded-t-lg border-border/50 flex flex-col gap-4">
+                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border rounded-t-lg border-border/50 flex flex-col gap-4 ">
                     <h2 className="text-xl font-semibold ">
                       Servicing in Progress{" "}
                     </h2>
@@ -920,7 +910,7 @@ export function ClientDashboard() {
                         <span>Refresh</span>
                       )}
                     </Button>
-                    {offers.filter((offers) => offers.status === 'PENDING').map((offer) => (
+                    {offers.filter((offers) => offers.status === "PENDING").map((offer) => (
                       <ServiceOfferCard
                         key={offer.id}
                         serviceRequestId={offer.serviceRequestId}
@@ -964,19 +954,20 @@ export function ClientDashboard() {
                       <h2 className="text-2xl font-semibold">
                         Service Completion Code
                       </h2>
-                      <p className="text-muted-foreground">
+                      <p className="text-muted-foreground text-sm md:text-md text-balance">
                         Share this code with your mechanic to confirm service
                         completion
                       </p>
                       <div className="mt-8">
-                        <div className="text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
+                        <div className="text-3xl md:text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
                           {/* TODO: Replace with Loading... */}
                           {activeRequestFound?.completionCode}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">
                         The mechanic will input this code to mark the service as
-                        completed and receive payment
+                        completed 
+                        {/* and receive payment */}
                       </p>
                     </div>
                   </div>
@@ -1133,7 +1124,7 @@ export function ClientDashboard() {
                   </div>
                   <div className="space-y-4">
                     <AnimatePresence mode="popLayout">
-                      {offers.map((offer) => {
+                      {offers.filter((offer) => offer.status === "PENDING").map((offer) => {
                         // Ensure location objects have the correct shape using type guard
                         const mechanicLocation = isLocation(offer.location)
                           ? {

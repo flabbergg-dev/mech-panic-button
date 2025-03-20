@@ -67,7 +67,7 @@ export function PinInput({ length = 6, onComplete }: PinInputProps) {
           type="text"
           value={digit}
           maxLength={1}
-          className="w-12 h-12 text-center text-2xl"
+          className="w-8 h-8 md:w-12 md:h-12 text-center text-2xl"
           onChange={e => handleChange(index, e.target.value)}
           onKeyDown={e => handleKeyDown(index, e)}
           onPaste={handlePaste}
