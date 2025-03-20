@@ -20,7 +20,7 @@ const isPublicRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId, redirectToSignIn } = await auth() as { userId: string | null; redirectToSignIn: Function }
+  const { userId, redirectToSignIn } = await auth() as { userId: string | null; redirectToSignIn: () => void }
 
   if (isPublicRoute(req)) {
     return NextResponse.next()
@@ -76,7 +76,8 @@ export default clerkMiddleware(async (auth, req) => {
       if (path === '/dashboard') {
         if (role === 'Mechanic') {
           return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
-        } else if (role === 'Customer') {
+        } 
+        if  (role === 'Customer') {
           return NextResponse.redirect(new URL(`/dashboard/customer/${userId}`, req.url))
         }
       }
@@ -98,7 +99,8 @@ export default clerkMiddleware(async (auth, req) => {
         if (dashboardUserId && dashboardUserId !== userId) {
           if (role === 'Mechanic') {
             return NextResponse.redirect(new URL(`/dashboard/mechanic/${userId}`, req.url))
-          } else if (role === 'Customer') {
+          }
+           if (role === 'Customer') {
             return NextResponse.redirect(new URL(`/dashboard/customer/${userId}`, req.url))
           }
         }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { clerkClient } from "@clerk/nextjs/server"
 import {auth } from "@clerk/nextjs/server"
+import type { UserRole } from "@prisma/client"
 
 type UpdateUserProps = {
   id?: string
@@ -15,6 +16,7 @@ type UpdateUserProps = {
     dob?: Date
     profileImage?: string
     documentsUrl?: string[]
+    role?: UserRole
   }
 }
 
@@ -40,6 +42,7 @@ export async function updateUserAction({ id, email, data }: UpdateUserProps) {
         email: true,
         dob: true,
         phoneNumber: true,
+        role: true
       }
     })
 

@@ -78,7 +78,7 @@ export function PersonalInfoForm() {
     try {
       setIsSubmitting(true);
 
-      const updatePayload = { ...data };
+      const updatePayload: UpdateUserProfile = { ...data };
 
       const result = await updateUserAction({
         id: user.id,

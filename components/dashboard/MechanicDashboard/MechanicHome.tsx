@@ -227,14 +227,11 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
   }
 
   if (loading) {
-    toast.loading("Loading...")
     return (
-      <div className="flex justify-center items-center h-[50vh]">
-        <div className="relative inline-block h-12 w-12">
+      <>
           <Loader title="Loading..." />
-          <Button onClick={() => window.location.reload()}>Refresh</Button>
-        </div>
-      </div>
+          <Button variant="outline" onClick={() => window.location.reload()}>Refresh</Button>
+      </>
     );
   }
 
