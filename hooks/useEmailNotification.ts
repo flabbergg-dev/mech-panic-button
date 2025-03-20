@@ -1,5 +1,5 @@
 import { getUserToken } from "@/app/actions/getUserToken";
-import { NotificationEmailProps } from "@/types";
+import type { NotificationEmailProps } from "@/types";
 
 export const useEmailNotification = () => {
   const sendEmail = async ({ to: email, subject, message, userName }: NotificationEmailProps, skipPreferenceCheck = false) => {
@@ -25,7 +25,7 @@ export const useEmailNotification = () => {
         }
       }
 
-      const response = await fetch(`/api/notifications/email`, {
+      const response = await fetch('/api/notifications/email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -8,9 +8,11 @@ import {
   UserIcon,
   MapIcon,
   ClipboardListIcon,
+  BookDownIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import { Button } from "../ui/button"
 
 interface BottomNavigationProps {
   activeTab: string
@@ -72,7 +74,7 @@ export const BottomNavigation = ({
 
         <NavItem
           id="history"
-          icon={<HistoryIcon className="h-6 w-6" />}
+          icon={<BookDownIcon className="h-6 w-6" />}
           isActive={activeTab === "history"}
           onClick={() => handleTabChange("history")}
           disabled={disabledTabs.includes("history")}
@@ -86,6 +88,7 @@ export const BottomNavigation = ({
           disabled={disabledTabs.includes("settings")}
         />
 
+      {(userRole === "Mechanic") && (
         <NavItem
           id="profile"
           icon={<UserIcon className="h-6 w-6" />}
@@ -93,6 +96,7 @@ export const BottomNavigation = ({
           onClick={() => handleTabChange("profile")}
           disabled={disabledTabs.includes("profile")}
         />
+      )}
       </div>
       )}
     </nav>
@@ -110,6 +114,7 @@ interface NavItemProps {
 function NavItem({ id, icon, isActive, onClick, disabled }: NavItemProps) {
   return (
     <button
+      type="button"
       className={cn(
         "flex flex-col items-center justify-center w-16 h-16 rounded-full transition-colors",
         isActive
