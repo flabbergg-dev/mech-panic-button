@@ -19,7 +19,6 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { Loader } from '@/components/loader'
 import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
 import SettingsPage from '../settings/Settings'
-import { Profile } from '@/components/profile/Profile'
 import { motion, AnimatePresence } from 'framer-motion';
 import { ServiceStatus, type ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
@@ -831,6 +830,16 @@ export function ClientDashboard() {
                             return (
                               <div className="text-sm text-amber-600 font-medium rounded p-2 bg-amber-50 border border-amber-200">
                                 You'll be eligible for a refund in {Math.floor(countdownValue / 60)}:{(countdownValue % 60).toString().padStart(2, '0')} if mechanic does not arrive in time
+                                <Button
+                                  onClick={handleRefund}
+                                  disabled={isLoading}
+                                  className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                  {isLoading ? (
+                                    <Loader2Icon className="animate-spin h-4 w-4 mr-2" />
+                                  ) : null}
+                                  Request Refund
+                                </Button>
                               </div>
                             );
                           } else {
@@ -891,7 +900,7 @@ export function ClientDashboard() {
             {activeRequestFound?.status === ServiceStatus.SERVICING && (
               <HalfSheet>
                 <ServiceCardLayout>
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
+                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border rounded-t-lg border-border/50 flex flex-col gap-4">
                     <h2 className="text-xl font-semibold ">
                       Servicing in Progress{" "}
                     </h2>
@@ -1072,7 +1081,7 @@ export function ClientDashboard() {
                     </div>
                     <div className="space-y-4">
                       <Card className="bg-background/90 p-4">
-                        <div className="flex justify-between items-start space-x-4">
+                        <div className="flex flex-col md:flex-row  justify-between items-start md:space-x-4">
                           <div className="space-y-2 flex-1">
                             <h3 className="font-semibold">
                               {offers.length === 0
@@ -1204,8 +1213,8 @@ export function ClientDashboard() {
             <SettingsPage />
           </Suspense>
         );
-      case "profile":
-        return <Profile />;
+      // case "profile":
+      //   return <Profile />;
       default:
         return (
           <div className="flex items-center  min-h-screen flex-col space-y-6">

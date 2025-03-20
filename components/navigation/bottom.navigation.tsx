@@ -85,14 +85,15 @@ export const BottomNavigation = ({
           onClick={() => handleTabChange("settings")}
           disabled={disabledTabs.includes("settings")}
         />
-
-        <NavItem
-          id="profile"
-          icon={<UserIcon className="h-6 w-6" />}
-          isActive={activeTab === "profile"}
-          onClick={() => handleTabChange("profile")}
-          disabled={disabledTabs.includes("profile")}
-        />
+        {(userRole === "Mechanic") && (
+          <NavItem
+            id="profile"
+            icon={<UserIcon className="h-6 w-6" />}
+            isActive={activeTab === "profile"}
+            onClick={() => handleTabChange("profile")}
+            disabled={disabledTabs.includes("profile")}
+          />
+        )}
       </div>
       )}
     </nav>

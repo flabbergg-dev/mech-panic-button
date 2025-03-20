@@ -56,6 +56,7 @@ export const AdditionalServicesModal = ({
             buttonText="Add Additional Transaction"
             className={cn("w-full", isLoading && "cursor-not-allowed opacity-50")}
             buttonActive={!isLoading}
+            buttonClassName='w-[-webkit-fill-available]'
             side={"bottom"}
         >
             {isLoading ? (

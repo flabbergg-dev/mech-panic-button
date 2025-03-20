@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation"
 import useUserFirstName from '@/hooks/useUserFirstName';
 import useUserProfileImage from '@/hooks/useUserProfilePic';
 
@@ -48,7 +48,7 @@ export const MechanicCard = ({
 }: MechanicCardProps) => {
   const firstName = useUserFirstName(mechanic.userId);
   const profileImage = useUserProfileImage(mechanic.userId);
-
+  const router = useRouter()
   const isSelected = formData.mechanic?.id === mechanic.id;
 
   const handleSelect = () => {
@@ -101,11 +101,17 @@ export const MechanicCard = ({
               </p>
             )}
             <p className="text-sm text-muted-foreground">{mechanic.bio}</p>
-            {mechanic.location && (
+            {/* {mechanic.location && (
               <p className="text-sm text-muted-foreground">
                 Service Area: {mechanic.serviceArea}
               </p>
-            )}
+            )} */}
+            <motion.a
+              className="bg-secondary/80 text-black dark:text-white px-4 py-1.5 rounded-xl text-sm font-medium mr-2"
+              href={`/dashboard/profileView/${mechanic.userId}`}
+            >
+              View Profile
+            </motion.a>
           </div>
         </CardContent>
         <CardFooter className="p-6 pt-0">
