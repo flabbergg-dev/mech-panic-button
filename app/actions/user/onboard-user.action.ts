@@ -35,12 +35,14 @@ export async function onboardUserAction(data: OnboardingData): Promise<Onboardin
     const client = await clerkClient()
 
     const {userId} = await auth()
+
     if (!userId) {
       return {
         success: false,
         error: 'Unauthorized'
       }
     }
+    
     const clerkUser = await client.users.getUser(userId)
     // Validate input data
     const validatedData = onboardingSchema.parse(data)

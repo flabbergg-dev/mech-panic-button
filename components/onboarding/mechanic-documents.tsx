@@ -75,9 +75,8 @@ export const MechanicDocuments = ({
         if (!onboardResult.success) {
           throw new Error(onboardResult.error);
         }
+
         setOnboarded(true);
-
-
       }
 
       const documentFormData = new FormData();
@@ -109,8 +108,11 @@ export const MechanicDocuments = ({
 
       // Navigate if both documents are uploaded and country is Puerto Rico
       if (country === "Puerto Rico" && stripeConnectId && hasDriversLicense && hasMerchantDocument) {
+        toast.success("Redirecting to dashboard...")
         router.push("/dashboard");
+
       } else if (country === "United States" && stripeConnectId && hasDriversLicense) {
+        toast.success("Redirecting to dashboard...")
         router.push("/dashboard");
       } else if (onboarded && hasDriversLicense && hasMerchantDocument && stripeConnectId) {
         window.location.reload();

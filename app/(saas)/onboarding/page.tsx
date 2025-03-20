@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog"
 import { MechanicOnboarding } from "@/components/onboarding/mechanic-onboarding"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { Loader2 } from "lucide-react"
 
 // TODO: 
 // - Add param on page  to  catch the redirect of stripe
@@ -35,6 +37,7 @@ export default function OnboardingPage() {
     firstName: "",
     lastName: "",
     email: "",
+    country: "Other",
     make: "",
     model: "",
     year: 1886,
@@ -65,6 +68,7 @@ export default function OnboardingPage() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.emailAddresses[0]?.emailAddress || "",
+        country: "Other",
         make: "",
         model: "",
         year: 1886,
@@ -99,8 +103,8 @@ export default function OnboardingPage() {
         return
     }
 
+    setIsSubmitting(true)
     try {
-      setIsSubmitting(true)
 
       if (selectedRole === "Customer") {
         const result = await onboardUserAction({
@@ -128,7 +132,9 @@ export default function OnboardingPage() {
       toast(error instanceof Error ? error.message : "Failed to create user")
       setSelectedRole(null)
     } finally {
-      setIsSubmitting(false)
+      setTimeout(() => {
+        setIsSubmitting(false)
+      }, 5000)
     }
   }
 
@@ -236,7 +242,7 @@ export default function OnboardingPage() {
               required
             />
           </div>
-
+{ !formData.firstName || !formData.lastName || !formData.email || !formData.make || !formData.model || !formData.year || !formData.license ? null :(<>
           <div>
             <Label>I am a...</Label>
             <RadioGroup
@@ -276,8 +282,9 @@ export default function OnboardingPage() {
               </div>
             </RadioGroup>
           </div>
-
-          <Button onClick={handleFormSubmission}>Submit</Button>
+          <Button onClick={handleFormSubmission} disabled={isSubmitting || !selectedRole || !formData.firstName || !formData.lastName || !formData.email || !formData.make || !formData.model || !formData.year || !formData.license } className={cn("w-full", { "opacity-50 cursor-not-allowed": !selectedRole })}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Submit"}</Button></>
+          )}
+          
 
           {selectedRole === "Mechanic" && (
             // If mechanic role is selected, show document upload form

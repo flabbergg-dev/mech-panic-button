@@ -4,7 +4,6 @@ import { MechanicDocuments } from './mechanic-documents';
 import { StripeOnboarding } from '../StripeComponents/StripeOnboarding';
 import { Button } from '../ui/button';
 import { X } from 'lucide-react';
-import { ScrollArea } from '../ui/scroll-area';
 
 interface MechanicOnboardingProps {
   formData: {
@@ -26,10 +25,10 @@ export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, strip
 
     const renderedContent = React.useMemo(
       () => (
-        <HalfSheet className="bg-white border-t rounded-t-xl " >
+        <HalfSheet className={`border-t rounded-t-xl p-4 ${currentStep === "StripeAccountSetup" ? "p-6 bg-white" : "bg-background"}`} >
           {currentStep === "StripeAccountSetup" && (
             <div className="min-h-[90svh] overflow-hidden">
-            <Button variant="ghost" className="absolute top-4 right-4 z-50" onClick={() => window.location.reload()}><X className="h-4 w-4 text-black" /></Button>
+            <Button variant="ghost" className="absolute top-4 right-4 z-50" onClick={() => window.location.reload()}><X className={currentStep === "StripeAccountSetup" ? "h-4 w-4 text-black" : "h-4 w-4 text-foreground"} /></Button>
             <StripeOnboarding
               setCurrentStep={setCurrentStep}
               stripeConnectId={stripeConnectId}
@@ -38,13 +37,10 @@ export const MechanicOnboarding = ({formData, currentStep, setCurrentStep, strip
               </div>
           )}
           {currentStep === "documents" && (
-            <>
-            <Button onClick={() => setCurrentStep("StripeAccountSetup")}>Back</Button>
             <MechanicDocuments
               formData={formData}
               stripeConnectId={stripeConnectId}
               />
-              </>
           )}
         </HalfSheet>
       ),
