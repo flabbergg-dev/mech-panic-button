@@ -212,15 +212,14 @@ export const Booking = () => {
           const filteredMechanics = response.mechanic
             .filter((m: any) => {
               const userData = userDataMap.get(m.userId);
-            
               // Include mechanics who are either PRO subscribers or have the Mechanic role
               const isPro = userData?.subscriptionPlan?.toLowerCase() === 'pro';
               const isMechanic = userData?.role === 'Mechanic';
-              
+
               if (!m.isAvailable) {
                 return false;
               }
-              
+
               if (!isPro && !isMechanic) {
                 return false;
               }
@@ -229,9 +228,6 @@ export const Booking = () => {
             })
             .map((m: any) => {
               const userData = userDataMap.get(m.userId);
-              const isPro = userData?.subscriptionPlan?.toLowerCase() === 'pro';
-              
-              
               return {
                 ...m,
                 isAvailable: true,
@@ -245,6 +241,7 @@ export const Booking = () => {
             });
 
           setMechanicList(filteredMechanics);
+          console.log(filteredMechanics);
         }
       } catch (error) {
         console.error("Error fetching mechanics:", error);
@@ -303,7 +300,7 @@ export const Booking = () => {
   }
 
   return (
-    <div className="md:h-full hidden md:flex items-end justify-center w-full z-20 p-4 pb-24">
+    <div className="flex items-end justify-center w-full z-20 p-4">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         version="1.1"
@@ -596,7 +593,7 @@ export const Booking = () => {
           )}
         </AnimatePresence>
 
-        <div className="h-16 md:h-20 flex items-center justify-center fixed bottom-0 left-0 right-0 md:relative bg-background/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none">
+        <div className="h-16 md:h-20 flex items-center justify-center bg-background/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none">
           <div className="flex items-center justify-between bg-primary rounded-2xl mx-auto z-10 p-1 w-[calc(100%-2rem)] md:w-[500px] px-2.5">
             <motion.div
               animate={{ height: 42 }}

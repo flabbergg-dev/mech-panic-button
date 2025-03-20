@@ -69,7 +69,8 @@ export async function getServiceRequestsAction() {
                 ServiceStatus.IN_ROUTE,
                 ServiceStatus.SERVICING,
                 ServiceStatus.IN_PROGRESS,
-                ServiceStatus.IN_COMPLETION
+                ServiceStatus.IN_COMPLETION,
+                ServiceStatus.BOOKED
               ]
             }
           }

@@ -29,6 +29,8 @@ interface UseRealtimeServiceRequestReturn {
   serviceRequestError: Error | null
   refetchServiceRequest: () => Promise<void>
   refreshRequest: () => void
+  resetLocationChanged: () => void
+  locationChanged: boolean
 }
 
 const FETCH_THROTTLE_MS = 5000; // 5 seconds between fetches
@@ -40,10 +42,12 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
   const [serviceRequest, setServiceRequest] = useState<ServiceRequestWithMechanicLocation | null>(null)
   const [serviceRequestLoading, setServiceRequestLoading] = useState(false)
   const [serviceRequestError, setServiceRequestError] = useState<Error | null>(null)
+  const [locationChanged, setLocationChanged] = useState(false)
   
   const lastFetchTime = useRef<number>(0)
   const isFetching = useRef<boolean>(false)
   const isMounted = useRef<boolean>(true)
+  const previousLocation = useRef<{latitude: number, longitude: number} | null>(null)
 
   // Use provided userId or fall back to the authenticated user's ID
   const effectiveUserId = userId || user?.id
@@ -72,6 +76,31 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
       
       const data = await response.json()
       if (isMounted.current) {
+        // Check if location has changed
+        if (data && data.mechanicLocation && previousLocation.current) {
+          const newLat = data.mechanicLocation.latitude;
+          const newLng = data.mechanicLocation.longitude;
+          const prevLat = previousLocation.current.latitude;
+          const prevLng = previousLocation.current.longitude;
+          
+          // Check if location has changed by at least 10 meters (approximate)
+          if (Math.abs(newLat - prevLat) > 0.0001 || Math.abs(newLng - prevLng) > 0.0001) {
+            console.log('Mechanic location changed:', { 
+              previous: previousLocation.current, 
+              new: data.mechanicLocation 
+            });
+            setLocationChanged(true);
+          }
+        }
+        
+        // Update previous location reference
+        if (data && data.mechanicLocation) {
+          previousLocation.current = {
+            latitude: data.mechanicLocation.latitude,
+            longitude: data.mechanicLocation.longitude
+          };
+        }
+        
         setServiceRequest(data)
         setServiceRequestError(null)
       }
@@ -93,6 +122,11 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
   const refreshRequest = useCallback(() => {
     fetchRequest(true);
   }, [fetchRequest]);
+
+  // Add a method to reset the locationChanged flag
+  const resetLocationChanged = useCallback(() => {
+    setLocationChanged(false);
+  }, []);
 
   // Initial fetch with authentication check
   useEffect(() => {
@@ -162,7 +196,9 @@ export function useRealtimeServiceRequest(userId?: string): UseRealtimeServiceRe
     serviceRequestLoading,
     serviceRequestError,
     refetchServiceRequest: () => fetchRequest(true),
-    refreshRequest
+    refreshRequest,
+    resetLocationChanged,
+    locationChanged
   }
 }
 

@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
-import { ServiceStatus, OfferStatus } from "@prisma/client"
+import { ServiceStatus } from "@prisma/client"
 
 interface UpdateServiceRequestResponse {
   success: boolean;

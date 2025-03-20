@@ -96,6 +96,7 @@ model ServiceRequest {
   firstTransactionId  String?
   secondTransactionId String?
   extraService        Boolean?
+  bookings            Booking[]
   review              Review?
   offers              ServiceOffer[]
   client              User           @relation(fields: [clientId], references: [id])
@@ -165,7 +166,6 @@ model Service {
   duration    Int
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
-  bookings    Booking[]
   mechanics   MechanicService[]
 }
 
@@ -184,20 +184,20 @@ model MechanicService {
 }
 
 model Booking {
-  id             String        @id @default(cuid())
+  id             String         @id @default(cuid())
   customerId     String
   mechanicId     String
   serviceId      String
   scheduledStart DateTime
   scheduledEnd   DateTime
-  status         BookingStatus @default(PENDING)
+  status         BookingStatus  @default(PENDING)
   totalPrice     Float
   notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  customer       User          @relation(fields: [customerId], references: [id])
-  mechanic       Mechanic      @relation(fields: [mechanicId], references: [id])
-  service        Service       @relation(fields: [serviceId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  customer       User           @relation(fields: [customerId], references: [id])
+  mechanic       Mechanic       @relation(fields: [mechanicId], references: [id])
+  service        ServiceRequest @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 }
 
 model ServiceOffer {

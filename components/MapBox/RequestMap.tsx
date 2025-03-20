@@ -65,8 +65,7 @@ const RequestMap = () => {
   const mechanicMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const mapInitialized = useRef(false)
   const [mapReady, setMapReady] = useState(false)
-  const { serviceRequest, serviceRequestLoading, serviceRequestError } =
-    useRealtimeServiceRequest();
+  const { serviceRequest, serviceRequestLoading, serviceRequestError, resetLocationChanged, locationChanged } = useRealtimeServiceRequest();
   const [userCords, setUserCords] = useState<Location | null>(null)
 
   // Initialize user location

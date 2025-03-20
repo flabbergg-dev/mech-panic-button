@@ -306,7 +306,7 @@ export function ServiceRequestDetails({ mechanicId, requestId }: ServiceRequestD
     if (!serviceOffer) return
 
     try {
-      const response = await deleteServiceOfferAction(serviceOffer.id)
+      await deleteServiceOfferAction(serviceOffer.id)
       setTimeout(() => {
         window.history.back();
       }, 1000)

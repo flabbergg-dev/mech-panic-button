@@ -83,6 +83,9 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     refetch: refetchRequests
   } = useMechanicServiceRequests();
 
+
+  console.log(serviceRequests);
+
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -347,6 +350,68 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
           )}
         </div>
       )}
+
+      {/* bookings Section */}
+      {requestsLoading && serviceRequests.length === 0 ? (
+        <div className="flex justify-center items-center h-[50vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"/>
+        </div>
+      ) : requestsError ? (
+        <div className="text-red-500 p-4 rounded-lg bg-red-50">
+          Error loading bookings: {requestsError.message}
+        </div>
+      ) : (
+        <div className={isApproved ? "" : "hidden"}>
+          {/* Available/New Requests */}
+          {serviceRequests.filter(req => req.status === ServiceStatus.BOOKED).length > 0 ? (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Bookings ({serviceRequests.filter(req => req.status === ServiceStatus.BOOKED).length})</h3>
+                <ScrollArea className="h-[40dvh] w-full rounded-md">
+                  <div className="space-y-4 pr-4">
+                    <AnimatePresence mode="popLayout">
+                      {serviceRequests
+                        .filter(req => req.status === ServiceStatus.BOOKED)
+                        .map((request) => (
+                          <motion.div
+                            key={request.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="mb-4"
+                            layout
+                          >
+                            <ServiceRequest
+                              request={request}
+                              isScheduled={false}
+                            />
+                          </motion.div>
+                        ))}
+                    </AnimatePresence>
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-4 py-8">
+              <img
+                src="/icons/car.svg"
+                alt="no_request"
+                className="w-24 h-24 invert dark:invert-0"
+              />
+              <div className="text-center space-y-2">
+                <h3 className="font-semibold">No bookings Available</h3>
+                <p className="text-sm text-muted-foreground">
+                  You currently have no bookings. New requests will appear here.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
+
+
   );
 };

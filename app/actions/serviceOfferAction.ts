@@ -58,8 +58,8 @@ export async function createServiceOfferAction(input: CreateServiceOfferInput): 
       throw new Error("Service request not found: #ERR07")
     }
 
-    if (serviceRequest.status !== ServiceStatus.REQUESTED) {
-      throw new Error("Service request is not in REQUESTED status")
+    if (serviceRequest.status !== ServiceStatus.REQUESTED && serviceRequest.status !== ServiceStatus.BOOKED) {
+      throw new Error("Service request must be in REQUESTED or BOOKED status")
     }
     
     // Create the offer with mechanic's current location
