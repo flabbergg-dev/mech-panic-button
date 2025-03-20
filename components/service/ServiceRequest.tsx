@@ -9,6 +9,7 @@ import { useMechanicNavigation } from "@/hooks/useMechanicNavigation.navigator"
 import { getCityName } from "@/lib/location"
 import { Separator } from "../ui/separator"
 import { formatDistanceToNow } from 'date-fns'
+import useCarInformation from "@/hooks/useCarInformation"
 
 interface ServiceRequestProps {
   request: ServiceRequestType & {
@@ -26,7 +27,7 @@ export const ServiceRequest = ({
 }: ServiceRequestProps) => {
   const { goToServiceRequest } = useMechanicNavigation()
   const [cityName, setCityName] = useState<string>("")
-
+  const { carInfo, isLoading } = useCarInformation(request.clientId);
   useEffect(() => {
     const fetchCityName = async () => {
       if (
@@ -65,7 +66,7 @@ export const ServiceRequest = ({
   const requestTime = formatDistanceToNow(new Date(request.createdAt), { addSuffix: true });
 
   return (
-    <Card 
+    <Card
       className="p-4 hover:shadow-md transition-shadow bg-foreground text-background border-none pointer-events-auto cursor-pointer" 
       onClick={() => goToServiceRequest(request.id)}
     >
@@ -90,6 +91,13 @@ export const ServiceRequest = ({
               <p className="text-sm text-card mt-2">{request.description}</p>
             )}
             <p className="text-sm font-medium mt-2">Client: {clientName}</p>
+            {carInfo && (
+              <div className="flex flex-col gap-1 mt-2">
+                <p className="text-sm text-card">License Plate: {carInfo.licensePlate}</p>
+                <p className="text-sm text-card">Model: {carInfo.model}</p>
+                <p className="text-sm text-card">Year: {carInfo.year}</p>
+              </div>
+            )}
           </div>
 
           {!isScheduled ? (  

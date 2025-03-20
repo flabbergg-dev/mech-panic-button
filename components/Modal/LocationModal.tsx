@@ -42,7 +42,7 @@ export const LocationModal = ({
         />
       </div>
     </div>
-    <div className="flex justify-between">
+    <div className="flex justify-between md:gap-0 gap-2">
       <Button
         type="button"
         variant="outline"

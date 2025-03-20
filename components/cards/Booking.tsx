@@ -48,6 +48,7 @@ interface BookingFormData {
 }
 
 export const Booking = () => {
+
   const { user, isLoaded } = useUser();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -328,7 +329,7 @@ export const Booking = () => {
           {isOpen && (
             <motion.div
               ref={modalRef}
-              className="min-h-[300px] max-h-[85vh] bg-primary text-primary-foreground fixed bottom-20 left-0 right-0 md:bottom-24 md:left-4 md:right-4 md:absolute md:w-[500px] rounded-t-3xl md:rounded-3xl overflow-auto scrollbar-hide -z-10 p-4 md:p-5 mx-auto touch-pan-y"
+              className="min-h-[300px] max-h-[85vh] bg-primary text-primary-foreground fixed top-20 left-0 right-0 md:top-24 md:left-4 md:right-4 md:absolute md:w-[500px] rounded-b-3xl md:rounded-3xl overflow-auto scrollbar-hide -z-10 p-4 md:p-5 mx-auto touch-pan-y"
               variants={{
                 initial: {
                   opacity: 0,
@@ -358,7 +359,7 @@ export const Booking = () => {
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={0.2}
               onDragEnd={(e, { offset, velocity }) => {
-                if (offset.y > 200 || velocity.y > 500) {
+                if (offset.y < -200 || velocity.y < -500) {
                   setIsOpen(false);
                 }
               }}
@@ -597,14 +598,13 @@ export const Booking = () => {
           <div className="flex items-center justify-between bg-primary rounded-2xl mx-auto z-10 p-1 w-[calc(100%-2rem)] md:w-[500px] px-2.5">
             <motion.div
               animate={{ height: 42 }}
-              className="bg-primary bg-black rounded-lg max-w-[42px] min-w-[42px] flex items-center justify-center"
+              className="flex items-center justify-between w-full"
             >
               <div className="h-3 rounded w-3 bg-white dark:bg-black rotate-45" />
             </motion.div>
             <motion.button
               className="bg-secondary text-black dark:text-white px-4 py-1.5 rounded-xl text-sm md:text-base font-medium"
               onClick={() => setIsOpen((prev) => !prev)}
-              whileTap={{ scale: 0.98 }}
             >
               {isOpen ? "Close" : "Book a Mechanic"}
             </motion.button>

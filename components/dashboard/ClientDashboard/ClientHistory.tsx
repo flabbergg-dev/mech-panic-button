@@ -1,11 +1,10 @@
 import { Booking } from '@/components/cards/Booking'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import Image from 'next/image'
 import React from 'react'
 
 export const ClientHistory = () => {
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 mt-24">
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-michroma-sans flex flex-col gap-4">
@@ -13,8 +12,7 @@ export const ClientHistory = () => {
             <p className="text-sm">Here you can book and manage your appointments scheduled with mechanics</p>
           </CardTitle>
         </CardHeader>
-        <CardContent className="h-[50vh] flex flex-col items-center justify-end">
-          <Image src="/icons/car.svg" alt="Booking" width={200} height={200} />
+        <CardContent className="h-[25vh] flex flex-col items-center justify-end">
           <Booking />
         </CardContent>
       </Card>

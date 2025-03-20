@@ -634,6 +634,15 @@ const MechanicMapPage = () => {
     )
   }
 
+  // useEffect(() => {
+    if (request?.status === "REQUESTED") {
+      router.push('/dashboard');
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+    }
+  // }, [request?.status]);
+
   return (
     <div className="relative min-h-screen">
       {/* Map */}
@@ -664,7 +673,7 @@ const MechanicMapPage = () => {
         )}
         <ServiceCardLayout>
           <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg rounded-lg border border-border/50 transform transition-all duration-300 ease-in-out">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 md:mb-0">
               <h2 className="text-xl font-semibold mb-2">
                 {request.status === "SERVICING"
                   ? "Service in Progress"
@@ -698,7 +707,7 @@ const MechanicMapPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="rounded-lg border p-3">
                       <p className="text-sm text-muted-foreground">Distance</p>
-                      <p className="text-lg font-semibold">
+                      <p className="text-md md:text-lg font-semibold">
                         {distance !== null
                           ? `${distance} km`
                           : "Calculating..."}
@@ -706,7 +715,7 @@ const MechanicMapPage = () => {
                     </div>
                     <div className="rounded-lg border p-3">
                       <p className="text-sm text-muted-foreground">ETA</p>
-                      <p className="text-lg font-semibold">
+                      <p className="text-md md:text-lg font-semibold">
                         {estimatedTime !== null
                           ? `${Math.max(0, estimatedTime)} min`
                           : "Calculating..."}
@@ -857,7 +866,7 @@ const MechanicMapPage = () => {
                 )}
 
                 {request.status === "SERVICING" && (
-                  <div>
+                  <div className="space-y-2">
                     <span className="text-yellow-500">Service in progress</span>
                     <Button
                       onClick={handleEndService}

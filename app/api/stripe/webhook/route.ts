@@ -99,6 +99,7 @@ export async function POST(req: Request) {
           }
 
           const id = paymentIntent.id as string
+          
           if (!id) {
             throw new Error('No charge ID found in payment intent')
           }
@@ -179,6 +180,40 @@ export async function POST(req: Request) {
               }
             })
           }
+          break
+        }
+
+        case 'charge.succeeded': {
+          const charge = event.data.object
+          // const customerId = charge.customer as string
+          // if (!customerId) {
+          //   throw new Error('No customer ID in charge')
+          // }
+          // const customer = await stripe.customers.retrieve(customerId)
+          // if (customer.deleted) {
+          //   throw new Error('Customer was deleted')
+          // }
+
+          const user = await prisma.user.findUnique({
+            where: { id: charge.metadata.userId! }
+          })
+          if (user) {
+
+            // await prisma.user.update({
+            //   where: { id: user.id },
+            //   data: { stripeCustomerId: customerId }
+            // })
+
+            await sendInvoiceEmail({
+              to: user.email,
+              subject: 'Mech-Panic Button Invoice',
+              message: `Thank you ${user.firstName} for your purchase.`,
+              userName: user.firstName,
+              link: charge.receipt_url!
+            })
+
+          }
+
           break
         }
 

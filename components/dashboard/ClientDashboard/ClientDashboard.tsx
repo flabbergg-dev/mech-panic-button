@@ -19,7 +19,6 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { Loader } from '@/components/loader'
 import { SkeletonBasic } from '@/components/Skeletons/SkeletonBasic'
 import SettingsPage from '../settings/Settings'
-import { Profile } from '@/components/profile/Profile'
 import { motion, AnimatePresence } from 'framer-motion';
 import { ServiceStatus, type ServiceRequest } from '@prisma/client'
 import RequestMap from '@/components/MapBox/RequestMap'
@@ -784,7 +783,7 @@ export function ClientDashboard() {
             {activeRequestFound?.status === ServiceStatus.IN_ROUTE && (
               <HalfSheet>
                 <ServiceCardLayout className="flex justify-between items-start relative gap-2">
-                  <div className="flex justify-between items-start bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg w-full">
+                  <div className="flex md:flex-row flex-col justify-between items-start bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50 rounded-lg w-full">
                       <div className="flex flex-col justify-between items-start gap-2">
                           <h2 className="text-xl font-semibold mb-2">
                             Mechanic on their way
@@ -893,7 +892,7 @@ export function ClientDashboard() {
             {activeRequestFound?.status === ServiceStatus.SERVICING && (
               <HalfSheet>
                 <ServiceCardLayout>
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border border-border/50">
+                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border rounded-t-lg border-border/50 flex flex-col gap-4 ">
                     <h2 className="text-xl font-semibold ">
                       Servicing in Progress{" "}
                     </h2>
@@ -913,7 +912,7 @@ export function ClientDashboard() {
                         <span>Refresh</span>
                       )}
                     </Button>
-                    {offers.filter((offers) => offers.status === 'PENDING').map((offer) => (
+                    {offers.filter((offers) => offers.status === "PENDING").map((offer) => (
                       <ServiceOfferCard
                         key={offer.id}
                         serviceRequestId={offer.serviceRequestId}
@@ -957,19 +956,20 @@ export function ClientDashboard() {
                       <h2 className="text-2xl font-semibold">
                         Service Completion Code
                       </h2>
-                      <p className="text-muted-foreground">
+                      <p className="text-muted-foreground text-sm md:text-md text-balance">
                         Share this code with your mechanic to confirm service
                         completion
                       </p>
                       <div className="mt-8">
-                        <div className="text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
+                        <div className="text-3xl md:text-5xl font-bold tracking-[0.5em] bg-muted text-primary p-8 rounded-lg">
                           {/* TODO: Replace with Loading... */}
                           {activeRequestFound?.completionCode}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">
                         The mechanic will input this code to mark the service as
-                        completed and receive payment
+                        completed 
+                        {/* and receive payment */}
                       </p>
                     </div>
                   </div>
@@ -1074,7 +1074,7 @@ export function ClientDashboard() {
                     </div>
                     <div className="space-y-4">
                       <Card className="bg-background/90 p-4">
-                        <div className="flex justify-between items-start space-x-4">
+                        <div className="flex flex-col md:flex-row  justify-between items-start md:space-x-4">
                           <div className="space-y-2 flex-1">
                             <h3 className="font-semibold">
                               {offers.length === 0
@@ -1126,7 +1126,7 @@ export function ClientDashboard() {
                   </div>
                   <div className="space-y-4">
                     <AnimatePresence mode="popLayout">
-                      {offers.map((offer) => {
+                      {offers.filter((offer) => offer.status === "PENDING").map((offer) => {
                         // Ensure location objects have the correct shape using type guard
                         const mechanicLocation = isLocation(offer.location)
                           ? {
@@ -1206,8 +1206,8 @@ export function ClientDashboard() {
             <SettingsPage />
           </Suspense>
         );
-      case "profile":
-        return <Profile />;
+      // case "profile":
+      //   return <Profile />;
       default:
         return (
           <div className="flex items-center  min-h-screen flex-col space-y-6">
