@@ -52,11 +52,11 @@ export const AdditionalServicesModal = ({
 
     return (
         <Modal
-            dialogText="Create an additional transaction for the client"
-            buttonText="Add Additional Transaction"
+            dialogText="Create an additional service for the client"
+            buttonText="Add additional service"
             className={cn("w-full", isLoading && "cursor-not-allowed opacity-50")}
             buttonActive={!isLoading}
-            buttonClassName='w-[-webkit-fill-available]'
+            buttonClassName='w-[-webkit-fill-available] bg-secondary'
             side={"bottom"}
         >
             {isLoading ? (

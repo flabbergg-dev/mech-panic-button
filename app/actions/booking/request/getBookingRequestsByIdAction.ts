@@ -24,30 +24,11 @@ export type EnrichedBooking = Booking & {
   } | null
 }
 
-export async function getBookingRequestsAction(): Promise<EnrichedBooking[] | null> {
+export async function getBookingRequestsByIdAction(customerId: string): Promise<EnrichedBooking | null> {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      throw new Error("No authenticated user found");
-    }
-
-    const mechanicInfo = await prisma.mechanic.findUnique({
+    const requests = await prisma.booking.findFirst({
       where: {
-        userId: userId
-      },
-      select: {
-        id: true,
-      }
-    })
-
-    if (!mechanicInfo) {
-      return null
-    }
-
-    const requests = await prisma.booking.findMany({
-      where: {
-        mechanicId: mechanicInfo.id
+        customerId: customerId
       },
       include: {
         customer: true,
@@ -63,9 +44,6 @@ export async function getBookingRequestsAction(): Promise<EnrichedBooking[] | nu
             }
           }
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
       }
     })
     return requests

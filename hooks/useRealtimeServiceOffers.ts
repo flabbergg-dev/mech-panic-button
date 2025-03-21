@@ -46,7 +46,7 @@ export function useRealtimeServiceOffers(userId: string) {
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null)
+  const lastFetchTimeRef = useRef<number | null>(null)
   const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(false)
 
   // Use refs to track latest state without causing re-renders
@@ -72,7 +72,7 @@ export function useRealtimeServiceOffers(userId: string) {
       const now = Date.now();
       
       // Respect the 5-second minimum interval from optimization memory
-      if (!force && lastFetchTime && now - lastFetchTime < 5000) {
+      if (!force && lastFetchTimeRef.current && now - lastFetchTimeRef.current < 5000) {
         return { offers: offersRef.current, requests: requestsRef.current };
       }
 
@@ -82,7 +82,7 @@ export function useRealtimeServiceOffers(userId: string) {
         setLoading(true);
       }
       
-      setLastFetchTime(now);
+      lastFetchTimeRef.current = now;
       
       // Use real-time subscriptions instead of polling when possible
       const [offersData, requestsData] = await Promise.all([
@@ -144,7 +144,7 @@ export function useRealtimeServiceOffers(userId: string) {
         setInitialLoadComplete(true);
       }
     }
-  }, [userId, lastFetchTime, initialLoadComplete]);
+  }, [userId, lastFetchTimeRef, initialLoadComplete]);
 
   // Initial fetch
   useEffect(() => {

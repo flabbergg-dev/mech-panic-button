@@ -68,7 +68,7 @@ export function ClientDashboard() {
     // resetLocationChanged,
     // locationChanged
   } = useRealtimeServiceRequest(user?.id || "");
-  const [activeTab, setActiveTab] = useState<string>(tab || "home");
+  const [activeTab, setActiveTab] = useState<string>(tab || "history");
   const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
   const [adjustedLocation, setAdjustedLocation] = useState<{
     latitude: number;
@@ -890,63 +890,67 @@ export function ClientDashboard() {
               </div>
             )}
             {activeRequestFound?.status === ServiceStatus.SERVICING && (
-              <HalfSheet>
-                <ServiceCardLayout>
-                  <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border rounded-t-lg border-border/50 flex flex-col gap-4 ">
-                    <h2 className="text-xl font-semibold ">
-                      Servicing in Progress{" "}
-                    </h2>
-                    <p className="text-muted-foreground mb-2 pb-4">
-                      Wait for the mechanic to complete their service
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => refreshOffers()}
-                      className="flex items-center gap-1"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="animate-spin"/>
-                      ) : (
-                        <span>Refresh</span>
-                      )}
-                    </Button>
-                    {offers.filter((offers) => offers.status === "PENDING").map((offer) => (
-                      <ServiceOfferCard
-                        key={offer.id}
-                        serviceRequestId={offer.serviceRequestId}
-                        mechanicId={offer.mechanicId || ""}
-                        mechanicConnectId={offer.mechanicId ? mechanicConnectIds.get(offer.mechanicId) || "" : ""}
-                        mechanicName={
-                          offer.mechanic
-                            ? `${offer.mechanic.firstName} ${offer.mechanic.lastName}`
-                            : "Unknown Mechanic"
-                        }
-                        mechanicRating={offer.mechanic?.rating || undefined}
-                        price={offer.price}
-                        note={offer.note || undefined}
-                        expiresAt={offer.expiresAt || undefined}
-                        onOfferHandled={async () => {
-                          try {
-                            await acceptOffer(offer.id);
-                            // The UI will update automatically through real-time subscription
-                          } catch (error) {
-                            console.error("Error accepting offer:", error);
-                            // Handle error (show toast, etc.)
-                          }
-                        }}
-                        userId={user.id}
-                        mechanicLocation={mechanicLocation}
-                        customerLocation={customerLocation}
-                      />
-                    ))}
-                  </div>
-                  {activeRequestFound.mechanicId && (
-                    <ChatBox divClassName="absolute right-[0.75rem] top-0" userId={activeRequestFound.clientId} />
-                  )}
-                </ServiceCardLayout>
-              </HalfSheet>
+              <>
+                <div className='fixed top-10 left-0 right-0 z-50 p-10 flex flex-col gap-4'>
+                {offers.filter((offers) => offers.status === "PENDING").map((offer) => (
+                  <ServiceOfferCard
+                    key={offer.id}
+                    serviceRequestId={offer.serviceRequestId}
+                    mechanicId={offer.mechanicId || ""}
+                    mechanicConnectId={offer.mechanicId ? mechanicConnectIds.get(offer.mechanicId) || "" : ""}
+                    mechanicName={
+                      offer.mechanic
+                        ? `${offer.mechanic.firstName} ${offer.mechanic.lastName}`
+                        : "Unknown Mechanic"
+                    }
+                    mechanicRating={offer.mechanic?.rating || undefined}
+                    price={offer.price}
+                    note={offer.note || undefined}
+                    expiresAt={offer.expiresAt || undefined}
+                    onOfferHandled={async () => {
+                      try {
+                        await acceptOffer(offer.id);
+                        // The UI will update automatically through real-time subscription
+                      } catch (error) {
+                        console.error("Error accepting offer:", error);
+                        // Handle error (show toast, etc.)
+                      }
+                    }}
+                    userId={user.id}
+                    mechanicLocation={mechanicLocation}
+                    customerLocation={customerLocation}
+                  />
+                ))}
+                </div>
+                <HalfSheet>
+                  <ServiceCardLayout>
+                    <div className="bg-background/80 backdrop-blur-sm p-4 shadow-lg border rounded-t-lg border-border/50 flex flex-col gap-4 ">
+                      <h2 className="text-xl font-semibold ">
+                        Servicing in Progress{" "}
+                      </h2>
+                      <p className="text-muted-foreground mb-2 pb-4">
+                        Wait for the mechanic to complete their service
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refreshOffers()}
+                        className="flex items-center gap-1"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="animate-spin"/>
+                        ) : (
+                          <span>Refresh</span>
+                        )}
+                      </Button>
+                    </div>
+                    {activeRequestFound.mechanicId && (
+                      <ChatBox divClassName="absolute right-[0.75rem] top-0" userId={activeRequestFound.clientId} />
+                    )}
+                  </ServiceCardLayout>
+                </HalfSheet>
+              </>
             )}
             {activeRequestFound?.status === ServiceStatus.IN_COMPLETION && (
               <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50">

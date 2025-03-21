@@ -1,7 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { MechanicHome } from "@/components/dashboard/MechanicDashboard/MechanicHome"
+import dynamic from "next/dynamic"
+
+const MechanicHome = dynamic(() => import("@/components/dashboard/MechanicDashboard/MechanicHome").then(mod => mod.MechanicHome), {
+  loading: () => <div>Loading...</div>
+})
 import { MechanicProfileView } from "@/components/dashboard/MechanicDashboard/MechanicProfile"
 import { MechanicHistory } from "@/components/dashboard/MechanicDashboard/MechanicHistory"
 import { BottomNavigation } from "@/components/navigation/bottom.navigation"

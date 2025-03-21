@@ -22,7 +22,12 @@ export async function getAvailableMechanicsListAction() {
                 merchantDocumentUrl: true,
                 user: {
                     select: {
-                        firstName: true
+                        firstName: true,
+                        lastName: true,
+                        role: true,
+                        stripeSubscriptionPlan: true,
+                        stripeSubscriptionId: true,
+                        stripeSubscriptionStatus: true
                     }
                 },
                 serviceRequests: true,
@@ -30,8 +35,17 @@ export async function getAvailableMechanicsListAction() {
         })
 
         if (!mechanic) {
-        throw new Error("Mechanic not found")
+            throw new Error("Mechanic not found")
         }
+
+        // Log the mechanics data for debugging
+        console.log("Mechanics data:", JSON.stringify(mechanic.map(m => ({
+            id: m.id,
+            userId: m.userId,
+            role: m.user?.role,
+            subscriptionPlan: m.user?.stripeSubscriptionPlan,
+            isAvailable: m.isAvailable
+        })), null, 2));
 
         return {
             mechanic,
@@ -39,8 +53,8 @@ export async function getAvailableMechanicsListAction() {
     } catch (error) {
         console.error("Error in get Mechanic List Action:", error)
         return {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to fetch mechanic",
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to fetch mechanic",
         }
     }
 }

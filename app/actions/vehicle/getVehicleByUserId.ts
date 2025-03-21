@@ -23,8 +23,18 @@ export async function getVehicleByUserId({userId}: {userId: string}) {
         if (!vehicle) {
         console.error("Vehicle not found:", userId)
         throw new Error("Vehicle not found")
-        } else {
+        } else if (vehicle === null) {
+            console.log("User has no car:", userId)
             return {
+                success: true,
+                hasVehicle: false,
+                message: "User has no car"
+            }
+        }
+        else {
+            return {
+                success: true,
+                hasVehicle: true,
                 vehicle,
             }
         }

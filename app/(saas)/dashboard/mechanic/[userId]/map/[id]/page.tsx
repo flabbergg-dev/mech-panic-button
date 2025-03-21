@@ -868,26 +868,28 @@ const MechanicMapPage = () => {
                 {request.status === "SERVICING" && (
                   <div className="space-y-2">
                     <span className="text-yellow-500">Service in progress</span>
-                    <Button
-                      onClick={handleEndService}
-                      className={cn(
-                        "w-full",
-                        isLoading && "cursor-not-allowed opacity-50"
-                      )}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                          Completing...
-                        </>
-                      ) : (
-                        "Complete Service"
-                      )}
-                    </Button>
-                    <AdditionalServicesModal
-                      serviceRequestId={request.id}
-                      isLoading={isLoading}
-                    />
+                    <div className='flex md:flex-row flex-col gap-2'>
+                      <Button
+                        onClick={handleEndService}
+                        className={cn(
+                          "w-full",
+                          isLoading && "cursor-not-allowed opacity-50"
+                        )}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                            Completing...
+                          </>
+                        ) : (
+                          "Complete service"
+                        )}
+                      </Button>
+                      <AdditionalServicesModal
+                        serviceRequestId={request.id}
+                        isLoading={isLoading}
+                      />
+                    </div>
                   </div>
                 )}
               </div>

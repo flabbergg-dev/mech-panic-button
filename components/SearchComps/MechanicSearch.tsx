@@ -15,15 +15,31 @@ import {
 import { Button } from '../ui/button';
 import { Search } from 'lucide-react';
 import { MechanicSearchItem } from './MechanicSearchItem';
-import { Mechanic } from '@prisma/client';
+import { Mechanic, Prisma, ServiceType } from '@prisma/client';
+
+interface MechanicLocation extends Prisma.JsonObject {
+  latitude: number;
+  longitude: number;
+}
+
+interface ExtendedMechanic extends Omit<Mechanic, 'location' | 'servicesOffered'> {
+  isAvailable: boolean;
+  location: MechanicLocation | null;
+  serviceArea: string;
+  servicesOffered: ServiceType[];
+  user?: string;
+  rating: number | null;
+  subscriptionPlan?: string | null;
+}
 
 type mechanicSearchProps = {
-  mechanicList: Mechanic[];
+  mechanicList: ExtendedMechanic[];
   onSelect: (mechanicId: string) => void;
 };
 
 export const MechanicSearch = ({ mechanicList, onSelect }: mechanicSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  
   return (
     <div className="mb-4">
       <Popover>
@@ -43,14 +59,18 @@ export const MechanicSearch = ({ mechanicList, onSelect }: mechanicSearchProps) 
             <CommandList>
               <CommandEmpty>No mechanics found.</CommandEmpty>
               <CommandGroup>
-                {mechanicList.map((mechanic, index) => (
-                  <MechanicSearchItem
-                    key={index}
-                    mechanic={mechanic}
-                    setSearchQuery={setSearchQuery}
-                    onSelect={onSelect}
-                  />
-                ))}
+                {mechanicList.length > 0 ? (
+                  mechanicList.map((mechanic, index) => (
+                    <MechanicSearchItem
+                      key={index}
+                      mechanic={mechanic}
+                      setSearchQuery={setSearchQuery}
+                      onSelect={onSelect}
+                    />
+                  ))
+                ) : (
+                  <CommandItem disabled>No mechanics available</CommandItem>
+                )}
               </CommandGroup>
             </CommandList>
           </Command>
