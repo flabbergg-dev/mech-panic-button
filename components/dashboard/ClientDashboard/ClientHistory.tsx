@@ -1,4 +1,4 @@
-import { Booking } from '@/components/cards/Booking'
+import Booking from '@/components/Bookings/Booking'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import React from 'react'
 

@@ -1,6 +1,6 @@
 import { FormEvent, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, Loader } from "lucide-react";
+import { CheckCircle2, Loader, Loader2 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { format } from "date-fns";
 import { Mechanic as PrismaMechanic, ServiceStatus, ServiceType, Prisma, Booking as PrismaBooking } from "@prisma/client";
@@ -18,11 +18,23 @@ import { DateTimePicker } from "../forms/dateTimePicker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-import { MechanicCard } from "./MechanicCard";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  EmbeddedCheckout,
+  EmbeddedCheckoutProvider,
+} from "@stripe/react-stripe-js";
+import { MechanicCard } from "../cards/MechanicCard";
 import { createBookingRequestAction } from "@/app/actions/booking/request/createBookingRequest";
 import { getBookingRequestsByIdAction } from "@/app/actions/booking/request/getBookingRequestsByIdAction";
+const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
+if (!stripePublicKey) {
+  throw new Error('Stripe publishable key is not defined')
+}
+
+const stripePromise = loadStripe(
+  stripePublicKey
+);
 interface MechanicLocation extends Prisma.JsonObject {
   latitude: number;
   longitude: number;
@@ -47,7 +59,7 @@ interface BookingFormData {
   description?: string;
 }
 
-export const Booking = () => {
+export default function Booking() {
 
   const { user, isLoaded } = useUser();
   const { toast } = useToast();
@@ -63,6 +75,9 @@ export const Booking = () => {
   const [mechanicList, setMechanicList] = useState<ExtendedMechanic[]>([]);
   const [userHasBooking, setUserHasBooking] = useState(false);
   const [bookingInfo, setBookingInfo] = useState<PrismaBooking | null>(null);
+  const [sessionId, setSessionId] = useState();
+  const [secret, setSecret] = useState();
+
   useEffect(() => {
     if (user) {
       setFormData(prev => ({
@@ -262,6 +277,50 @@ export const Booking = () => {
     }
   };
 
+    const handleCheckout = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/stripe/create-payment-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingId: bookingInfo?.id,
+          amount: bookingInfo?.totalPrice,
+          userId: user?.id,
+          mechanicConnectId: 'acct_1QujAJ2cSHH6rH1A'
+        }),
+      });
+      
+      const { sessionId, clientSecret, error } = await response.json();
+
+      if (error) {
+        console.error("Error creating transaction:", error);
+        toast({
+          title: 'Error',
+          description: error,
+        });
+        return;
+      }
+
+      if (sessionId) {
+        setSessionId(sessionId);
+        setSecret(clientSecret);
+      }
+
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create checkout session',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center p-4">
@@ -309,9 +368,49 @@ export const Booking = () => {
               <p>
                 {bookingInfo?.scheduledStart?.toISOString()}
               </p>
-              <Button>
-                Pay Mechanic for appointment
+          {userHasBooking ? (
+            <div className="flex justify-end space-x-2">
+              {/* <Button
+                variant="outline"
+                onClick={() => handleOffer(false)}
+                disabled={isLoading}
+              >
+                Decline
+              </Button> */}
+              <Button
+                onClick={async () => await handleCheckout()}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Accept'
+                )}
               </Button>
+            </div>
+          ) : !sessionId ? (
+            <div className="flex justify-end">
+              <Button
+                onClick={handleCheckout}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Proceed to Checkout'
+                )}
+              </Button>
+            </div>
+          ) : secret ? (
+            <div className="w-full">
+              <EmbeddedCheckoutProvider
+                stripe={stripePromise}
+                options={{ clientSecret: secret }}
+              >
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          ) : null}
             </div>
           </CardContent>
         </Card>
