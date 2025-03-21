@@ -94,9 +94,6 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     refetch: refetchBookings
   } = useMechanicBookingRequests();
 
-
-  console.log(serviceRequests);
-
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -412,6 +409,77 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
                                 e.stopPropagation();
                                 goToBookingRequest(request.id);
                               }}
+                            >
+                              <ArrowRightIcon className="h-4 w-4" />
+                            </Button>
+                            </Card>
+                          </motion.div>
+                        ))}
+                    </AnimatePresence>
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-4 py-8">
+              <img
+                src="/icons/car.svg"
+                alt="no_request"
+                className="w-24 h-24 invert dark:invert-0"
+              />
+              <div className="text-center space-y-2">
+                <h3 className="font-semibold">No bookings Available</h3>
+                <p className="text-sm text-muted-foreground">
+                  You currently have no bookings. New requests will appear here.
+                </p>
+              </div>
+            </div>
+          )}
+          
+
+          {/* Confirmed/Active Requests */}
+          {bookingRequests.filter(req => req.status === BookingStatus.CONFIRMED || req.status === BookingStatus.IN_ROUTE).length > 0 ? (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Bookings ({bookingRequests.filter(req => req.status === BookingStatus.CONFIRMED || req.status === BookingStatus.IN_ROUTE).length})</h3>
+                <ScrollArea className="h-[40dvh] w-full rounded-md">
+                  <div className="space-y-4 pr-4">
+                    <AnimatePresence mode="popLayout">
+                      {bookingRequests
+                        .filter(req => req.status === BookingStatus.CONFIRMED || req.status === BookingStatus.IN_ROUTE)
+                        .map((request) => (
+                          <motion.div
+                            key={request.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="mb-4"
+                            layout
+                          >
+                            <Card
+                              className="p-4 hover:shadow-md transition-shadow bg-foreground text-background border-none pointer-events-auto cursor-pointer" 
+                            >
+                            <p className="text-sm text-muted-foreground">
+                              {request.createdAt.toLocaleDateString()}
+                            </p>
+                            {/* <p className="text-sm text-muted-foreground">
+                              {request.location}
+                            </p> */}
+                            <p className="text-sm text-muted-foreground">
+                              {request.serviceType}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {request.status}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                goToBookingRequest(request.id);
+                              }}
+                              disabled={request.status === BookingStatus.CONFIRMED}
                             >
                               <ArrowRightIcon className="h-4 w-4" />
                             </Button>

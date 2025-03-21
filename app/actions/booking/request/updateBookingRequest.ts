@@ -28,8 +28,6 @@ export async function updateBookingRequestAction(
       where: { id: bookingId },
       data
     })
-
-    revalidatePath("/dashboard")
     
     return { success: true, booking: updatedBooking }
   } catch (error) {

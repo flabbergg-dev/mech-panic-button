@@ -263,6 +263,7 @@ enum BookingStatus {
   COMPLETED
   CANCELLED
   BOOKED
+  IN_ROUTE
 }
 
 enum OfferStatus {

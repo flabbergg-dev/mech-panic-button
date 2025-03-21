@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Loader } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { format } from "date-fns";
-import { Mechanic as PrismaMechanic, ServiceStatus, ServiceType, Prisma } from "@prisma/client";
+import { Mechanic as PrismaMechanic, ServiceStatus, ServiceType, Prisma, Booking as PrismaBooking } from "@prisma/client";
 import { getAvailableMechanicsListAction } from "@/app/actions/mechanic/get-available-mechanics-list.action";
 import { useToast } from "@/hooks/use-toast";
 import { sendBookingConfirmationEmail } from "@/utils/emailNotifications";
@@ -62,7 +62,7 @@ export const Booking = () => {
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [mechanicList, setMechanicList] = useState<ExtendedMechanic[]>([]);
   const [userHasBooking, setUserHasBooking] = useState(false);
-
+  const [bookingInfo, setBookingInfo] = useState<PrismaBooking | null>(null);
   useEffect(() => {
     if (user) {
       setFormData(prev => ({
@@ -228,6 +228,7 @@ export const Booking = () => {
       const response = await getBookingRequestsByIdAction(user?.id);
       if (response) {
         setUserHasBooking(true);
+        setBookingInfo(response);
       }
     } catch (error) {
       console.error("Error fetching user booking:", error);
@@ -294,11 +295,29 @@ export const Booking = () => {
           <CardContent className="text-center p-6">
             <h2 className="text-xl font-semibold mb-2">You have an active booking</h2>
             <p className="text-gray-600">Please complete your current booking before making a new one.</p>
+            <div>
+              <h1>{bookingInfo?.mechanicId}</h1>
+              <p>
+                {bookingInfo?.notes}
+              </p>
+              <p>
+                {bookingInfo?.totalPrice}
+              </p>
+              <p>
+                {bookingInfo?.status}
+              </p>
+              <p>
+                {bookingInfo?.scheduledStart?.toISOString()}
+              </p>
+              <Button>
+                Pay Mechanic for appointment
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <Tabs value={steps} onValueChange={setSteps} className="w-full">
-          <TabsList>
+      <Tabs value={steps} onValueChange={setSteps} className="w-full">
+        <TabsList>
             <TabsTrigger value="mechanics" disabled={steps !== "mechanics" && !formData.mechanic}>Mechanics</TabsTrigger>
             <TabsTrigger value="date-time-pick" disabled={steps !== "date-time-pick" && !formData.selectedDate}>Date & Time</TabsTrigger>
             <TabsTrigger value="info" disabled={steps !== "info"}>Info</TabsTrigger>
