@@ -28,7 +28,7 @@ export const Profile = () => {
           console.log(mechanicData, "mechanicData")
           
           // Get mechanic bookings
-          const bookingsResult = await getBookingRequestsAction(mechanicResult.mechanic.id)
+          const bookingsResult = await getBookingRequestsAction()
           if (bookingsResult) {
             setBookings(bookingsResult)
           }

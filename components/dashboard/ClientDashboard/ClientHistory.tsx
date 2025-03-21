@@ -12,7 +12,7 @@ export const ClientHistory = () => {
             <p className="text-sm">Here you can book and manage your appointments scheduled with mechanics</p>
           </CardTitle>
         </CardHeader>
-        <CardContent className="h-[25vh] flex flex-col items-center justify-end">
+        <CardContent>
           <Booking />
         </CardContent>
       </Card>

@@ -238,14 +238,19 @@ export function ServiceOfferCard({
     }
   };
 
-  if (mechanicConnectId === null || mechanicConnectId === undefined) { return <motion.div
-    layout
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    className="w-full"
-  >
-    <Card className="p-4"> <span className="text-red-500"> Waiting for another mechanic.</span> </Card></motion.div> }
+  if (mechanicConnectId === null || mechanicConnectId === undefined) {
+    return (
+      <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="w-full"
+    >
+      <Card className="p-4"> <span className="text-red-500"> Waiting for another mechanic.</span> </Card>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div

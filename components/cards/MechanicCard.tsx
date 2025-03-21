@@ -9,6 +9,7 @@ import { StarIcon } from "lucide-react";
 import { useRouter } from "next/navigation"
 import useUserFirstName from '@/hooks/useUserFirstName';
 import useUserProfileImage from '@/hooks/useUserProfilePic';
+import useCarInformation from '@/hooks/useCarInformation';
 
 interface MechanicLocation extends Prisma.JsonObject {
   latitude: number;
@@ -22,6 +23,7 @@ interface ExtendedMechanic extends Omit<PrismaMechanic, 'location' | 'servicesOf
   servicesOffered: ServiceType[];
   user?: string;
   rating: number | null;
+  subscriptionPlan?: string | null;
 }
 
 interface BookingFormData {
@@ -32,7 +34,6 @@ interface BookingFormData {
 }
 
 interface MechanicCardProps {
-  index: number;
   mechanic: ExtendedMechanic;
   formData: BookingFormData;
   setFormData: (data: BookingFormData) => void;
@@ -40,7 +41,6 @@ interface MechanicCardProps {
 };
 
 export const MechanicCard = ({
-  index,
   mechanic,
   formData,
   setFormData,
@@ -48,9 +48,8 @@ export const MechanicCard = ({
 }: MechanicCardProps) => {
   const firstName = useUserFirstName(mechanic.userId);
   const profileImage = useUserProfileImage(mechanic.userId);
-  const router = useRouter()
   const isSelected = formData.mechanic?.id === mechanic.id;
-
+  const userCarInfo = useCarInformation(mechanic.userId);
   const handleSelect = () => {
     setFormData({ ...formData, mechanic });
     onSelect(mechanic.id);
@@ -60,7 +59,7 @@ export const MechanicCard = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
+      transition={{ duration: 0.3 }}
       className="w-full"
     >
       <Card
@@ -73,57 +72,60 @@ export const MechanicCard = ({
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center space-x-4">
               <Avatar>
-                <AvatarImage src={profileImage ?? undefined} />
+                <AvatarImage src={profileImage ?? undefined} alt={firstName || 'Mechanic'} />
                 <AvatarFallback>{firstName?.charAt(0) ?? 'M'}</AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold">{mechanic.user}</h3>
+                <h3 className="text-lg font-semibold">{firstName || mechanic.user || 'Mechanic'}</h3>
                 <div className="flex items-center space-x-1">
                   <StarIcon className="h-4 w-4 text-yellow-400" />
                   <span className="text-sm text-muted-foreground">
-                    {mechanic.rating ?? "New"}
+                    {mechanic.rating ? mechanic.rating.toFixed(1) : "New"}
                   </span>
                 </div>
               </div>
             </div>
-            <Badge variant={mechanic.isAvailable ? "default" : "destructive"}>
-              {mechanic.isAvailable ? "Available" : "Unavailable"}
-            </Badge>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant={mechanic.isAvailable ? "default" : "destructive"}>
+                {mechanic.isAvailable ? "Available" : "Unavailable"}
+              </Badge>
+              {mechanic.subscriptionPlan?.toLowerCase() === 'pro' && (
+                <Badge variant="secondary" className="bg-primary text-primary-foreground">PRO</Badge>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             <p className="text-sm">
               <strong>Services:</strong>{" "}
-              {mechanic.servicesOffered.join(", ")}
+              {Array.isArray(mechanic.servicesOffered) && mechanic.servicesOffered.length > 0
+                ? mechanic.servicesOffered.map(service => 
+                    typeof service === 'string' 
+                      ? service.replace(/_/g, ' ') 
+                      : JSON.stringify(service)
+                  ).join(", ")
+                : "No services listed"}
             </p>
-            {mechanic.rating && (
-              <p className="text-sm">
-                <strong>Rating:</strong> {mechanic.rating.toFixed(1)}/5
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">{mechanic.bio}</p>
-            {/* {mechanic.location && (
-              <p className="text-sm text-muted-foreground">
-                Service Area: {mechanic.serviceArea}
-              </p>
-            )} */}
-            <motion.a
-              className="bg-secondary/80 text-black dark:text-white px-4 py-1.5 rounded-xl text-sm font-medium mr-2"
-              href={`/dashboard/profileView/${mechanic.userId}`}
-            >
-              View Profile
-            </motion.a>
+            <p className="text-sm text-muted-foreground line-clamp-2">{mechanic.bio || "No bio available"}</p>
+            <div className="flex justify-between items-center mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                asChild
+              >
+                <a href={`/dashboard/profileView/${mechanic.userId}`}>View Profile</a>
+              </Button>
+              <Button
+                variant={isSelected ? "default" : "outline"}
+                size="sm"
+                className="text-xs"
+                onClick={handleSelect}
+              >
+                {isSelected ? "Selected" : "Select"}
+              </Button>
+            </div>
           </div>
         </CardContent>
-        <CardFooter className="p-6 pt-0">
-          <Button
-            variant={isSelected ? "default" : "outline"}
-            size="sm"
-            className="w-full"
-            onClick={handleSelect}
-          >
-            {isSelected ? "Selected" : "Select"}
-          </Button>
-        </CardFooter>
       </Card>
     </motion.div>
   );

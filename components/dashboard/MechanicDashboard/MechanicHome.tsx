@@ -11,12 +11,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader } from "@/components/loader";
 import { getStripeConnectId } from "@/app/actions/user/get-stripe-connect-id";
 import { useIsUserSubscribed } from "@/hooks/useIsUserSubscribed";
-import { Magnet } from "lucide-react";
+import { ArrowRightIcon, Magnet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { ServiceStatus } from "@prisma/client";
+import { BookingStatus, ServiceStatus } from "@prisma/client";
 import { toast } from "sonner";
+import { useMechanicBookingRequests } from "@/hooks/useMechanicBookingRequests";
+import { Card } from "@/components/ui/card";
+import { useMechanicNavigation } from "@/hooks/useMechanicNavigation.navigator";
 
 interface ServiceRequestWithClient extends PrismaServiceRequest {
   client?: {
@@ -62,6 +65,7 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     pending: 0
   });
   const [loading, setLoading] = useState(true);
+  const { goToBookingRequest } = useMechanicNavigation()
 
   // Use geolocation hook with proper type handling
   const { latitude, longitude, error: locationError } = useGeolocation({
@@ -76,12 +80,19 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
     : null;
   const locationLoading = !location && !locationError;
 
-    const {
+  const {
     serviceRequests,
     isLoading: requestsLoading,
     error: requestsError,
     refetch: refetchRequests
   } = useMechanicServiceRequests();
+
+  const {
+    bookingRequests,
+    isLoading: bookingLoading,
+    error: bookingError,
+    refetch: refetchBookings
+  } = useMechanicBookingRequests();
 
 
   console.log(serviceRequests);
@@ -349,26 +360,26 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
       )}
 
       {/* bookings Section */}
-      {requestsLoading && serviceRequests.length === 0 ? (
+      {bookingLoading && bookingRequests.length === 0 ? (
         <div className="flex justify-center items-center h-[50vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"/>
         </div>
-      ) : requestsError ? (
+      ) : bookingError ? (
         <div className="text-red-500 p-4 rounded-lg bg-red-50">
-          Error loading bookings: {requestsError.message}
+          Error loading bookings: {bookingError.message}
         </div>
       ) : (
         <div className={isApproved ? "" : "hidden"}>
           {/* Available/New Requests */}
-          {serviceRequests.filter(req => req.status === ServiceStatus.BOOKED).length > 0 ? (
+          {bookingRequests.filter(req => req.status === BookingStatus.PENDING).length > 0 ? (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-4">Bookings ({serviceRequests.filter(req => req.status === ServiceStatus.BOOKED).length})</h3>
+                <h3 className="text-lg font-semibold mb-4">Bookings ({bookingRequests.filter(req => req.status === BookingStatus.PENDING).length})</h3>
                 <ScrollArea className="h-[40dvh] w-full rounded-md">
                   <div className="space-y-4 pr-4">
                     <AnimatePresence mode="popLayout">
-                      {serviceRequests
-                        .filter(req => req.status === ServiceStatus.BOOKED)
+                      {bookingRequests
+                        .filter(req => req.status === BookingStatus.PENDING)
                         .map((request) => (
                           <motion.div
                             key={request.id}
@@ -379,10 +390,32 @@ export const MechanicHome = ({ setActiveTab, isApproved }: MechanicHomeProps) =>
                             className="mb-4"
                             layout
                           >
-                            <ServiceRequest
-                              request={request}
-                              isScheduled={false}
-                            />
+                            <Card
+                              className="p-4 hover:shadow-md transition-shadow bg-foreground text-background border-none pointer-events-auto cursor-pointer" 
+                            >
+                            <p className="text-sm text-muted-foreground">
+                              {request.createdAt.toLocaleDateString()}
+                            </p>
+                            {/* <p className="text-sm text-muted-foreground">
+                              {request.location}
+                            </p> */}
+                            <p className="text-sm text-muted-foreground">
+                              {request.serviceType}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {request.status}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                goToBookingRequest(request.id);
+                              }}
+                            >
+                              <ArrowRightIcon className="h-4 w-4" />
+                            </Button>
+                            </Card>
                           </motion.div>
                         ))}
                     </AnimatePresence>

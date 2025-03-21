@@ -1,122 +1,116 @@
-import React from 'react'
+"use client"
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import { Loader } from '@/components/loader'
+import { useMechanicNavigation } from '@/hooks/useMechanicNavigation.navigator'
+import { getBookingRequestsAction } from '@/app/actions/booking/request/getBookingRequestsAction'
+import { Booking, BookingStatus } from '@prisma/client'
+import { cancelBookingRequestAction } from '@/app/actions/booking/request/cancelBookingRequest'
+import { updateBookingRequestAction } from '@/app/actions/booking/request/updateBookingRequest'
 
-export const BookingRequestDetails = ({
-  mechanicId,
-  requestId
-}: {
-  mechanicId: string
-  requestId: string
-}) => {
+export const BookingRequestDetails = () => {
+  const params = useParams()
+  const userId = params.userId as string
+  const { goToBookingRequest } = useMechanicNavigation()
+  const [loading, setLoading] = useState(true)
+  const [bookingRequests, setBookingRequests] = useState<Booking[]>([])
+  const [formData, setFormData] = useState({
+    scheduledStart: '',
+    totalPrice: 0
+  })
+
+  // Fetch active booking requests
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        // Replace with actual data fetching logic
+        const response = await getBookingRequestsAction()
+        setBookingRequests(response || [])
+      } catch (error) {
+        console.error('Failed to fetch booking requests:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRequests()
+  }, [userId])
+
+  if (loading) {
+    return <Loader />
+  }
+
+  const handleCancel = async () => {
+    await cancelBookingRequestAction(bookingRequests[0].id)
+  }
+
+  const handleSubmit = async () => {
+    await updateBookingRequestAction(bookingRequests[0].id, {
+      status: BookingStatus.CANCELLED
+    })
+  }
   return (
-    <div className="p-6 max-w-3xl mx-auto bg-white rounded-lg shadow-md">
+    <div className="p-6 max-w-3xl mx-auto bg-background rounded-lg shadow-md border">
       <h2 className="text-2xl font-bold mb-6">Booking Request Details</h2>
-      <form className="space-y-4">
+      <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="customerId" className="block text-sm font-medium mb-1">Customer ID</label>
-            <input 
-              type="text" 
-              id="customerId" 
-              className="w-full p-2 border rounded-md"
-              defaultValue="cust_12345" 
-              readOnly
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="mechanicId" className="block text-sm font-medium mb-1">Mechanic ID</label>
-            <input 
-              type="text" 
-              id="mechanicId" 
-              className="w-full p-2 border rounded-md"
-              defaultValue={mechanicId} 
-              readOnly
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="serviceId" className="block text-sm font-medium mb-1">Service ID</label>
-            <input 
-              type="text" 
-              id="serviceId" 
-              className="w-full p-2 border rounded-md"
-              defaultValue="serv_78901" 
-              readOnly
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium mb-1">Status</label>
-            <select id="status" className="w-full p-2 border rounded-md">
-              <option value="PENDING">Pending</option>
-              <option value="CONFIRMED">Confirmed</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </div>
-          
           <div>
             <label htmlFor="scheduledStart" className="block text-sm font-medium mb-1">Scheduled Start</label>
             <input 
               type="datetime-local" 
               id="scheduledStart" 
               className="w-full p-2 border rounded-md"
-              defaultValue="2023-08-15T10:00" 
+              onChange={(e) => setFormData({ ...formData, scheduledStart: e.target.value })}
+              defaultValue={bookingRequests[0].scheduledStart.toISOString().split('T')[0]} 
             />
           </div>
-          
+
           <div>
-            <label htmlFor="scheduledEnd" className="block text-sm font-medium mb-1">Scheduled End</label>
+            <label htmlFor="service" className="block text-sm font-medium mb-1">Service Type:</label>
             <input 
-              type="datetime-local" 
-              id="scheduledEnd" 
+              type="text" 
+              id="service" 
               className="w-full p-2 border rounded-md"
-              defaultValue="2023-08-15T12:00" 
+              disabled
+              defaultValue={bookingRequests[0].serviceType || ''} 
             />
           </div>
-          
+
           <div>
             <label htmlFor="totalPrice" className="block text-sm font-medium mb-1">Total Price ($)</label>
             <input 
               type="number" 
               id="totalPrice" 
               className="w-full p-2 border rounded-md"
-              defaultValue="150.00" 
+              onChange={(e) => setFormData({ ...formData, totalPrice: Number(e.target.value) })}
+              defaultValue={bookingRequests[0].totalPrice} 
             />
           </div>
-          
-          <div className="md:col-span-2">
-            <label htmlFor="note" className="block text-sm font-medium mb-1">Note</label>
-            <textarea 
-              id="note" 
-              rows={3} 
-              className="w-full p-2 border rounded-md"
-              defaultValue="Customer requested oil change and tire rotation." 
-            />
-          </div>
+
         </div>
         
         <div className="flex justify-between items-center text-sm text-gray-500">
-          <div>Created: {new Date().toLocaleString()}</div>
-          <div>Updated: {new Date().toLocaleString()}</div>
+          <div>Created: {bookingRequests[0].createdAt.toLocaleString()}</div>
+          <div>Updated: {bookingRequests[0].updatedAt.toLocaleString()}</div>
         </div>
         
         <div className="flex justify-end space-x-3 pt-4">
           <button 
             type="button" 
-            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+            onClick={handleCancel}
+            className="px-4 py-2 border border-secondary rounded-md hover:bg-secondary/80"
           >
             Cancel
           </button>
           <button 
-            type="submit" 
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            type="button" 
+            onClick={handleSubmit}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
           >
-            Save Changes
+            Submit to Client
           </button>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
