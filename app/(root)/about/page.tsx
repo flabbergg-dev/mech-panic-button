@@ -86,9 +86,9 @@ export default function AboutUs() {
               <p className="mb-6 text-lg leading-relaxed text-foreground">
                 {sections[activeSection]?.content}
               </p>
-              <Button size="lg" className="font-semibold">
+              {/* <Button size="lg" className="font-semibold" >
                 Join Our Network
-              </Button>
+              </Button> */}
             </div>
             <div className="md:w-1/2">
               <DotLottieReact

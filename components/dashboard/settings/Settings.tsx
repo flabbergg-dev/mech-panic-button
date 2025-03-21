@@ -44,19 +44,19 @@ const sections: { id: "personal" | "professional" | "notifications" | "security"
     description: "Update your work experience and skills",
     badge: "Required"
   },
-  { 
-    id: "notifications", 
-    icon: Bell, 
-    label: "Notifications",
-    description: "Configure how you receive updates",
-    badge: "3 New"
-  },
-  { 
-    id: "security", 
-    icon: Shield, 
-    label: "Security",
-    description: "Manage your account security settings" 
-  },
+  // { 
+  //   id: "notifications", 
+  //   icon: Bell, 
+  //   label: "Notifications",
+  //   description: "Configure how you receive updates",
+  //   badge: "3 New"
+  // },
+  // { 
+  //   id: "security", 
+  //   icon: Shield, 
+  //   label: "Security",
+  //   description: "Manage your account security settings" 
+  // },
   { 
     id: "billing", 
     icon: CreditCard, 
@@ -64,12 +64,12 @@ const sections: { id: "personal" | "professional" | "notifications" | "security"
     description: "Review your subscription and payments",
     badge: "Pro"
   },
-  { 
-    id: "preferences",
-    icon: Settings2,
-    label: "Preferences",
-    description: "Customize your app experience"
-  },
+  // { 
+  //   id: "preferences",
+  //   icon: Settings2,
+  //   label: "Preferences",
+  //   description: "Customize your app experience"
+  // },
 ]
 
 const SettingsPage = () => {

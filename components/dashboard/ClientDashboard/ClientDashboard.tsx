@@ -364,7 +364,7 @@ export function ClientDashboard() {
         if (storedCountdown && storedStartTime) {
           // Resume existing countdown
           console.log("Debug - Resuming existing countdown");
-          const startTimeMs = parseInt(storedStartTime, 10);
+          const startTimeMs = Number.parseInt(storedStartTime, 10);
           const elapsedSeconds = Math.floor((Date.now() - startTimeMs) / 1000);
           // 2 hours in seconds (60 seconds * 60 minutes * 2 hours)
           const totalCountdownSeconds = 7200; 
@@ -397,7 +397,7 @@ export function ClientDashboard() {
         }
       }
     }
-  }, [activeRequestFound?.status, activeRequestFound?.id]);
+  }, [activeRequestFound?.status, activeRequestFound?.id, refundCountdown]);
 
   // Persist refunded requests to localStorage
   useEffect(() => {
@@ -653,7 +653,7 @@ export function ClientDashboard() {
       });
       
       // Call the server action to refund the service request
-      const result = await fetch(`/api/stripe/refund`, {
+      const result = await fetch('/api/stripe/refund', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -811,6 +811,7 @@ export function ClientDashboard() {
                           onOpenChange={setIsLocationModalOpen}
                           userCords={customerLocation || { latitude: 0, longitude: 0 }}
                           onLocationUpdate={handleLocationUpdate}
+                          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
                           modalRef={modalRef as any}
                           adjustedLocation={adjustedLocation}
                           handleLocationConfirm={handleLocationConfirm}
@@ -832,7 +833,8 @@ export function ClientDashboard() {
                                 You'll be eligible for a refund in {Math.floor(countdownValue / 60)}:{(countdownValue % 60).toString().padStart(2, '0')} if mechanic does not arrive in time
                               </div>
                             );
-                          } else {
+                          } 
+                           if (refundedRequests.has(activeRequestFound.id)) {
                             // After countdown or if countdown is 0, show button if not already refunded
                             return (
                               <div className="space-y-2">
@@ -991,7 +993,7 @@ export function ClientDashboard() {
                         Your service has been completed and the payment has been sent to mechanic
                       </p>
                     </div>
-                    <button
+                    <Button
                       className="bg-blue-500 text-white px-4 py-2 rounded flex items-center gap-2"
                       onClick={() => {
                         setTimeout(() => {
@@ -1000,7 +1002,7 @@ export function ClientDashboard() {
                       }}
                     >
                       Go home <Home className='h-4 w-4'/>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

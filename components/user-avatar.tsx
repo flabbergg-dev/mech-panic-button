@@ -54,8 +54,8 @@ export function UserAvatar() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="?view=profile" className="cursor-pointer">
-            Profile
+          <Link href="/contact" className="cursor-pointer">
+            Customer Support
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
