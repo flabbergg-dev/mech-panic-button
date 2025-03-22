@@ -68,7 +68,7 @@ export function ClientDashboard() {
     // resetLocationChanged,
     // locationChanged
   } = useRealtimeServiceRequest(user?.id || "");
-  const [activeTab, setActiveTab] = useState<string>(tab || "history");
+  const [activeTab, setActiveTab] = useState<string>(tab || "home");
   const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
   const [adjustedLocation, setAdjustedLocation] = useState<{
     latitude: number;
@@ -744,6 +744,11 @@ export function ClientDashboard() {
                 <p className="text-gray-600 mb-6 text-center">
                   Need mechanical assistance? We're here to help!
                 </p>
+                  <br />
+                  <p className='text-primary font-bold capitalize text-center'>
+                    
+                  Click the button below to request assistance.
+                  </p>
               </Card>
             </div>
             <div className="flex items-center justify-center w-full">
